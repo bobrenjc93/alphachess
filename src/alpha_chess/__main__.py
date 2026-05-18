@@ -63,6 +63,7 @@ def main(argv: list[str] | None = None) -> None:
     import_parser.add_argument("--max-games", type=int)
     import_parser.add_argument("--min-plies", type=int, default=1)
     import_parser.add_argument("--chunk-size", type=int, default=4096)
+    import_parser.add_argument("--dense-policy", action="store_true")
 
     iterate_parser = subparsers.add_parser("iterate", help="run self-play/train/eval iterations")
     iterate_parser.add_argument("--run-dir", default="experiments/local")

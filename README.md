@@ -42,7 +42,7 @@ uv run alpha-chess uci --checkpoint checkpoints/run/latest.pt --simulations 128
 
 ## Expert Bootstrap
 
-Convert PGN games into one-hot expert policy/value targets:
+Convert PGN games into sparse expert action/value targets:
 
 ```bash
 uv run alpha-chess import-pgn --pgn games.pgn --out data/expert --max-games 10000

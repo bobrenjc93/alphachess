@@ -9,6 +9,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from alpha_chess.chess_env import ACTION_SIZE
+
 
 class SelfPlayDataset(Dataset):
     """Dataset backed by AlphaChess self-play NPZ files."""
@@ -50,9 +52,17 @@ class SelfPlayDataset(Dataset):
         path = self.files[file_index]
         data = self.cache[path] if self.cache is not None else np.load(path)
 
+        if "policies" in data:
+            policy = torch.from_numpy(data["policies"][local_index]).float()
+        elif "actions" in data:
+            policy = torch.zeros(ACTION_SIZE, dtype=torch.float32)
+            policy[int(data["actions"][local_index])] = 1.0
+        else:
+            raise KeyError(f"{path} has neither 'policies' nor 'actions'")
+
         return {
             "board": torch.from_numpy(data["boards"][local_index]).float(),
-            "policy": torch.from_numpy(data["policies"][local_index]).float(),
+            "policy": policy,
             "value": torch.tensor(float(data["values"][local_index]), dtype=torch.float32),
         }
 

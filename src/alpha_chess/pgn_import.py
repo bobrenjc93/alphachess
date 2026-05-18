@@ -25,6 +25,7 @@ class PGNImportConfig:
     max_games: int | None = None
     min_plies: int = 1
     chunk_size: int = 4096
+    dense_policy: bool = False
 
 
 def import_pgn(config: PGNImportConfig) -> list[Path]:
@@ -34,7 +35,8 @@ def import_pgn(config: PGNImportConfig) -> list[Path]:
 
     written: list[Path] = []
     boards: list[np.ndarray] = []
-    policies: list[np.ndarray] = []
+    policies: list[np.ndarray] | None = [] if config.dense_policy else None
+    actions: list[int] = []
     values: list[float] = []
     fens: list[str] = []
     moves: list[str] = []
@@ -47,12 +49,14 @@ def import_pgn(config: PGNImportConfig) -> list[Path]:
             if game is None:
                 break
             games_seen += 1
-            game_positions = _game_to_samples(game)
+            game_positions = _game_to_samples(game, dense_policy=config.dense_policy)
             if len(game_positions["boards"]) < config.min_plies:
                 continue
 
             boards.extend(game_positions["boards"])
-            policies.extend(game_positions["policies"])
+            actions.extend(game_positions["actions"])
+            if policies is not None:
+                policies.extend(game_positions["policies"])
             values.extend(game_positions["values"])
             fens.extend(game_positions["fens"])
             moves.extend(game_positions["moves"])
@@ -62,16 +66,19 @@ def import_pgn(config: PGNImportConfig) -> list[Path]:
                     out_dir,
                     len(written),
                     boards[: config.chunk_size],
-                    policies[: config.chunk_size],
+                    actions[: config.chunk_size],
                     values[: config.chunk_size],
                     fens[: config.chunk_size],
                     moves[: config.chunk_size],
                     source=str(pgn_path),
+                    policies=policies[: config.chunk_size] if policies is not None else None,
                 )
                 positions_seen += config.chunk_size
                 written.append(path)
                 del boards[: config.chunk_size]
-                del policies[: config.chunk_size]
+                del actions[: config.chunk_size]
+                if policies is not None:
+                    del policies[: config.chunk_size]
                 del values[: config.chunk_size]
                 del fens[: config.chunk_size]
                 del moves[: config.chunk_size]
@@ -81,11 +88,12 @@ def import_pgn(config: PGNImportConfig) -> list[Path]:
             out_dir,
             len(written),
             boards,
-            policies,
+            actions,
             values,
             fens,
             moves,
             source=str(pgn_path),
+            policies=policies,
         )
         positions_seen += len(boards)
         written.append(path)
@@ -121,13 +129,14 @@ def _open_pgn_text(path: Path) -> TextIO:
     return path.open(encoding="utf-8", errors="replace")
 
 
-def _game_to_samples(game: chess.pgn.Game) -> dict[str, list]:
+def _game_to_samples(game: chess.pgn.Game, dense_policy: bool = False) -> dict[str, list]:
     result = game.headers.get("Result", "*")
     white_value = _result_to_white_value(result)
     board = game.board()
 
     boards: list[np.ndarray] = []
     policies: list[np.ndarray] = []
+    actions: list[int] = []
     values: list[float] = []
     fens: list[str] = []
     moves: list[str] = []
@@ -136,10 +145,12 @@ def _game_to_samples(game: chess.pgn.Game) -> dict[str, list]:
         if move not in board.legal_moves:
             break
         action = move_to_action(move, board)
-        policy = np.zeros(ACTION_SIZE, dtype=np.float32)
-        policy[action] = 1.0
         boards.append(encode_board(board))
-        policies.append(policy)
+        actions.append(action)
+        if dense_policy:
+            policy = np.zeros(ACTION_SIZE, dtype=np.float32)
+            policy[action] = 1.0
+            policies.append(policy)
         values.append(white_value if board.turn == chess.WHITE else -white_value)
         fens.append(board.fen())
         moves.append(move.uci())
@@ -148,6 +159,7 @@ def _game_to_samples(game: chess.pgn.Game) -> dict[str, list]:
     return {
         "boards": boards,
         "policies": policies,
+        "actions": actions,
         "values": values,
         "fens": fens,
         "moves": moves,
@@ -166,20 +178,23 @@ def _write_chunk(
     out_dir: Path,
     chunk_index: int,
     boards: list[np.ndarray],
-    policies: list[np.ndarray],
+    actions: list[int],
     values: list[float],
     fens: list[str],
     moves: list[str],
     source: str,
+    policies: list[np.ndarray] | None = None,
 ) -> Path:
     path = out_dir / f"expert_{chunk_index:06d}.npz"
-    np.savez_compressed(
-        path,
-        boards=np.asarray(boards, dtype=np.float32),
-        policies=np.asarray(policies, dtype=np.float32),
-        values=np.asarray(values, dtype=np.float32),
-        fens=np.asarray(fens),
-        moves=np.asarray(moves),
-        source=np.asarray(source),
-    )
+    payload = {
+        "boards": np.asarray(boards, dtype=np.float32),
+        "actions": np.asarray(actions, dtype=np.int64),
+        "values": np.asarray(values, dtype=np.float32),
+        "fens": np.asarray(fens),
+        "moves": np.asarray(moves),
+        "source": np.asarray(source),
+    }
+    if policies is not None:
+        payload["policies"] = np.asarray(policies, dtype=np.float32)
+    np.savez_compressed(path, **payload)
     return path

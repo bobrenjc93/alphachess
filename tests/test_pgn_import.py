@@ -1,5 +1,6 @@
 import textwrap
 
+import numpy as np
 import zstandard
 
 from alpha_chess.chess_env import ACTION_SIZE, NUM_INPUT_PLANES
@@ -29,6 +30,9 @@ def test_import_pgn_writes_training_npz(tmp_path) -> None:
     written = import_pgn(PGNImportConfig(pgn=str(pgn), out=str(out), max_games=1, chunk_size=2))
 
     assert len(written) == 3
+    raw = np.load(written[0])
+    assert "actions" in raw
+    assert "policies" not in raw
     dataset = SelfPlayDataset(out)
     sample = dataset[0]
     assert len(dataset) == 6
