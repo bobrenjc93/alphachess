@@ -27,6 +27,8 @@ class EvalConfig:
     engine_depth: int | None = None
     device: str = "auto"
     material_value_weight: float = 0.0
+    root_material_search_plies: int = 0
+    root_material_max_loss_cp: int = 250
     seed: int = 0
     max_plies: int = 512
     pgn_out: str | None = None
@@ -63,6 +65,8 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
         opponent_eval=opponent_eval,
         games=config.games,
         simulations=config.simulations,
+        root_material_search_plies=config.root_material_search_plies,
+        root_material_max_loss_cp=config.root_material_max_loss_cp,
         seed=config.seed,
         max_plies=config.max_plies,
         pgn_out=config.pgn_out,
@@ -83,6 +87,8 @@ def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[s
                 engine=engine,
                 model_color=model_color,
                 simulations=config.simulations,
+                root_material_search_plies=config.root_material_search_plies,
+                root_material_max_loss_cp=config.root_material_max_loss_cp,
                 max_plies=config.max_plies,
                 limit=limit,
                 rng=np.random.default_rng(int(rng.integers(0, 2**31 - 1))),
@@ -106,6 +112,8 @@ def evaluate_match(
     opponent_eval: Evaluator,
     games: int,
     simulations: int,
+    root_material_search_plies: int,
+    root_material_max_loss_cp: int,
     seed: int,
     max_plies: int,
     pgn_out: str | None = None,
@@ -122,6 +130,8 @@ def evaluate_match(
             opponent_eval,
             model_color,
             simulations=simulations,
+            root_material_search_plies=root_material_search_plies,
+            root_material_max_loss_cp=root_material_max_loss_cp,
             max_plies=max_plies,
             rng=np.random.default_rng(int(rng.integers(0, 2**31 - 1))),
         )
@@ -145,12 +155,19 @@ def play_eval_game(
     opponent_eval: Evaluator,
     model_color: chess.Color,
     simulations: int,
+    root_material_search_plies: int,
+    root_material_max_loss_cp: int,
     max_plies: int,
     rng: np.random.Generator,
 ) -> tuple[float, chess.Board]:
     board = chess.Board()
-    model_mcts = AlphaZeroMCTS(model_eval, MCTSConfig(simulations=simulations), rng=rng)
-    opponent_mcts = AlphaZeroMCTS(opponent_eval, MCTSConfig(simulations=simulations), rng=rng)
+    mcts_config = MCTSConfig(
+        simulations=simulations,
+        root_material_search_plies=root_material_search_plies,
+        root_material_max_loss_cp=root_material_max_loss_cp,
+    )
+    model_mcts = AlphaZeroMCTS(model_eval, mcts_config, rng=rng)
+    opponent_mcts = AlphaZeroMCTS(opponent_eval, mcts_config, rng=rng)
 
     for _ in range(max_plies):
         if board.is_game_over(claim_draw=True):
@@ -175,12 +192,22 @@ def play_eval_game_against_engine(
     engine: chess.engine.SimpleEngine,
     model_color: chess.Color,
     simulations: int,
+    root_material_search_plies: int,
+    root_material_max_loss_cp: int,
     max_plies: int,
     limit: chess.engine.Limit,
     rng: np.random.Generator,
 ) -> tuple[float, chess.Board]:
     board = chess.Board()
-    model_mcts = AlphaZeroMCTS(model_eval, MCTSConfig(simulations=simulations), rng=rng)
+    model_mcts = AlphaZeroMCTS(
+        model_eval,
+        MCTSConfig(
+            simulations=simulations,
+            root_material_search_plies=root_material_search_plies,
+            root_material_max_loss_cp=root_material_max_loss_cp,
+        ),
+        rng=rng,
+    )
 
     for _ in range(max_plies):
         if board.is_game_over(claim_draw=True):

@@ -29,6 +29,8 @@ class IterationConfig:
     lr: float = 1e-3
     legal_policy_loss: bool = False
     material_value_weight: float = 0.0
+    root_material_search_plies: int = 0
+    root_material_max_loss_cp: int = 250
     replay_data: list[str] | None = None
     self_play_weight: float = 1.0
     replay_weights: list[float] | None = None
@@ -71,6 +73,8 @@ def run_iterations(config: IterationConfig) -> Path:
                 simulations=config.simulations,
                 max_plies=config.max_plies,
                 temperature_moves=config.temperature_moves,
+                root_material_search_plies=config.root_material_search_plies,
+                root_material_max_loss_cp=config.root_material_max_loss_cp,
                 seed=iter_seed,
             ),
         )
@@ -102,6 +106,8 @@ def run_iterations(config: IterationConfig) -> Path:
             "opponent_checkpoint": best_checkpoint,
             "device": config.device,
             "material_value_weight": config.material_value_weight,
+            "root_material_search_plies": config.root_material_search_plies,
+            "root_material_max_loss_cp": config.root_material_max_loss_cp,
             "seed": iter_seed,
             "max_plies": config.max_plies,
         }

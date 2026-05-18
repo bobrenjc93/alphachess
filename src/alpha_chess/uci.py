@@ -18,6 +18,8 @@ class UCIConfig:
     simulations: int = 64
     device: str = "auto"
     material_value_weight: float = 0.0
+    root_material_search_plies: int = 0
+    root_material_max_loss_cp: int = 250
 
 
 def run_uci(config: UCIConfig) -> None:
@@ -34,6 +36,8 @@ def run_uci(config: UCIConfig) -> None:
     send("id name AlphaChess")
     send("id author bobrenjc93")
     send("option name Simulations type spin default 64 min 1 max 100000")
+    send("option name RootMaterialSearchPlies type spin default 0 min 0 max 8")
+    send("option name RootMaterialMaxLossCp type spin default 250 min 0 max 5000")
 
     for raw_line in sys.stdin:
         line = raw_line.strip()
@@ -43,6 +47,8 @@ def run_uci(config: UCIConfig) -> None:
             send("id name AlphaChess")
             send("id author bobrenjc93")
             send("option name Simulations type spin default 64 min 1 max 100000")
+            send("option name RootMaterialSearchPlies type spin default 0 min 0 max 8")
+            send("option name RootMaterialMaxLossCp type spin default 250 min 0 max 5000")
             send("uciok")
         elif line == "isready":
             send("readyok")
@@ -53,16 +59,23 @@ def run_uci(config: UCIConfig) -> None:
         elif line.startswith("position"):
             board = _parse_position(line)
         elif line.startswith("go"):
-            move = _choose_move(board, evaluator, config.simulations)
+            move = _choose_move(board, evaluator, config)
             send(f"bestmove {move.uci() if move is not None else '0000'}")
         elif line == "quit":
             break
 
 
-def _choose_move(board: chess.Board, evaluator, simulations: int) -> chess.Move | None:
+def _choose_move(board: chess.Board, evaluator, config: UCIConfig) -> chess.Move | None:
     if board.is_game_over(claim_draw=True):
         return None
-    search = AlphaZeroMCTS(evaluator, MCTSConfig(simulations=simulations))
+    search = AlphaZeroMCTS(
+        evaluator,
+        MCTSConfig(
+            simulations=config.simulations,
+            root_material_search_plies=config.root_material_search_plies,
+            root_material_max_loss_cp=config.root_material_max_loss_cp,
+        ),
+    )
     result = search.run(board)
     action = result.select_action(temperature=0.0, rng=search.rng)
     return action_to_move(action, board) if action is not None else None
@@ -107,6 +120,32 @@ def _parse_setoption(line: str, config: UCIConfig) -> UCIConfig:
                 simulations=max(1, int(value)),
                 device=config.device,
                 material_value_weight=config.material_value_weight,
+                root_material_search_plies=config.root_material_search_plies,
+                root_material_max_loss_cp=config.root_material_max_loss_cp,
+            )
+        except ValueError:
+            return config
+    if name == "rootmaterialsearchplies":
+        try:
+            return UCIConfig(
+                checkpoint=config.checkpoint,
+                simulations=config.simulations,
+                device=config.device,
+                material_value_weight=config.material_value_weight,
+                root_material_search_plies=max(0, int(value)),
+                root_material_max_loss_cp=config.root_material_max_loss_cp,
+            )
+        except ValueError:
+            return config
+    if name == "rootmaterialmaxlosscp":
+        try:
+            return UCIConfig(
+                checkpoint=config.checkpoint,
+                simulations=config.simulations,
+                device=config.device,
+                material_value_weight=config.material_value_weight,
+                root_material_search_plies=config.root_material_search_plies,
+                root_material_max_loss_cp=max(0, int(value)),
             )
         except ValueError:
             return config

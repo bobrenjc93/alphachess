@@ -8,7 +8,9 @@ import chess
 import numpy as np
 
 from alpha_chess.chess_env import ACTION_SIZE, action_to_move, legal_actions, terminal_value
-from alpha_chess.evaluator import Evaluator
+from alpha_chess.evaluator import PIECE_VALUES, Evaluator
+
+MATE_SCORE_CP = 100_000
 
 
 @dataclass
@@ -19,6 +21,8 @@ class MCTSConfig:
     dirichlet_fraction: float = 0.25
     add_root_noise: bool = False
     root_mate_search_plies: int = 3
+    root_material_search_plies: int = 0
+    root_material_max_loss_cp: int = 250
 
 
 @dataclass
@@ -40,10 +44,22 @@ class Node:
         board: chess.Board,
         policy: np.ndarray,
         tactical_filter_plies: int = 0,
+        material_filter_plies: int = 0,
+        material_max_loss_cp: int = 250,
     ) -> None:
         actions = legal_actions(board)
+        forced_mate_found = False
         if tactical_filter_plies > 0:
-            actions = _filter_root_tactics(board, actions, tactical_filter_plies)
+            actions, forced_mate_found = _filter_root_tactics(
+                board, actions, tactical_filter_plies
+            )
+        if material_filter_plies > 0 and not forced_mate_found:
+            actions = _filter_root_material(
+                board,
+                actions,
+                material_filter_plies,
+                material_max_loss_cp,
+            )
         if not actions:
             return
 
@@ -119,6 +135,8 @@ class AlphaZeroMCTS:
                 board,
                 policy,
                 tactical_filter_plies=self.config.root_mate_search_plies,
+                material_filter_plies=self.config.root_material_search_plies,
+                material_max_loss_cp=self.config.root_material_max_loss_cp,
             )
             if self.config.add_root_noise:
                 root.add_exploration_noise(
@@ -178,7 +196,7 @@ class AlphaZeroMCTS:
 
 def _filter_root_tactics(
     board: chess.Board, actions: list[int], mate_search_plies: int
-) -> list[int]:
+) -> tuple[list[int], bool]:
     mate_actions: list[int] = []
     safe_actions: list[int] = []
     mate_cache: dict[tuple[str, int], bool] = {}
@@ -199,10 +217,116 @@ def _filter_root_tactics(
             safe_actions.append(action)
 
     if mate_actions:
-        return mate_actions
+        return mate_actions, True
     if safe_actions:
-        return safe_actions
-    return actions
+        return safe_actions, False
+    return actions, False
+
+
+def _filter_root_material(
+    board: chess.Board,
+    actions: list[int],
+    material_search_plies: int,
+    max_loss_cp: int,
+) -> list[int]:
+    material_search_plies = max(0, material_search_plies)
+    max_loss_cp = max(0, max_loss_cp)
+    if material_search_plies <= 0 or max_loss_cp <= 0:
+        return actions
+
+    perspective = board.turn
+    baseline = _material_score_cp(board, perspective)
+    min_allowed = baseline - max_loss_cp
+    cache: dict[tuple[str, int, bool], int] = {}
+    safe_actions: list[int] = []
+
+    for action in actions:
+        move = action_to_move(action, board)
+        if move is None:
+            continue
+        child = board.copy(stack=False)
+        child.push(move)
+        score = _material_quiescence_score(
+            child,
+            material_search_plies,
+            perspective,
+            cache,
+        )
+        if score >= min_allowed:
+            safe_actions.append(action)
+
+    return safe_actions if safe_actions else actions
+
+
+def _material_quiescence_score(
+    board: chess.Board,
+    plies: int,
+    perspective: chess.Color,
+    cache: dict[tuple[str, int, bool], int],
+) -> int:
+    key = (board.fen(), plies, perspective)
+    if key in cache:
+        return cache[key]
+
+    stand_pat = _material_score_cp(board, perspective)
+    if plies <= 0 or board.is_game_over(claim_draw=True):
+        cache[key] = stand_pat
+        return stand_pat
+
+    moves = _material_tactical_moves(board)
+    if not moves:
+        cache[key] = stand_pat
+        return stand_pat
+
+    if board.turn == perspective:
+        best = stand_pat
+        for move in moves:
+            child = board.copy(stack=False)
+            child.push(move)
+            best = max(best, _material_quiescence_score(child, plies - 1, perspective, cache))
+    else:
+        best = stand_pat
+        for move in moves:
+            child = board.copy(stack=False)
+            child.push(move)
+            best = min(best, _material_quiescence_score(child, plies - 1, perspective, cache))
+
+    cache[key] = best
+    return best
+
+
+def _material_tactical_moves(board: chess.Board) -> list[chess.Move]:
+    moves = [move for move in board.legal_moves if board.is_capture(move) or move.promotion]
+    moves.sort(key=lambda move: _move_material_priority(board, move), reverse=True)
+    return moves
+
+
+def _move_material_priority(board: chess.Board, move: chess.Move) -> int:
+    captured_value = _captured_piece_value(board, move)
+    promotion_value = PIECE_VALUES.get(move.promotion, 0) if move.promotion else 0
+    moving_piece = board.piece_at(move.from_square)
+    moving_value = PIECE_VALUES.get(moving_piece.piece_type, 0) if moving_piece else 0
+    return captured_value + promotion_value - moving_value
+
+
+def _captured_piece_value(board: chess.Board, move: chess.Move) -> int:
+    if board.is_en_passant(move):
+        return PIECE_VALUES[chess.PAWN]
+    captured = board.piece_at(move.to_square)
+    return PIECE_VALUES.get(captured.piece_type, 0) if captured else 0
+
+
+def _material_score_cp(board: chess.Board, perspective: chess.Color) -> int:
+    if board.is_checkmate():
+        return -MATE_SCORE_CP if board.turn == perspective else MATE_SCORE_CP
+    if board.is_game_over(claim_draw=True):
+        return 0
+
+    score = 0
+    for piece in board.piece_map().values():
+        value = PIECE_VALUES.get(piece.piece_type, 0)
+        score += value if piece.color == perspective else -value
+    return score
 
 
 def _side_to_move_can_force_mate(

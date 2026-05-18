@@ -46,3 +46,56 @@ def test_mcts_root_prunes_moves_allowing_mate_in_one() -> None:
 
     assert blunder_action not in result.root.children
     assert result.visits[blunder_action] == 0
+
+
+def test_mcts_root_prunes_large_material_blunder() -> None:
+    board = chess.Board("3r2k1/8/8/8/8/8/3N4/3Q2K1 w - - 0 1")
+    blunder_action = move_to_action(chess.Move.from_uci("d2f3"), board)
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=1,
+            root_material_max_loss_cp=350,
+        ),
+    )
+    result = search.run(board)
+
+    assert blunder_action not in result.root.children
+
+
+def test_mcts_root_material_filter_can_be_disabled() -> None:
+    board = chess.Board("3r2k1/8/8/8/8/8/3N4/3Q2K1 w - - 0 1")
+    blunder_action = move_to_action(chess.Move.from_uci("d2f3"), board)
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=0,
+        ),
+    )
+    result = search.run(board)
+
+    assert blunder_action in result.root.children
+
+
+def test_mcts_root_prunes_queen_for_rook_trap_from_stockfish_game() -> None:
+    board = chess.Board("r1b1kbnr/p4ppp/2p1p3/2pp4/2P1PB1P/3P1N2/Pq1N1PP1/R2QK2R b KQkq - 0 9")
+    blunder_action = move_to_action(chess.Move.from_uci("b2a1"), board)
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=2,
+            root_material_max_loss_cp=250,
+        ),
+    )
+    result = search.run(board)
+
+    assert blunder_action not in result.root.children
