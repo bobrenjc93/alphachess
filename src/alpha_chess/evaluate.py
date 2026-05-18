@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import chess
+import chess.engine
 import numpy as np
 
 from alpha_chess.chess_env import action_to_move, result_value_for_color
@@ -19,6 +20,9 @@ class EvalConfig:
     simulations: int = 64
     opponent: str = "uniform"
     opponent_checkpoint: str | None = None
+    engine_path: str = "stockfish"
+    engine_time: float = 0.05
+    engine_depth: int | None = None
     device: str = "auto"
     seed: int = 0
     max_plies: int = 512
@@ -26,6 +30,9 @@ class EvalConfig:
 
 def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
     model_eval = load_evaluator(config.checkpoint, device=config.device)
+    if config.opponent in {"uci", "stockfish"}:
+        return evaluate_against_engine(config, model_eval)
+
     opponent_eval: Evaluator
     if config.opponent_checkpoint:
         opponent_eval = load_evaluator(config.opponent_checkpoint, device=config.device)
@@ -39,6 +46,26 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
         seed=config.seed,
         max_plies=config.max_plies,
     )
+
+
+def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[str, float]:
+    rng = np.random.default_rng(config.seed)
+    scores: list[float] = []
+    limit = chess.engine.Limit(time=config.engine_time, depth=config.engine_depth)
+    with chess.engine.SimpleEngine.popen_uci(config.engine_path) as engine:
+        for game_idx in range(config.games):
+            model_color = chess.WHITE if game_idx % 2 == 0 else chess.BLACK
+            score = play_eval_game_against_engine(
+                model_eval=model_eval,
+                engine=engine,
+                model_color=model_color,
+                simulations=config.simulations,
+                max_plies=config.max_plies,
+                limit=limit,
+                rng=np.random.default_rng(int(rng.integers(0, 2**31 - 1))),
+            )
+            scores.append(score)
+    return summarize_scores(scores)
 
 
 def evaluate_match(
@@ -64,14 +91,7 @@ def evaluate_match(
         )
         scores.append(score)
 
-    return {
-        "games": float(games),
-        "score": float(sum(scores)),
-        "score_rate": float(sum(scores) / max(1, len(scores))),
-        "wins": float(sum(1 for score in scores if score == 1.0)),
-        "draws": float(sum(1 for score in scores if score == 0.5)),
-        "losses": float(sum(1 for score in scores if score == 0.0)),
-    }
+    return summarize_scores(scores)
 
 
 def play_eval_game(
@@ -101,3 +121,45 @@ def play_eval_game(
 
     value = result_value_for_color(board, model_color)
     return 1.0 if value > 0 else 0.5 if value == 0 else 0.0
+
+
+def play_eval_game_against_engine(
+    model_eval: Evaluator,
+    engine: chess.engine.SimpleEngine,
+    model_color: chess.Color,
+    simulations: int,
+    max_plies: int,
+    limit: chess.engine.Limit,
+    rng: np.random.Generator,
+) -> float:
+    board = chess.Board()
+    model_mcts = AlphaZeroMCTS(model_eval, MCTSConfig(simulations=simulations), rng=rng)
+
+    for _ in range(max_plies):
+        if board.is_game_over(claim_draw=True):
+            break
+        if board.turn == model_color:
+            result = model_mcts.run(board)
+            action = result.select_action(temperature=0.0, rng=rng)
+            if action is None:
+                break
+            move = action_to_move(action, board)
+            if move is None:
+                raise RuntimeError(f"Model selected illegal action {action} in {board.fen()}")
+        else:
+            move = engine.play(board, limit).move
+        board.push(move)
+
+    value = result_value_for_color(board, model_color)
+    return 1.0 if value > 0 else 0.5 if value == 0 else 0.0
+
+
+def summarize_scores(scores: list[float]) -> dict[str, float]:
+    return {
+        "games": float(len(scores)),
+        "score": float(sum(scores)),
+        "score_rate": float(sum(scores) / max(1, len(scores))),
+        "wins": float(sum(1 for score in scores if score == 1.0)),
+        "draws": float(sum(1 for score in scores if score == 0.5)),
+        "losses": float(sum(1 for score in scores if score == 0.0)),
+    }

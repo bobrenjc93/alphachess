@@ -28,6 +28,12 @@ uv run alpha-chess train --data data/selfplay/smoke --out checkpoints/smoke --ep
 uv run alpha-chess eval --checkpoint checkpoints/smoke/latest.pt --games 2 --simulations 8
 ```
 
+When a UCI engine is installed, evaluate directly against it:
+
+```bash
+uv run alpha-chess eval --checkpoint checkpoints/run/latest.pt --opponent stockfish --engine-path stockfish --engine-time 0.05
+```
+
 ## Expert Bootstrap
 
 Convert PGN games into one-hot expert policy/value targets:
