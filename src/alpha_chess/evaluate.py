@@ -18,6 +18,7 @@ class EvalConfig:
     games: int = 2
     simulations: int = 64
     opponent: str = "uniform"
+    opponent_checkpoint: str | None = None
     device: str = "auto"
     seed: int = 0
     max_plies: int = 512
@@ -25,24 +26,46 @@ class EvalConfig:
 
 def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
     model_eval = load_evaluator(config.checkpoint, device=config.device)
-    opponent_eval: Evaluator = UniformEvaluator()
-    rng = np.random.default_rng(config.seed)
+    opponent_eval: Evaluator
+    if config.opponent_checkpoint:
+        opponent_eval = load_evaluator(config.opponent_checkpoint, device=config.device)
+    else:
+        opponent_eval = UniformEvaluator()
+    return evaluate_match(
+        model_eval=model_eval,
+        opponent_eval=opponent_eval,
+        games=config.games,
+        simulations=config.simulations,
+        seed=config.seed,
+        max_plies=config.max_plies,
+    )
+
+
+def evaluate_match(
+    model_eval: Evaluator,
+    opponent_eval: Evaluator,
+    games: int,
+    simulations: int,
+    seed: int,
+    max_plies: int,
+) -> dict[str, float]:
+    rng = np.random.default_rng(seed)
     scores: list[float] = []
 
-    for game_idx in range(config.games):
+    for game_idx in range(games):
         model_color = chess.WHITE if game_idx % 2 == 0 else chess.BLACK
         score = play_eval_game(
             model_eval,
             opponent_eval,
             model_color,
-            simulations=config.simulations,
-            max_plies=config.max_plies,
+            simulations=simulations,
+            max_plies=max_plies,
             rng=np.random.default_rng(int(rng.integers(0, 2**31 - 1))),
         )
         scores.append(score)
 
     return {
-        "games": float(config.games),
+        "games": float(games),
         "score": float(sum(scores)),
         "score_rate": float(sum(scores) / max(1, len(scores))),
         "wins": float(sum(1 for score in scores if score == 1.0)),

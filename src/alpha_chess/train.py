@@ -14,7 +14,7 @@ from alpha_chess.model import ChessNet, ChessNetConfig, load_checkpoint, save_ch
 
 @dataclass
 class TrainConfig:
-    data: str
+    data: str | list[str]
     out: str = "checkpoints/run"
     checkpoint: str | None = None
     epochs: int = 1

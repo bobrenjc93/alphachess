@@ -9,6 +9,7 @@ from rich import print
 
 from alpha_chess.evaluate import EvalConfig, evaluate_checkpoint
 from alpha_chess.evaluator import UniformEvaluator, load_evaluator
+from alpha_chess.iteration import IterationConfig, run_iterations
 from alpha_chess.pgn_import import PGNImportConfig, import_pgn
 from alpha_chess.self_play import SelfPlayConfig, generate_self_play
 from alpha_chess.train import TrainConfig, train
@@ -47,6 +48,7 @@ def main(argv: list[str] | None = None) -> None:
     eval_parser.add_argument("--games", type=int, default=2)
     eval_parser.add_argument("--simulations", type=int, default=64)
     eval_parser.add_argument("--opponent", default="uniform")
+    eval_parser.add_argument("--opponent-checkpoint")
     eval_parser.add_argument("--device", default="auto")
     eval_parser.add_argument("--seed", type=int, default=0)
     eval_parser.add_argument("--max-plies", type=int, default=512)
@@ -57,6 +59,25 @@ def main(argv: list[str] | None = None) -> None:
     import_parser.add_argument("--max-games", type=int)
     import_parser.add_argument("--min-plies", type=int, default=1)
     import_parser.add_argument("--chunk-size", type=int, default=4096)
+
+    iterate_parser = subparsers.add_parser("iterate", help="run self-play/train/eval iterations")
+    iterate_parser.add_argument("--run-dir", default="experiments/local")
+    iterate_parser.add_argument("--iterations", type=int, default=1)
+    iterate_parser.add_argument("--checkpoint")
+    iterate_parser.add_argument("--games", type=int, default=16)
+    iterate_parser.add_argument("--simulations", type=int, default=64)
+    iterate_parser.add_argument("--max-plies", type=int, default=512)
+    iterate_parser.add_argument("--temperature-moves", type=int, default=20)
+    iterate_parser.add_argument("--epochs", type=int, default=2)
+    iterate_parser.add_argument("--batch-size", type=int, default=128)
+    iterate_parser.add_argument("--channels", type=int, default=128)
+    iterate_parser.add_argument("--blocks", type=int, default=6)
+    iterate_parser.add_argument("--lr", type=float, default=1e-3)
+    iterate_parser.add_argument("--promotion-score", type=float, default=0.50)
+    iterate_parser.add_argument("--eval-games", type=int, default=8)
+    iterate_parser.add_argument("--eval-simulations", type=int, default=64)
+    iterate_parser.add_argument("--seed", type=int, default=0)
+    iterate_parser.add_argument("--device", default="auto")
 
     args = parser.parse_args(argv)
 
@@ -92,6 +113,12 @@ def main(argv: list[str] | None = None) -> None:
         config = PGNImportConfig(**kwargs)
         paths = import_pgn(config)
         print({"written": [str(path) for path in paths], "config": asdict(config)})
+    elif args.command == "iterate":
+        kwargs = vars(args).copy()
+        kwargs.pop("command", None)
+        config = IterationConfig(**kwargs)
+        league = run_iterations(config)
+        print({"league": str(league), "config": asdict(config)})
 
 
 if __name__ == "__main__":

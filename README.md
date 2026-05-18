@@ -45,6 +45,12 @@ GAMES=64 SIMULATIONS=64 EPOCHS=4 scripts/submit_gpu_training.sh
 
 The script reserves a GPU with `gpu-dev submit`, syncs this repository to the worker, runs self-play, trains a checkpoint, and syncs results back into `data/` and `checkpoints/`.
 
+For repeated AlphaZero-style improvement with promotion gating:
+
+```bash
+uv run alpha-chess iterate --run-dir experiments/run1 --iterations 4 --games 64 --simulations 64
+```
+
 ## Design Notes
 
 AutoGo’s useful pattern is preserved: keep the game implementation deterministic, make MCTS consume a small state/evaluator interface, store each self-play position with the improved visit-count policy, and make experiments reproducible from plain scripts. Chess-specific complexity is kept behind `python-chess` so castling, en passant, promotions, repetition, and draw claims stay correct.
