@@ -112,6 +112,7 @@ class SelfPlayDataset(Dataset):
         sample = {
             "board": torch.from_numpy(data["boards"][local_index]).float(),
             "value": torch.tensor(float(data["values"][local_index]), dtype=torch.float32),
+            "source_id": torch.tensor(self.file_source_ids[file_index], dtype=torch.long),
         }
         if "policies" in data:
             sample["policy"] = torch.from_numpy(data["policies"][local_index]).float()
@@ -144,6 +145,7 @@ def collate_samples(samples: list[Sample]) -> dict[str, torch.Tensor | list[str]
     batch = {
         "board": torch.stack([sample["board"] for sample in samples]),
         "value": torch.stack([sample["value"] for sample in samples]),
+        "source_id": torch.stack([sample["source_id"] for sample in samples]),
     }
 
     has_policy = any("policy" in sample for sample in samples)

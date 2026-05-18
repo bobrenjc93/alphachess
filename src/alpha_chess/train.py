@@ -121,6 +121,7 @@ def train(config: TrainConfig) -> Path:
                     device,
                     config.value_weight,
                     legal_policy_loss=config.legal_policy_loss,
+                    source_names=dataset.source_names if len(dataset.source_names) > 1 else None,
                 )
             )
 
@@ -160,12 +161,15 @@ def _evaluate_loss(
     device: torch.device,
     value_weight: float,
     legal_policy_loss: bool = False,
+    source_names: list[str] | None = None,
 ) -> dict[str, float]:
     model.eval()
-    losses: list[float] = []
-    policy_losses: list[float] = []
-    policy_accs: list[float] = []
-    value_losses: list[float] = []
+    totals = _new_eval_totals()
+    source_totals = (
+        {source_id: _new_eval_totals() for source_id in range(len(source_names))}
+        if source_names is not None
+        else {}
+    )
     for batch in loader:
         loss, parts = _compute_batch_loss(
             model,
@@ -174,15 +178,69 @@ def _evaluate_loss(
             value_weight,
             legal_policy_loss=legal_policy_loss,
         )
-        losses.append(float(loss.item()))
-        policy_losses.append(float(parts["policy_loss"].item()))
-        policy_accs.append(float(parts["policy_acc"].item()))
-        value_losses.append(float(parts["value_loss"].item()))
+        _add_eval_totals(totals, _batch_size(batch), loss, parts)
+
+        if source_names is not None and "source_id" in batch:
+            source_ids = _batch_tensor(batch, "source_id")
+            for source_id_tensor in torch.unique(source_ids):
+                source_id = int(source_id_tensor.item())
+                if source_id not in source_totals:
+                    continue
+                mask = source_ids == source_id
+                sub_batch = _slice_batch(batch, mask)
+                sub_loss, sub_parts = _compute_batch_loss(
+                    model,
+                    sub_batch,
+                    device,
+                    value_weight,
+                    legal_policy_loss=legal_policy_loss,
+                )
+                _add_eval_totals(
+                    source_totals[source_id],
+                    _batch_size(sub_batch),
+                    sub_loss,
+                    sub_parts,
+                )
+
+    metrics = _finalize_eval_totals("val", totals)
+    for source_id, source_totals_for_id in source_totals.items():
+        metrics.update(_finalize_eval_totals(f"val_source_{source_id}", source_totals_for_id))
+    return metrics
+
+
+def _new_eval_totals() -> dict[str, float]:
     return {
-        "val_loss": sum(losses) / max(1, len(losses)),
-        "val_policy_loss": sum(policy_losses) / max(1, len(policy_losses)),
-        "val_policy_acc": sum(policy_accs) / max(1, len(policy_accs)),
-        "val_value_loss": sum(value_losses) / max(1, len(value_losses)),
+        "examples": 0.0,
+        "loss": 0.0,
+        "policy_loss": 0.0,
+        "policy_acc": 0.0,
+        "value_loss": 0.0,
+    }
+
+
+def _add_eval_totals(
+    totals: dict[str, float],
+    examples: int,
+    loss: torch.Tensor,
+    parts: dict[str, torch.Tensor],
+) -> None:
+    totals["examples"] += examples
+    totals["loss"] += float(loss.item()) * examples
+    totals["policy_loss"] += float(parts["policy_loss"].item()) * examples
+    totals["policy_acc"] += float(parts["policy_acc"].item()) * examples
+    totals["value_loss"] += float(parts["value_loss"].item()) * examples
+
+
+def _finalize_eval_totals(prefix: str, totals: dict[str, float]) -> dict[str, float]:
+    examples = totals["examples"]
+    if examples <= 0:
+        return {f"{prefix}_examples": 0.0}
+    return {
+        f"{prefix}_loss": totals["loss"] / examples,
+        f"{prefix}_policy_loss": totals["policy_loss"] / examples,
+        f"{prefix}_policy_acc": totals["policy_acc"] / examples,
+        f"{prefix}_value_loss": totals["value_loss"] / examples,
+        f"{prefix}_examples": examples,
     }
 
 
@@ -260,6 +318,25 @@ def _legal_action_mask_from_fens(fens: list[str], device: torch.device) -> torch
         if actions:
             mask[row, torch.as_tensor(actions, dtype=torch.long, device=device)] = True
     return mask
+
+
+def _batch_size(batch: dict[str, torch.Tensor | list[str]]) -> int:
+    return int(_batch_tensor(batch, "board").shape[0])
+
+
+def _slice_batch(
+    batch: dict[str, torch.Tensor | list[str]],
+    mask: torch.Tensor,
+) -> dict[str, torch.Tensor | list[str]]:
+    indices = mask.nonzero(as_tuple=False).flatten()
+    sliced: dict[str, torch.Tensor | list[str]] = {}
+    index_list = [int(index) for index in indices.tolist()]
+    for key, value in batch.items():
+        if isinstance(value, torch.Tensor):
+            sliced[key] = value[indices]
+        else:
+            sliced[key] = [value[index] for index in index_list]
+    return sliced
 
 
 def _batch_tensor(batch: dict[str, torch.Tensor | list[str]], key: str) -> torch.Tensor:

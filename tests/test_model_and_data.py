@@ -2,11 +2,12 @@ import chess
 import numpy as np
 import pytest
 import torch
+from torch.utils.data import DataLoader
 
 from alpha_chess.chess_env import ACTION_SIZE, NUM_INPUT_PLANES, encode_board, move_to_action
 from alpha_chess.dataset import SelfPlayDataset, collate_samples
 from alpha_chess.model import ChessNet, ChessNetConfig
-from alpha_chess.train import _compute_batch_loss, _legal_action_mask_from_fens
+from alpha_chess.train import _compute_batch_loss, _evaluate_loss, _legal_action_mask_from_fens
 
 
 def test_model_forward_shapes() -> None:
@@ -35,10 +36,12 @@ def test_self_play_dataset_loads_npz(tmp_path) -> None:
     assert len(dataset) == 3
     assert sample["board"].shape == (NUM_INPUT_PLANES, 8, 8)
     assert sample["policy"].shape == (ACTION_SIZE,)
+    assert int(sample["source_id"]) == 0
     assert float(sample["value"]) == -1.0
 
     batch = collate_samples([dataset[0], dataset[1]])
     assert batch["policy"].shape == (2, ACTION_SIZE)
+    assert batch["source_id"].shape == (2,)
 
 
 def test_source_sample_weights_balance_input_paths(tmp_path) -> None:
@@ -56,6 +59,8 @@ def test_source_sample_weights_balance_input_paths(tmp_path) -> None:
     assert weights.dtype == torch.double
     assert torch.isclose(weights[:2].sum(), torch.tensor(0.75, dtype=torch.double))
     assert torch.isclose(weights[2:].sum(), torch.tensor(0.25, dtype=torch.double))
+    assert int(dataset[0]["source_id"]) == 0
+    assert int(dataset[2]["source_id"]) == 1
 
     with pytest.raises(ValueError, match="data_weights"):
         dataset.source_sample_weights([1.0])
@@ -105,6 +110,32 @@ def test_legal_policy_loss_masks_to_legal_actions() -> None:
     assert bool(mask[0, action])
     assert loss.ndim == 0
     assert "policy_acc" in parts
+
+
+def test_evaluate_loss_reports_source_metrics(tmp_path) -> None:
+    source_a = tmp_path / "source-a"
+    source_b = tmp_path / "source-b"
+    source_a.mkdir()
+    source_b.mkdir()
+    _write_sparse_npz(source_a / "a.npz", positions=3)
+    _write_sparse_npz(source_b / "b.npz", positions=5)
+    dataset = SelfPlayDataset([source_a, source_b])
+    loader = DataLoader(dataset, batch_size=4, collate_fn=collate_samples)
+    model = ChessNet(ChessNetConfig(channels=8, blocks=1))
+
+    metrics = _evaluate_loss(
+        model,
+        loader,
+        torch.device("cpu"),
+        value_weight=1.0,
+        source_names=dataset.source_names,
+    )
+
+    assert metrics["val_examples"] == 8.0
+    assert metrics["val_source_0_examples"] == 3.0
+    assert metrics["val_source_1_examples"] == 5.0
+    assert "val_source_0_policy_acc" in metrics
+    assert "val_source_1_policy_acc" in metrics
 
 
 def _write_sparse_npz(path, positions: int) -> None:
