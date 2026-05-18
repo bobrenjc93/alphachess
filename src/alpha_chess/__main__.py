@@ -12,6 +12,7 @@ from alpha_chess.evaluator import UniformEvaluator, load_evaluator
 from alpha_chess.iteration import IterationConfig, run_iterations
 from alpha_chess.pgn_import import PGNImportConfig, import_pgn
 from alpha_chess.self_play import SelfPlayConfig, generate_self_play
+from alpha_chess.stockfish_teacher import StockfishTeacherConfig, generate_stockfish_teacher
 from alpha_chess.train import TrainConfig, train
 from alpha_chess.uci import UCIConfig, run_uci
 
@@ -70,6 +71,21 @@ def main(argv: list[str] | None = None) -> None:
     import_parser.add_argument("--chunk-size", type=int, default=4096)
     import_parser.add_argument("--dense-policy", action="store_true")
 
+    teacher_parser = subparsers.add_parser(
+        "stockfish-teacher", help="generate Stockfish best-move teacher data"
+    )
+    teacher_parser.add_argument("--pgn", required=True)
+    teacher_parser.add_argument("--out", default="data/teacher/stockfish")
+    teacher_parser.add_argument("--engine-path", default="stockfish")
+    teacher_parser.add_argument("--engine-time", type=float, default=0.02)
+    teacher_parser.add_argument("--engine-depth", type=int)
+    teacher_parser.add_argument("--max-games", type=int)
+    teacher_parser.add_argument("--max-positions", type=int, default=1024)
+    teacher_parser.add_argument("--min-elo", type=int)
+    teacher_parser.add_argument("--min-initial-seconds", type=int)
+    teacher_parser.add_argument("--position-stride", type=int, default=4)
+    teacher_parser.add_argument("--chunk-size", type=int, default=1024)
+
     iterate_parser = subparsers.add_parser("iterate", help="run self-play/train/eval iterations")
     iterate_parser.add_argument("--run-dir", default="experiments/local")
     iterate_parser.add_argument("--iterations", type=int, default=1)
@@ -127,6 +143,12 @@ def main(argv: list[str] | None = None) -> None:
         kwargs.pop("command", None)
         config = PGNImportConfig(**kwargs)
         paths = import_pgn(config)
+        print({"written": [str(path) for path in paths], "config": asdict(config)})
+    elif args.command == "stockfish-teacher":
+        kwargs = vars(args).copy()
+        kwargs.pop("command", None)
+        config = StockfishTeacherConfig(**kwargs)
+        paths = generate_stockfish_teacher(config)
         print({"written": [str(path) for path in paths], "config": asdict(config)})
     elif args.command == "iterate":
         kwargs = vars(args).copy()

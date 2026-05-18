@@ -67,6 +67,18 @@ DATA_DIR=data/expert/lichess_2013_01_10k OUT_DIR=checkpoints/expert_10k scripts/
 CHECKPOINT=checkpoints/expert_10k/latest.pt OUT_DIR=checkpoints/expert_10k_e2 scripts/submit_gpu_expert_train.sh
 ```
 
+Generate Stockfish teacher labels from selected PGN positions:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn games.pgn.zst \
+  --out data/teacher/stockfish_sample \
+  --engine-path tools/stockfish/bin/stockfish \
+  --max-positions 1024 \
+  --min-elo 1800 \
+  --min-initial-seconds 180
+```
+
 ## GPU Training
 
 ```bash
