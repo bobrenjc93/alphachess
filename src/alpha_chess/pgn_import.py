@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import bz2
+import gzip
+import io
+import lzma
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TextIO
 
 import chess
 import chess.pgn
 import numpy as np
+import zstandard
 
 from alpha_chess.chess_env import ACTION_SIZE, encode_board, move_to_action
 
@@ -35,7 +41,7 @@ def import_pgn(config: PGNImportConfig) -> list[Path]:
     games_seen = 0
     positions_seen = 0
 
-    with pgn_path.open(encoding="utf-8", errors="replace") as handle:
+    with _open_pgn_text(pgn_path) as handle:
         while config.max_games is None or games_seen < config.max_games:
             game = chess.pgn.read_game(handle)
             if game is None:
@@ -92,6 +98,27 @@ def import_pgn(config: PGNImportConfig) -> list[Path]:
         f"source={pgn_path}\ngames_seen={games_seen}\npositions={positions_seen}\nfiles={len(written)}\n"
     )
     return written
+
+
+def _open_pgn_text(path: Path) -> TextIO:
+    """Open plain or compressed PGN as text.
+
+    Supports common chess database archives: .pgn, .pgn.gz, .pgn.bz2,
+    .pgn.xz, and .pgn.zst.
+    """
+
+    suffix = path.suffix.lower()
+    if suffix == ".gz":
+        return gzip.open(path, mode="rt", encoding="utf-8", errors="replace")
+    if suffix == ".bz2":
+        return bz2.open(path, mode="rt", encoding="utf-8", errors="replace")
+    if suffix == ".xz":
+        return lzma.open(path, mode="rt", encoding="utf-8", errors="replace")
+    if suffix == ".zst":
+        compressed = path.open("rb")
+        reader = zstandard.ZstdDecompressor().stream_reader(compressed)
+        return io.TextIOWrapper(reader, encoding="utf-8", errors="replace")
+    return path.open(encoding="utf-8", errors="replace")
 
 
 def _game_to_samples(game: chess.pgn.Game) -> dict[str, list]:
