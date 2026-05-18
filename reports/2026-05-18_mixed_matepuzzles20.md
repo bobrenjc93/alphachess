@@ -59,3 +59,20 @@ The puzzle mix improves the supervised validation metric strongly but still
 fails at actual play against Stockfish. The loss games show the model continues
 to hang material and enter forced mates, so supervised tactics alone is not yet
 translating into robust search-time play.
+
+## Higher-Search Smoke
+
+I also ran one Stockfish game with 64 MCTS simulations per move:
+
+```text
+games=1
+score=0.0
+wins=0
+draws=0
+losses=1
+```
+
+Sample loss: `reports/mixed_matepuzzles20_s64_loss_sample.pgn`.
+
+This suggests the immediate bottleneck is not only the 8-simulation smoke
+setting; the policy/value model and search are still too weak tactically.
