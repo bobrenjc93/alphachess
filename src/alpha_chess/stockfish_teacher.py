@@ -16,7 +16,7 @@ from alpha_chess.pgn_import import PGNImportConfig, _open_pgn_text, _passes_filt
 
 @dataclass
 class StockfishTeacherConfig:
-    pgn: str
+    pgn: str | list[str]
     out: str = "data/teacher/stockfish"
     engine_path: str = "stockfish"
     engine_time: float = 0.02
@@ -34,15 +34,8 @@ class StockfishTeacherConfig:
 def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     out_dir = Path(config.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    pgn_path = Path(config.pgn)
+    pgn_paths = _resolve_pgn_paths(config.pgn)
     limit = chess.engine.Limit(time=config.engine_time, depth=config.engine_depth)
-    filter_config = PGNImportConfig(
-        pgn=config.pgn,
-        out=config.out,
-        max_games=config.max_games,
-        min_elo=config.min_elo,
-        min_initial_seconds=config.min_initial_seconds,
-    )
 
     boards: list[np.ndarray] = []
     actions: list[int] = []
@@ -56,96 +49,108 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     positions = 0
 
     with chess.engine.SimpleEngine.popen_uci(config.engine_path) as engine:
-        with _open_pgn_text(pgn_path) as handle:
-            while positions < config.max_positions:
-                if config.max_games is not None and games_seen >= config.max_games:
-                    break
-                game = chess.pgn.read_game(handle)
-                if game is None:
-                    break
-                games_seen += 1
-                if not _passes_filters(game, filter_config):
-                    continue
-
-                board = game.board()
-                used_this_game = False
-                for ply, move in enumerate(game.mainline_moves()):
-                    if positions >= config.max_positions:
-                        break
-                    if move not in board.legal_moves:
-                        break
-                    sample_position = ply % max(1, config.position_stride) == 0
-                    sample_position = sample_position and not board.is_game_over()
-                    if config.player_name is not None:
-                        sample_position = sample_position and _matches_player_to_move(
-                            game, board, config.player_name
-                        )
-                    if sample_position:
-                        info = engine.analyse(board, limit)
-                        pv = info.get("pv")
-                        if pv:
-                            best_move = pv[0]
-                        else:
-                            play = engine.play(board, limit)
-                            best_move = play.move
-                        if best_move in board.legal_moves:
-                            score = info.get("score")
-                            value = _score_to_value(score, board.turn)
-                            value_delta = 0.0
-                            if config.min_value_delta is not None:
-                                after_board = board.copy(stack=False)
-                                after_board.push(move)
-                                after_info = engine.analyse(after_board, limit)
-                                value_delta = _value_drop_after_move(
-                                    best_value=value,
-                                    after_score=after_info.get("score"),
-                                    after_turn=after_board.turn,
-                                )
-                                if value_delta < config.min_value_delta:
-                                    board.push(move)
-                                    continue
-                            boards.append(encode_board(board))
-                            actions.append(move_to_action(best_move, board))
-                            values.append(value)
-                            value_deltas.append(value_delta)
-                            fens.append(board.fen())
-                            best_moves.append(best_move.uci())
-                            positions += 1
-                            used_this_game = True
-
-                            if len(boards) >= config.chunk_size:
-                                path = _write_teacher_chunk(
-                                    out_dir,
-                                    len(written),
-                                    boards,
-                                    actions,
-                                    values,
-                                    value_deltas,
-                                    fens,
-                                    best_moves,
-                                    source=str(pgn_path),
-                                )
-                                written.append(path)
-                                boards, actions, values = [], [], []
-                                value_deltas, fens, best_moves = [], [], []
-                    board.push(move)
-                if used_this_game:
-                    games_used += 1
-
-    if boards:
-        written.append(
-            _write_teacher_chunk(
-                out_dir,
-                len(written),
-                boards,
-                actions,
-                values,
-                value_deltas,
-                fens,
-                best_moves,
-                source=str(pgn_path),
+        for pgn_path in pgn_paths:
+            filter_config = PGNImportConfig(
+                pgn=str(pgn_path),
+                out=config.out,
+                max_games=config.max_games,
+                min_elo=config.min_elo,
+                min_initial_seconds=config.min_initial_seconds,
             )
-        )
+            with _open_pgn_text(pgn_path) as handle:
+                while positions < config.max_positions:
+                    if config.max_games is not None and games_seen >= config.max_games:
+                        break
+                    game = chess.pgn.read_game(handle)
+                    if game is None:
+                        break
+                    games_seen += 1
+                    if not _passes_filters(game, filter_config):
+                        continue
+
+                    board = game.board()
+                    used_this_game = False
+                    for ply, move in enumerate(game.mainline_moves()):
+                        if positions >= config.max_positions:
+                            break
+                        if move not in board.legal_moves:
+                            break
+                        sample_position = ply % max(1, config.position_stride) == 0
+                        sample_position = sample_position and not board.is_game_over()
+                        if config.player_name is not None:
+                            sample_position = sample_position and _matches_player_to_move(
+                                game, board, config.player_name
+                            )
+                        if sample_position:
+                            info = engine.analyse(board, limit)
+                            pv = info.get("pv")
+                            if pv:
+                                best_move = pv[0]
+                            else:
+                                play = engine.play(board, limit)
+                                best_move = play.move
+                            if best_move in board.legal_moves:
+                                score = info.get("score")
+                                value = _score_to_value(score, board.turn)
+                                value_delta = 0.0
+                                if config.min_value_delta is not None:
+                                    after_board = board.copy(stack=False)
+                                    after_board.push(move)
+                                    after_info = engine.analyse(after_board, limit)
+                                    value_delta = _value_drop_after_move(
+                                        best_value=value,
+                                        after_score=after_info.get("score"),
+                                        after_turn=after_board.turn,
+                                    )
+                                    if value_delta < config.min_value_delta:
+                                        board.push(move)
+                                        continue
+                                boards.append(encode_board(board))
+                                actions.append(move_to_action(best_move, board))
+                                values.append(value)
+                                value_deltas.append(value_delta)
+                                fens.append(board.fen())
+                                best_moves.append(best_move.uci())
+                                positions += 1
+                                used_this_game = True
+
+                                if len(boards) >= config.chunk_size:
+                                    path = _write_teacher_chunk(
+                                        out_dir,
+                                        len(written),
+                                        boards,
+                                        actions,
+                                        values,
+                                        value_deltas,
+                                        fens,
+                                        best_moves,
+                                        source=str(pgn_path),
+                                    )
+                                    written.append(path)
+                                    boards, actions, values = [], [], []
+                                    value_deltas, fens, best_moves = [], [], []
+                        board.push(move)
+                    if used_this_game:
+                        games_used += 1
+
+            if boards:
+                written.append(
+                    _write_teacher_chunk(
+                        out_dir,
+                        len(written),
+                        boards,
+                        actions,
+                        values,
+                        value_deltas,
+                        fens,
+                        best_moves,
+                        source=str(pgn_path),
+                    )
+                )
+                boards, actions, values = [], [], []
+                value_deltas, fens, best_moves = [], [], []
+            if positions >= config.max_positions:
+                break
 
     if not written:
         raise ValueError("No Stockfish teacher positions generated")
@@ -153,7 +158,8 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     (out_dir / "teacher_summary.txt").write_text(
         "\n".join(
             [
-                f"source={pgn_path}",
+                f"source={pgn_paths[0] if len(pgn_paths) == 1 else 'multiple'}",
+                f"sources={[str(path) for path in pgn_paths]}",
                 f"engine_path={config.engine_path}",
                 f"games_seen={games_seen}",
                 f"games_used={games_used}",
@@ -167,6 +173,12 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
         + "\n"
     )
     return written
+
+
+def _resolve_pgn_paths(pgn: str | list[str]) -> list[Path]:
+    if isinstance(pgn, str):
+        return [Path(pgn)]
+    return [Path(path) for path in pgn]
 
 
 def _score_to_value(score: chess.engine.PovScore | None, turn: chess.Color) -> float:

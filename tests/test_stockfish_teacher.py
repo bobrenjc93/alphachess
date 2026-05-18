@@ -4,6 +4,7 @@ import chess.pgn
 
 from alpha_chess.stockfish_teacher import (
     _matches_player_to_move,
+    _resolve_pgn_paths,
     _score_to_value,
     _value_drop_after_move,
 )
@@ -32,3 +33,11 @@ def test_matches_player_to_move_uses_pgn_headers() -> None:
     board.push(chess.Move.from_uci("e2e4"))
     assert not _matches_player_to_move(game, board, "AlphaChess")
     assert _matches_player_to_move(game, board, "Stockfish")
+
+
+def test_resolve_pgn_paths_accepts_one_or_many() -> None:
+    assert [str(path) for path in _resolve_pgn_paths("one.pgn")] == ["one.pgn"]
+    assert [str(path) for path in _resolve_pgn_paths(["one.pgn", "two.pgn"])] == [
+        "one.pgn",
+        "two.pgn",
+    ]

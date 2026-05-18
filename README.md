@@ -83,7 +83,7 @@ uv run alpha-chess stockfish-teacher \
   --min-value-delta 0.25
 
 uv run alpha-chess stockfish-teacher \
-  --pgn reports/failed_eval_games.pgn \
+  --pgn reports/failed_eval_games_a.pgn reports/failed_eval_games_b.pgn \
   --out data/teacher/alpha_loss_blunders \
   --engine-path tools/stockfish/bin/stockfish \
   --player-name AlphaChess \

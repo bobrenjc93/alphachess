@@ -76,7 +76,7 @@ def main(argv: list[str] | None = None) -> None:
     teacher_parser = subparsers.add_parser(
         "stockfish-teacher", help="generate Stockfish best-move teacher data"
     )
-    teacher_parser.add_argument("--pgn", required=True)
+    teacher_parser.add_argument("--pgn", required=True, nargs="+")
     teacher_parser.add_argument("--out", default="data/teacher/stockfish")
     teacher_parser.add_argument("--engine-path", default="stockfish")
     teacher_parser.add_argument("--engine-time", type=float, default=0.02)
