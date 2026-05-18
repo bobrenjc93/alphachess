@@ -34,6 +34,13 @@ When a UCI engine is installed, evaluate directly against it:
 uv run alpha-chess eval --checkpoint checkpoints/run/latest.pt --opponent stockfish --engine-path stockfish --engine-time 0.05
 ```
 
+Install a local ignored Stockfish binary:
+
+```bash
+scripts/install_stockfish.sh
+uv run alpha-chess eval --checkpoint checkpoints/run/latest.pt --opponent stockfish --engine-path tools/stockfish/bin/stockfish --engine-time 0.05
+```
+
 Serve a checkpoint as a UCI engine:
 
 ```bash

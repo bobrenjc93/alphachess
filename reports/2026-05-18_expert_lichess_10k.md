@@ -51,3 +51,31 @@ losses=0
 ```
 
 This is an expert-bootstrap checkpoint, not a superhuman model. The next strength gate should evaluate against a UCI engine such as Stockfish and then use this checkpoint as the initial model for self-play iterations.
+
+## Stockfish Gate Smoke
+
+After adding `scripts/install_stockfish.sh`, Stockfish 18 was compiled locally at
+`tools/stockfish/bin/stockfish` and used for a tiny gate smoke:
+
+```bash
+uv run alpha-chess eval \
+  --checkpoint checkpoints/expert_lichess_10k/latest.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.01 \
+  --games 2 \
+  --simulations 8 \
+  --max-plies 80
+```
+
+Result:
+
+```text
+score=0.0/2
+wins=0
+draws=0
+losses=2
+```
+
+This confirms the Stockfish evaluation path works and also confirms the current
+checkpoint is nowhere near strong engine level.
