@@ -22,11 +22,16 @@ class SelfPlayDataset(Dataset):
             data_dirs = [Path(path) for path in data_dir]
 
         self.files: list[Path] = []
-        for directory in data_dirs:
+        self.source_names = [str(path) for path in data_dirs]
+        self.file_source_ids: list[int] = []
+        for source_id, directory in enumerate(data_dirs):
             if directory.is_file() and directory.suffix == ".npz":
                 self.files.append(directory)
+                self.file_source_ids.append(source_id)
             else:
-                self.files.extend(sorted(directory.glob("*.npz")))
+                files = sorted(directory.glob("*.npz"))
+                self.files.extend(files)
+                self.file_source_ids.extend([source_id] * len(files))
 
         if not self.files:
             raise FileNotFoundError(f"No .npz self-play files found in {data_dirs}")
@@ -47,6 +52,49 @@ class SelfPlayDataset(Dataset):
 
     def __len__(self) -> int:
         return int(self.cumsum[-1])
+
+    def source_sample_weights(self, source_weights: list[float]) -> torch.Tensor:
+        """Return per-sample weights that balance input data sources.
+
+        Each source receives total probability mass proportional to its source
+        weight, independent of how many positions it contains.
+        """
+
+        if len(source_weights) != len(self.source_names):
+            raise ValueError(
+                f"data_weights has {len(source_weights)} entries, "
+                f"but dataset has {len(self.source_names)} data sources"
+            )
+        weights = np.asarray(source_weights, dtype=np.float64)
+        if np.any(~np.isfinite(weights)) or np.any(weights < 0):
+            raise ValueError("data_weights must be finite non-negative values")
+        if float(weights.sum()) <= 0:
+            raise ValueError("At least one data_weights entry must be positive")
+
+        positions_per_source = np.zeros(len(self.source_names), dtype=np.float64)
+        for source_id, length in zip(self.file_source_ids, self.lengths):
+            positions_per_source[source_id] += length
+        empty_weighted_sources = [
+            self.source_names[source_id]
+            for source_id, (positions, weight) in enumerate(zip(positions_per_source, weights))
+            if positions <= 0 and weight > 0
+        ]
+        if empty_weighted_sources:
+            raise ValueError(
+                "data_weights assigns positive weight to empty data sources: "
+                + ", ".join(empty_weighted_sources)
+            )
+
+        sample_weights = np.zeros(len(self), dtype=np.float64)
+        for file_index, (source_id, length) in enumerate(zip(self.file_source_ids, self.lengths)):
+            source_positions = positions_per_source[source_id]
+            if source_positions <= 0:
+                continue
+            start = int(self.cumsum[file_index])
+            end = int(self.cumsum[file_index + 1])
+            sample_weights[start:end] = weights[source_id] / source_positions
+
+        return torch.as_tensor(sample_weights, dtype=torch.double)
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
         if index < 0 or index >= len(self):

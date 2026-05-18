@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Subset, WeightedRandomSampler, random_split
 
 from alpha_chess.dataset import SelfPlayDataset, collate_samples
 from alpha_chess.model import ChessNet, ChessNetConfig, load_checkpoint, save_checkpoint
@@ -22,6 +22,7 @@ class TrainConfig:
     lr: float = 1e-3
     weight_decay: float = 1e-4
     value_weight: float = 1.0
+    data_weights: list[float] | None = None
     channels: int = 128
     blocks: int = 6
     seed: int = 0
@@ -50,10 +51,12 @@ def train(config: TrainConfig) -> Path:
     else:
         train_ds, val_ds = dataset, None
 
+    train_sampler = _build_train_sampler(dataset, train_ds, config.data_weights, config.seed)
     loader = DataLoader(
         train_ds,
         batch_size=config.batch_size,
-        shuffle=True,
+        shuffle=train_sampler is None,
+        sampler=train_sampler,
         num_workers=0,
         collate_fn=collate_samples,
     )
@@ -107,6 +110,29 @@ def train(config: TrainConfig) -> Path:
         save_checkpoint(out_dir / "latest.pt", model, optimizer, step, latest_metrics)
 
     return out_dir / "latest.pt"
+
+
+def _build_train_sampler(
+    dataset: SelfPlayDataset,
+    train_ds: SelfPlayDataset | Subset,
+    data_weights: list[float] | None,
+    seed: int,
+) -> WeightedRandomSampler | None:
+    if data_weights is None:
+        return None
+
+    weights = dataset.source_sample_weights(data_weights)
+    if isinstance(train_ds, Subset):
+        weights = weights[list(train_ds.indices)]
+    if float(weights.sum()) <= 0:
+        raise ValueError("Weighted training split has no positive sample weights")
+
+    return WeightedRandomSampler(
+        weights=weights,
+        num_samples=len(train_ds),
+        replacement=True,
+        generator=torch.Generator().manual_seed(seed),
+    )
 
 
 @torch.no_grad()

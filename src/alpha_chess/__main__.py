@@ -41,6 +41,7 @@ def main(argv: list[str] | None = None) -> None:
     train_parser.add_argument("--lr", type=float, default=1e-3)
     train_parser.add_argument("--weight-decay", type=float, default=1e-4)
     train_parser.add_argument("--value-weight", type=float, default=1.0)
+    train_parser.add_argument("--data-weights", type=float, nargs="+")
     train_parser.add_argument("--channels", type=int, default=128)
     train_parser.add_argument("--blocks", type=int, default=6)
     train_parser.add_argument("--seed", type=int, default=0)
