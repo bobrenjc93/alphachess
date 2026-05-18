@@ -70,6 +70,12 @@ For repeated AlphaZero-style improvement with promotion gating:
 uv run alpha-chess iterate --run-dir experiments/run1 --iterations 4 --games 64 --simulations 64
 ```
 
+Start self-play from an expert bootstrap checkpoint:
+
+```bash
+CHECKPOINT=checkpoints/expert_lichess_10k/latest.pt ITERATIONS=1 GAMES=32 scripts/submit_gpu_iteration.sh
+```
+
 ## Design Notes
 
 AutoGo’s useful pattern is preserved: keep the game implementation deterministic, make MCTS consume a small state/evaluator interface, store each self-play position with the improved visit-count policy, and make experiments reproducible from plain scripts. Chess-specific complexity is kept behind `python-chess` so castling, en passant, promotions, repetition, and draw claims stay correct.
