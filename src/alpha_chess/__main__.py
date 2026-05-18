@@ -32,7 +32,7 @@ def main(argv: list[str] | None = None) -> None:
     self_play.add_argument("--seed", type=int, default=0)
 
     train_parser = subparsers.add_parser("train", help="train a policy/value checkpoint")
-    train_parser.add_argument("--data", required=True)
+    train_parser.add_argument("--data", required=True, nargs="+")
     train_parser.add_argument("--out", default="checkpoints/run")
     train_parser.add_argument("--checkpoint")
     train_parser.add_argument("--epochs", type=int, default=1)
