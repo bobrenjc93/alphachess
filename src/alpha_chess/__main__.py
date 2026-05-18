@@ -11,6 +11,7 @@ from alpha_chess.evaluate import EvalConfig, evaluate_checkpoint
 from alpha_chess.evaluator import UniformEvaluator, load_evaluator
 from alpha_chess.iteration import IterationConfig, run_iterations
 from alpha_chess.pgn_import import PGNImportConfig, import_pgn
+from alpha_chess.puzzle_import import PuzzleImportConfig, import_puzzles
 from alpha_chess.self_play import SelfPlayConfig, generate_self_play
 from alpha_chess.stockfish_teacher import StockfishTeacherConfig, generate_stockfish_teacher
 from alpha_chess.train import TrainConfig, train
@@ -87,6 +88,18 @@ def main(argv: list[str] | None = None) -> None:
     teacher_parser.add_argument("--position-stride", type=int, default=4)
     teacher_parser.add_argument("--chunk-size", type=int, default=1024)
 
+    puzzle_parser = subparsers.add_parser(
+        "import-puzzles", help="convert Lichess puzzle CSV data to NPZ data"
+    )
+    puzzle_parser.add_argument("--puzzles", required=True)
+    puzzle_parser.add_argument("--out", default="data/puzzles")
+    puzzle_parser.add_argument("--max-positions", type=int)
+    puzzle_parser.add_argument("--min-rating", type=int)
+    puzzle_parser.add_argument("--max-rating", type=int)
+    puzzle_parser.add_argument("--theme")
+    puzzle_parser.add_argument("--chunk-size", type=int, default=4096)
+    puzzle_parser.add_argument("--value", type=float, default=1.0)
+
     iterate_parser = subparsers.add_parser("iterate", help="run self-play/train/eval iterations")
     iterate_parser.add_argument("--run-dir", default="experiments/local")
     iterate_parser.add_argument("--iterations", type=int, default=1)
@@ -150,6 +163,12 @@ def main(argv: list[str] | None = None) -> None:
         kwargs.pop("command", None)
         config = StockfishTeacherConfig(**kwargs)
         paths = generate_stockfish_teacher(config)
+        print({"written": [str(path) for path in paths], "config": asdict(config)})
+    elif args.command == "import-puzzles":
+        kwargs = vars(args).copy()
+        kwargs.pop("command", None)
+        config = PuzzleImportConfig(**kwargs)
+        paths = import_puzzles(config)
         print({"written": [str(path) for path in paths], "config": asdict(config)})
     elif args.command == "iterate":
         kwargs = vars(args).copy()

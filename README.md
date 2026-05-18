@@ -81,6 +81,18 @@ uv run alpha-chess stockfish-teacher \
   --min-value-delta 0.25
 ```
 
+Import Lichess puzzle CSV tactics:
+
+```bash
+uv run alpha-chess import-puzzles \
+  --puzzles lichess_db_puzzle.csv.zst \
+  --out data/puzzles/mate_1200_2200 \
+  --theme mate \
+  --min-rating 1200 \
+  --max-rating 2200 \
+  --max-positions 100000
+```
+
 ## GPU Training
 
 ```bash
