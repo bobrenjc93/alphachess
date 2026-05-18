@@ -237,10 +237,64 @@ val_source_2_policy_acc=0.7869  # AlphaChess loss replay v2
 This fit the new loss-replay data better, but it did not improve head-to-head
 play and should not replace iteration 2.
 
+## Iteration 4: Tactical-Filtered Self-Play
+
+After adding root tactical filtering in MCTS, continued the league from the
+iteration-2 best checkpoint. Empty self-play dirs from replay-only iteration 3
+were filtered out before weighted training.
+
+- Candidate checkpoint: `experiments/focus-selfplay-replay-lowlr2/checkpoints/iter_0004/latest.pt`
+- Runner: `gpu-dev submit`, reservation `117adf64`, 1x L4
+- Self-play: 16 games, 32 simulations, 160 max plies
+- Training: 1 epoch, batch size 128, learning rate `0.00005`
+- Data weights:
+  - accumulated self-play total weight `0.10`
+  - `data/teacher/stockfish_multipv_elo1800_4096`, weight `0.55`
+  - `data/puzzles/all_1200_2400_50k`, weight `0.10`
+  - `data/teacher/alpha_loss_reports_v2`, weight `0.25`
+
+Promotion gate against iteration 2:
+
+```text
+score=2.0/4
+wins=0
+draws=4
+losses=0
+score_rate=0.50
+promoted=true
+```
+
+Diagnostic validation:
+
+```text
+val_policy_acc=0.3486
+val_source_0_policy_acc=0.5349  # Stockfish MultiPV 4096
+val_source_1_policy_acc=0.3328  # all puzzles 50k
+val_source_2_policy_acc=0.7541  # AlphaChess loss replay v2
+```
+
+Evaluation:
+
+```text
+uniform: score=4.0/4, wins=4, draws=0, losses=0
+stockfish 16 sims: score=0.0/2, wins=0, draws=0, losses=2
+stockfish 64 sims: score=0.0/1, wins=0, draws=0, losses=1
+```
+
+PGNs:
+
+```text
+reports/tactical_iter4_vs_stockfish_16sims.pgn
+reports/tactical_iter4_s64_vs_stockfish.pgn
+```
+
+Iteration 4 is the current league best and restored the uniform gate, but it
+still fails every Stockfish gate.
+
 ## Conclusion
 
 Replay-mixed low-learning-rate iteration is now improving the fixed Stockfish
 MultiPV diagnostic and can promote within the local checkpoint league, but it is
-still far below the Stockfish gate. Iteration 2 is the data-diagnostic leader;
-iteration 1 is the safer play checkpoint; iteration 3 is a rejected replay-only
-fine-tune. None is a solved model.
+still far below the Stockfish gate. Iteration 4 is the current internal league
+best; iteration 2 remains marginally stronger on the 4k MultiPV diagnostic;
+iteration 3 is a rejected replay-only fine-tune. None is a solved model.
