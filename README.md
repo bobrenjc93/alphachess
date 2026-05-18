@@ -50,6 +50,12 @@ uv run alpha-chess import-pgn --pgn lichess_elite.pgn.zst --out data/expert/elit
 uv run alpha-chess train --data data/expert --out checkpoints/expert --epochs 4
 ```
 
+GPU pretraining from an imported expert dataset:
+
+```bash
+DATA_DIR=data/expert/lichess_2013_01_10k OUT_DIR=checkpoints/expert_10k scripts/submit_gpu_expert_train.sh
+```
+
 ## GPU Training
 
 ```bash
