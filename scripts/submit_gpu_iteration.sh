@@ -21,6 +21,47 @@ REPLAY_WEIGHTS="${REPLAY_WEIGHTS:-}"
 EVAL_GAMES="${EVAL_GAMES:-8}"
 EVAL_SIMULATIONS="${EVAL_SIMULATIONS:-$SIMULATIONS}"
 RUN_NAME="${RUN_NAME:-$(date +%Y%m%d_%H%M%S)}"
+
+WORKSPACE_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+RUNTIME_DIR="$(mktemp -d "${TMPDIR:-/tmp}/alphachess-iter-runtime.XXXXXX")"
+trap 'rm -rf "$RUNTIME_DIR"' EXIT
+
+copy_runtime_path() {
+  local path="$1"
+  if [[ -z "$path" ]]; then
+    return
+  fi
+  if [[ "$path" = /* ]]; then
+    echo "Runtime paths must be relative to the repository: $path" >&2
+    exit 1
+  fi
+  if [[ ! -e "$WORKSPACE_ROOT/$path" ]]; then
+    echo "Missing runtime path: $path" >&2
+    exit 1
+  fi
+  mkdir -p "$RUNTIME_DIR/$(dirname "$path")"
+  rsync -a --delete "$WORKSPACE_ROOT/$path" "$RUNTIME_DIR/$path"
+}
+
+rsync -a --delete \
+  --exclude .git/ \
+  --exclude .venv/ \
+  --exclude __pycache__/ \
+  --exclude .pytest_cache/ \
+  --exclude .ruff_cache/ \
+  --exclude data/ \
+  --exclude checkpoints/ \
+  --exclude experiments/ \
+  "$WORKSPACE_ROOT"/ "$RUNTIME_DIR"/
+
+if [[ -e "$WORKSPACE_ROOT/experiments/$RUN_NAME" ]]; then
+  copy_runtime_path "experiments/$RUN_NAME"
+fi
+copy_runtime_path "$CHECKPOINT"
+for path in $REPLAY_DATA; do
+  copy_runtime_path "$path"
+done
+
 CHECKPOINT_ARG=""
 if [[ -n "$CHECKPOINT" ]]; then
   CHECKPOINT_ARG="--checkpoint $CHECKPOINT"
@@ -38,11 +79,12 @@ if [[ -n "$REPLAY_WEIGHTS" ]]; then
   REPLAY_WEIGHTS_ARG="--replay-weights $REPLAY_WEIGHTS"
 fi
 
+submit_status=0
 gpu-dev submit \
   --gpu-type "$GPU_TYPE" \
   --gpus "$GPUS" \
   --hours "$HOURS" \
-  --runtime . \
+  --runtime "$RUNTIME_DIR" \
   --name "alphachess-iter-$RUN_NAME" \
   -- bash -lc "
     set -euo pipefail
@@ -66,4 +108,10 @@ gpu-dev submit \
       $REPLAY_DATA_ARG \
       $REPLAY_WEIGHTS_ARG \
       $LEGAL_POLICY_LOSS_ARG
-  "
+  " || submit_status=$?
+
+if [[ -d "$RUNTIME_DIR/experiments/$RUN_NAME" ]]; then
+  mkdir -p "$WORKSPACE_ROOT/experiments"
+  rsync -a --delete "$RUNTIME_DIR/experiments/$RUN_NAME" "$WORKSPACE_ROOT/experiments/"
+fi
+exit "$submit_status"
