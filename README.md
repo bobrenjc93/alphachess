@@ -28,6 +28,15 @@ uv run alpha-chess train --data data/selfplay/smoke --out checkpoints/smoke --ep
 uv run alpha-chess eval --checkpoint checkpoints/smoke/latest.pt --games 2 --simulations 8
 ```
 
+## Expert Bootstrap
+
+Convert PGN games into one-hot expert policy/value targets:
+
+```bash
+uv run alpha-chess import-pgn --pgn games.pgn --out data/expert --max-games 10000
+uv run alpha-chess train --data data/expert --out checkpoints/expert --epochs 4
+```
+
 ## GPU Training
 
 ```bash

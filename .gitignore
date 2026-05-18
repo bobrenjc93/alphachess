@@ -8,7 +8,6 @@ __pycache__/
 dist/
 build/
 
-data/**/*.npz
-data/**/index.json
-checkpoints/**/*.pt
+data/
+checkpoints/
 experiments/**/runs/

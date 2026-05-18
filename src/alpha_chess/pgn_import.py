@@ -1,0 +1,158 @@
+"""Import expert PGN games into AlphaChess training NPZ files."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import chess
+import chess.pgn
+import numpy as np
+
+from alpha_chess.chess_env import ACTION_SIZE, encode_board, move_to_action
+
+
+@dataclass
+class PGNImportConfig:
+    pgn: str
+    out: str = "data/expert"
+    max_games: int | None = None
+    min_plies: int = 1
+    chunk_size: int = 4096
+
+
+def import_pgn(config: PGNImportConfig) -> list[Path]:
+    pgn_path = Path(config.pgn)
+    out_dir = Path(config.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    written: list[Path] = []
+    boards: list[np.ndarray] = []
+    policies: list[np.ndarray] = []
+    values: list[float] = []
+    fens: list[str] = []
+    moves: list[str] = []
+    games_seen = 0
+    positions_seen = 0
+
+    with pgn_path.open(encoding="utf-8", errors="replace") as handle:
+        while config.max_games is None or games_seen < config.max_games:
+            game = chess.pgn.read_game(handle)
+            if game is None:
+                break
+            games_seen += 1
+            game_positions = _game_to_samples(game)
+            if len(game_positions["boards"]) < config.min_plies:
+                continue
+
+            boards.extend(game_positions["boards"])
+            policies.extend(game_positions["policies"])
+            values.extend(game_positions["values"])
+            fens.extend(game_positions["fens"])
+            moves.extend(game_positions["moves"])
+
+            while len(boards) >= config.chunk_size:
+                path = _write_chunk(
+                    out_dir,
+                    len(written),
+                    boards[: config.chunk_size],
+                    policies[: config.chunk_size],
+                    values[: config.chunk_size],
+                    fens[: config.chunk_size],
+                    moves[: config.chunk_size],
+                    source=str(pgn_path),
+                )
+                positions_seen += config.chunk_size
+                written.append(path)
+                del boards[: config.chunk_size]
+                del policies[: config.chunk_size]
+                del values[: config.chunk_size]
+                del fens[: config.chunk_size]
+                del moves[: config.chunk_size]
+
+    if boards:
+        path = _write_chunk(
+            out_dir,
+            len(written),
+            boards,
+            policies,
+            values,
+            fens,
+            moves,
+            source=str(pgn_path),
+        )
+        positions_seen += len(boards)
+        written.append(path)
+
+    if not written:
+        raise ValueError(f"No usable positions imported from {pgn_path}")
+
+    summary = out_dir / "import_summary.txt"
+    summary.write_text(
+        f"source={pgn_path}\ngames_seen={games_seen}\npositions={positions_seen}\nfiles={len(written)}\n"
+    )
+    return written
+
+
+def _game_to_samples(game: chess.pgn.Game) -> dict[str, list]:
+    result = game.headers.get("Result", "*")
+    white_value = _result_to_white_value(result)
+    board = game.board()
+
+    boards: list[np.ndarray] = []
+    policies: list[np.ndarray] = []
+    values: list[float] = []
+    fens: list[str] = []
+    moves: list[str] = []
+
+    for move in game.mainline_moves():
+        if move not in board.legal_moves:
+            break
+        action = move_to_action(move, board)
+        policy = np.zeros(ACTION_SIZE, dtype=np.float32)
+        policy[action] = 1.0
+        boards.append(encode_board(board))
+        policies.append(policy)
+        values.append(white_value if board.turn == chess.WHITE else -white_value)
+        fens.append(board.fen())
+        moves.append(move.uci())
+        board.push(move)
+
+    return {
+        "boards": boards,
+        "policies": policies,
+        "values": values,
+        "fens": fens,
+        "moves": moves,
+    }
+
+
+def _result_to_white_value(result: str) -> float:
+    if result == "1-0":
+        return 1.0
+    if result == "0-1":
+        return -1.0
+    return 0.0
+
+
+def _write_chunk(
+    out_dir: Path,
+    chunk_index: int,
+    boards: list[np.ndarray],
+    policies: list[np.ndarray],
+    values: list[float],
+    fens: list[str],
+    moves: list[str],
+    source: str,
+) -> Path:
+    path = out_dir / f"expert_{chunk_index:06d}.npz"
+    np.savez_compressed(
+        path,
+        boards=np.asarray(boards, dtype=np.float32),
+        policies=np.asarray(policies, dtype=np.float32),
+        values=np.asarray(values, dtype=np.float32),
+        fens=np.asarray(fens),
+        moves=np.asarray(moves),
+        source=np.asarray(source),
+    )
+    return path

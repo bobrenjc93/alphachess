@@ -9,6 +9,7 @@ from rich import print
 
 from alpha_chess.evaluate import EvalConfig, evaluate_checkpoint
 from alpha_chess.evaluator import UniformEvaluator, load_evaluator
+from alpha_chess.pgn_import import PGNImportConfig, import_pgn
 from alpha_chess.self_play import SelfPlayConfig, generate_self_play
 from alpha_chess.train import TrainConfig, train
 
@@ -50,6 +51,13 @@ def main(argv: list[str] | None = None) -> None:
     eval_parser.add_argument("--seed", type=int, default=0)
     eval_parser.add_argument("--max-plies", type=int, default=512)
 
+    import_parser = subparsers.add_parser("import-pgn", help="convert expert PGN games to NPZ data")
+    import_parser.add_argument("--pgn", required=True)
+    import_parser.add_argument("--out", default="data/expert")
+    import_parser.add_argument("--max-games", type=int)
+    import_parser.add_argument("--min-plies", type=int, default=1)
+    import_parser.add_argument("--chunk-size", type=int, default=4096)
+
     args = parser.parse_args(argv)
 
     if args.command == "self-play":
@@ -78,6 +86,12 @@ def main(argv: list[str] | None = None) -> None:
         kwargs.pop("command", None)
         config = EvalConfig(**kwargs)
         print(evaluate_checkpoint(config))
+    elif args.command == "import-pgn":
+        kwargs = vars(args).copy()
+        kwargs.pop("command", None)
+        config = PGNImportConfig(**kwargs)
+        paths = import_pgn(config)
+        print({"written": [str(path) for path in paths], "config": asdict(config)})
 
 
 if __name__ == "__main__":
