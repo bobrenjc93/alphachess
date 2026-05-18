@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import chess
 import chess.engine
+import chess.pgn
 import numpy as np
 
 from alpha_chess.chess_env import action_to_move, result_value_for_color
@@ -26,6 +28,15 @@ class EvalConfig:
     device: str = "auto"
     seed: int = 0
     max_plies: int = 512
+    pgn_out: str | None = None
+
+
+@dataclass
+class EvalGameRecord:
+    board: chess.Board
+    model_color: chess.Color
+    score: float
+    opponent_name: str
 
 
 def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
@@ -45,17 +56,20 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
         simulations=config.simulations,
         seed=config.seed,
         max_plies=config.max_plies,
+        pgn_out=config.pgn_out,
+        opponent_name=config.opponent_checkpoint or config.opponent,
     )
 
 
 def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[str, float]:
     rng = np.random.default_rng(config.seed)
     scores: list[float] = []
+    records: list[EvalGameRecord] = []
     limit = chess.engine.Limit(time=config.engine_time, depth=config.engine_depth)
     with chess.engine.SimpleEngine.popen_uci(config.engine_path) as engine:
         for game_idx in range(config.games):
             model_color = chess.WHITE if game_idx % 2 == 0 else chess.BLACK
-            score = play_eval_game_against_engine(
+            score, board = play_eval_game_against_engine(
                 model_eval=model_eval,
                 engine=engine,
                 model_color=model_color,
@@ -65,6 +79,16 @@ def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[s
                 rng=np.random.default_rng(int(rng.integers(0, 2**31 - 1))),
             )
             scores.append(score)
+            records.append(
+                EvalGameRecord(
+                    board=board,
+                    model_color=model_color,
+                    score=score,
+                    opponent_name=config.engine_path,
+                )
+            )
+    if config.pgn_out:
+        write_eval_pgns(config.pgn_out, records)
     return summarize_scores(scores)
 
 
@@ -75,13 +99,16 @@ def evaluate_match(
     simulations: int,
     seed: int,
     max_plies: int,
+    pgn_out: str | None = None,
+    opponent_name: str = "opponent",
 ) -> dict[str, float]:
     rng = np.random.default_rng(seed)
     scores: list[float] = []
+    records: list[EvalGameRecord] = []
 
     for game_idx in range(games):
         model_color = chess.WHITE if game_idx % 2 == 0 else chess.BLACK
-        score = play_eval_game(
+        score, board = play_eval_game(
             model_eval,
             opponent_eval,
             model_color,
@@ -90,7 +117,17 @@ def evaluate_match(
             rng=np.random.default_rng(int(rng.integers(0, 2**31 - 1))),
         )
         scores.append(score)
+        records.append(
+            EvalGameRecord(
+                board=board,
+                model_color=model_color,
+                score=score,
+                opponent_name=opponent_name,
+            )
+        )
 
+    if pgn_out:
+        write_eval_pgns(pgn_out, records)
     return summarize_scores(scores)
 
 
@@ -101,7 +138,7 @@ def play_eval_game(
     simulations: int,
     max_plies: int,
     rng: np.random.Generator,
-) -> float:
+) -> tuple[float, chess.Board]:
     board = chess.Board()
     model_mcts = AlphaZeroMCTS(model_eval, MCTSConfig(simulations=simulations), rng=rng)
     opponent_mcts = AlphaZeroMCTS(opponent_eval, MCTSConfig(simulations=simulations), rng=rng)
@@ -120,7 +157,8 @@ def play_eval_game(
         board.push(move)
 
     value = result_value_for_color(board, model_color)
-    return 1.0 if value > 0 else 0.5 if value == 0 else 0.0
+    score = 1.0 if value > 0 else 0.5 if value == 0 else 0.0
+    return score, board
 
 
 def play_eval_game_against_engine(
@@ -131,7 +169,7 @@ def play_eval_game_against_engine(
     max_plies: int,
     limit: chess.engine.Limit,
     rng: np.random.Generator,
-) -> float:
+) -> tuple[float, chess.Board]:
     board = chess.Board()
     model_mcts = AlphaZeroMCTS(model_eval, MCTSConfig(simulations=simulations), rng=rng)
 
@@ -151,7 +189,31 @@ def play_eval_game_against_engine(
         board.push(move)
 
     value = result_value_for_color(board, model_color)
-    return 1.0 if value > 0 else 0.5 if value == 0 else 0.0
+    score = 1.0 if value > 0 else 0.5 if value == 0 else 0.0
+    return score, board
+
+
+def write_eval_pgns(path: str | Path, records: list[EvalGameRecord]) -> Path:
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", encoding="utf-8") as handle:
+        for index, record in enumerate(records, start=1):
+            game = chess.pgn.Game.from_board(record.board)
+            result = record.board.result(claim_draw=True)
+            if result == "*" and record.score == 0.5:
+                result = "1/2-1/2"
+            game.headers["Event"] = "AlphaChess evaluation"
+            game.headers["Round"] = str(index)
+            game.headers["White"] = (
+                "AlphaChess" if record.model_color == chess.WHITE else record.opponent_name
+            )
+            game.headers["Black"] = (
+                record.opponent_name if record.model_color == chess.WHITE else "AlphaChess"
+            )
+            game.headers["Result"] = result
+            game.headers["AlphaChessScore"] = str(record.score)
+            print(game, file=handle, end="\n\n")
+    return output
 
 
 def summarize_scores(scores: list[float]) -> dict[str, float]:

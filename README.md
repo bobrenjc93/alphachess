@@ -39,6 +39,7 @@ Install a local ignored Stockfish binary:
 ```bash
 scripts/install_stockfish.sh
 uv run alpha-chess eval --checkpoint checkpoints/run/latest.pt --opponent stockfish --engine-path tools/stockfish/bin/stockfish --engine-time 0.05
+uv run alpha-chess eval --checkpoint checkpoints/run/latest.pt --opponent stockfish --engine-path tools/stockfish/bin/stockfish --pgn-out reports/eval_games.pgn
 ```
 
 Serve a checkpoint as a UCI engine:

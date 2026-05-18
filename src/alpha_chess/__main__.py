@@ -56,6 +56,7 @@ def main(argv: list[str] | None = None) -> None:
     eval_parser.add_argument("--device", default="auto")
     eval_parser.add_argument("--seed", type=int, default=0)
     eval_parser.add_argument("--max-plies", type=int, default=512)
+    eval_parser.add_argument("--pgn-out")
 
     import_parser = subparsers.add_parser("import-pgn", help="convert expert PGN games to NPZ data")
     import_parser.add_argument("--pgn", required=True)
