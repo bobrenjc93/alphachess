@@ -14,7 +14,7 @@ from alpha_chess.pgn_import import PGNImportConfig, import_pgn
 from alpha_chess.puzzle_import import PuzzleImportConfig, import_puzzles
 from alpha_chess.self_play import SelfPlayConfig, generate_self_play
 from alpha_chess.stockfish_teacher import StockfishTeacherConfig, generate_stockfish_teacher
-from alpha_chess.train import TrainConfig, train
+from alpha_chess.train import TrainConfig, ValidateConfig, train, validate
 from alpha_chess.uci import UCIConfig, run_uci
 
 
@@ -47,6 +47,16 @@ def main(argv: list[str] | None = None) -> None:
     train_parser.add_argument("--blocks", type=int, default=6)
     train_parser.add_argument("--seed", type=int, default=0)
     train_parser.add_argument("--device", default="auto")
+
+    validate_parser = subparsers.add_parser(
+        "validate", help="score a checkpoint on replay datasets without training"
+    )
+    validate_parser.add_argument("--checkpoint", required=True)
+    validate_parser.add_argument("--data", required=True, nargs="+")
+    validate_parser.add_argument("--batch-size", type=int, default=256)
+    validate_parser.add_argument("--value-weight", type=float, default=1.0)
+    validate_parser.add_argument("--legal-policy-loss", action="store_true")
+    validate_parser.add_argument("--device", default="auto")
 
     eval_parser = subparsers.add_parser("eval", help="evaluate a checkpoint")
     eval_parser.add_argument("--checkpoint", required=True)
@@ -152,6 +162,11 @@ def main(argv: list[str] | None = None) -> None:
         config = TrainConfig(**kwargs)
         checkpoint = train(config)
         print({"checkpoint": str(checkpoint), "config": asdict(config)})
+    elif args.command == "validate":
+        kwargs = vars(args).copy()
+        kwargs.pop("command", None)
+        config = ValidateConfig(**kwargs)
+        print({"metrics": validate(config), "config": asdict(config)})
     elif args.command == "eval":
         kwargs = vars(args).copy()
         kwargs.pop("command", None)

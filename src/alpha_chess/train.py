@@ -33,6 +33,16 @@ class TrainConfig:
     device: str = "auto"
 
 
+@dataclass
+class ValidateConfig:
+    checkpoint: str
+    data: str | list[str]
+    batch_size: int = 256
+    value_weight: float = 1.0
+    legal_policy_loss: bool = False
+    device: str = "auto"
+
+
 def resolve_device(device: str) -> torch.device:
     if device == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -129,6 +139,29 @@ def train(config: TrainConfig) -> Path:
         save_checkpoint(out_dir / "latest.pt", model, optimizer, step, latest_metrics)
 
     return out_dir / "latest.pt"
+
+
+@torch.no_grad()
+def validate(config: ValidateConfig) -> dict[str, float]:
+    device = resolve_device(config.device)
+    dataset = SelfPlayDataset(config.data, in_memory=True)
+    loader = DataLoader(
+        dataset,
+        batch_size=config.batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=collate_samples,
+    )
+    model = load_checkpoint(config.checkpoint, map_location=device)
+    model.to(device)
+    return _evaluate_loss(
+        model,
+        loader,
+        device,
+        config.value_weight,
+        legal_policy_loss=config.legal_policy_loss,
+        source_names=dataset.source_names if len(dataset.source_names) > 1 else None,
+    )
 
 
 def _build_train_sampler(

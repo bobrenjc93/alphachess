@@ -61,6 +61,7 @@ uv run alpha-chess train --data data/expert --out checkpoints/expert --epochs 4
 uv run alpha-chess train --data data/expert/elite data/teacher/tactics --out checkpoints/mixed --epochs 2
 uv run alpha-chess train --data data/expert/elite data/teacher/tactics data/puzzles/mate --data-weights 0.7 0.2 0.1 --out checkpoints/mixed
 uv run alpha-chess train --data data/expert/elite --out checkpoints/expert_legal --legal-policy-loss
+uv run alpha-chess validate --checkpoint checkpoints/mixed/latest.pt --data data/expert/elite data/teacher/tactics data/puzzles/mate --legal-policy-loss
 ```
 
 GPU pretraining from an imported expert dataset:
