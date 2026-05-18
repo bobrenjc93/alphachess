@@ -128,6 +128,7 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--channels", type=int, default=128)
     iterate_parser.add_argument("--blocks", type=int, default=6)
     iterate_parser.add_argument("--lr", type=float, default=1e-3)
+    iterate_parser.add_argument("--legal-policy-loss", action="store_true")
     iterate_parser.add_argument("--promotion-score", type=float, default=0.50)
     iterate_parser.add_argument("--eval-games", type=int, default=8)
     iterate_parser.add_argument("--eval-simulations", type=int, default=64)

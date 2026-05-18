@@ -125,7 +125,7 @@ uv run alpha-chess iterate --run-dir experiments/run1 --iterations 4 --games 64 
 Start self-play from an expert bootstrap checkpoint:
 
 ```bash
-CHECKPOINT=checkpoints/expert_lichess_10k/latest.pt ITERATIONS=1 GAMES=32 scripts/submit_gpu_iteration.sh
+CHECKPOINT=checkpoints/expert_lichess_10k/latest.pt ITERATIONS=1 GAMES=32 LEGAL_POLICY_LOSS=1 scripts/submit_gpu_iteration.sh
 ```
 
 ## Design Notes

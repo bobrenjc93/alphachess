@@ -26,6 +26,7 @@ class IterationConfig:
     channels: int = 128
     blocks: int = 6
     lr: float = 1e-3
+    legal_policy_loss: bool = False
     promotion_score: float = 0.50
     eval_games: int = 8
     eval_simulations: int = 64
@@ -74,6 +75,7 @@ def run_iterations(config: IterationConfig) -> Path:
                 epochs=config.epochs,
                 batch_size=config.batch_size,
                 lr=config.lr,
+                legal_policy_loss=config.legal_policy_loss,
                 channels=config.channels,
                 blocks=config.blocks,
                 seed=iter_seed,

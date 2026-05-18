@@ -13,12 +13,18 @@ EPOCHS="${EPOCHS:-4}"
 BATCH_SIZE="${BATCH_SIZE:-128}"
 CHANNELS="${CHANNELS:-128}"
 BLOCKS="${BLOCKS:-6}"
+LR="${LR:-0.001}"
+LEGAL_POLICY_LOSS="${LEGAL_POLICY_LOSS:-0}"
 EVAL_GAMES="${EVAL_GAMES:-8}"
 EVAL_SIMULATIONS="${EVAL_SIMULATIONS:-$SIMULATIONS}"
 RUN_NAME="${RUN_NAME:-$(date +%Y%m%d_%H%M%S)}"
 CHECKPOINT_ARG=""
 if [[ -n "$CHECKPOINT" ]]; then
   CHECKPOINT_ARG="--checkpoint $CHECKPOINT"
+fi
+LEGAL_POLICY_LOSS_ARG=""
+if [[ "$LEGAL_POLICY_LOSS" == "1" || "$LEGAL_POLICY_LOSS" == "true" ]]; then
+  LEGAL_POLICY_LOSS_ARG="--legal-policy-loss"
 fi
 
 gpu-dev submit \
@@ -43,5 +49,7 @@ gpu-dev submit \
       --epochs $EPOCHS \
       --batch-size $BATCH_SIZE \
       --channels $CHANNELS \
-      --blocks $BLOCKS
+      --blocks $BLOCKS \
+      --lr $LR \
+      $LEGAL_POLICY_LOSS_ARG
   "
