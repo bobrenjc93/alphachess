@@ -45,7 +45,7 @@ def run_iterations(config: IterationConfig) -> Path:
     league = _load_league(league_path)
 
     best_checkpoint = config.checkpoint or league.get("best_checkpoint")
-    selfplay_dirs: list[str] = list(league.get("selfplay_dirs", []))
+    selfplay_dirs = _filter_nonempty_data_dirs(league.get("selfplay_dirs", []))
 
     for local_iter in range(config.iterations):
         iteration = int(league.get("iterations_completed", 0)) + 1
@@ -58,7 +58,7 @@ def run_iterations(config: IterationConfig) -> Path:
             if best_checkpoint
             else UniformEvaluator()
         )
-        generate_self_play(
+        written_selfplay = generate_self_play(
             evaluator,
             selfplay_dir,
             SelfPlayConfig(
@@ -69,7 +69,8 @@ def run_iterations(config: IterationConfig) -> Path:
                 seed=iter_seed,
             ),
         )
-        selfplay_dirs.append(str(selfplay_dir))
+        if written_selfplay:
+            selfplay_dirs.append(str(selfplay_dir))
         train_data, data_weights = _build_training_inputs(selfplay_dirs, config)
 
         candidate = train(
@@ -134,6 +135,16 @@ def _load_league(path: Path) -> dict:
     if not path.exists():
         return {}
     return json.loads(path.read_text())
+
+
+def _filter_nonempty_data_dirs(paths: list[str]) -> list[str]:
+    return [str(path) for path in paths if _has_npz_data(Path(path))]
+
+
+def _has_npz_data(path: Path) -> bool:
+    if path.is_file():
+        return path.suffix == ".npz"
+    return path.is_dir() and any(path.glob("*.npz"))
 
 
 def _build_training_inputs(
