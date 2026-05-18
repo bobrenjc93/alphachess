@@ -10,7 +10,7 @@ import chess.engine
 import chess.pgn
 import numpy as np
 
-from alpha_chess.chess_env import encode_board, move_to_action
+from alpha_chess.chess_env import ACTION_SIZE, encode_board, move_to_action
 from alpha_chess.pgn_import import PGNImportConfig, _open_pgn_text, _passes_filters
 
 
@@ -27,6 +27,8 @@ class StockfishTeacherConfig:
     min_initial_seconds: int | None = None
     min_value_delta: float | None = None
     player_name: str | None = None
+    multipv: int = 1
+    policy_temperature_cp: float = 200.0
     position_stride: int = 4
     chunk_size: int = 1024
 
@@ -39,6 +41,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
 
     boards: list[np.ndarray] = []
     actions: list[int] = []
+    policies: list[np.ndarray] = []
     values: list[float] = []
     value_deltas: list[float] = []
     fens: list[str] = []
@@ -82,15 +85,13 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                 game, board, config.player_name
                             )
                         if sample_position:
-                            info = engine.analyse(board, limit)
-                            pv = info.get("pv")
-                            if pv:
-                                best_move = pv[0]
-                            else:
+                            infos = _analyse_position(engine, board, limit, config.multipv)
+                            best_move = _best_move_from_infos(infos)
+                            if best_move is None:
                                 play = engine.play(board, limit)
                                 best_move = play.move
                             if best_move in board.legal_moves:
-                                score = info.get("score")
+                                score = infos[0].get("score") if infos else None
                                 value = _score_to_value(score, board.turn)
                                 value_delta = 0.0
                                 if config.min_value_delta is not None:
@@ -107,6 +108,15 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                         continue
                                 boards.append(encode_board(board))
                                 actions.append(move_to_action(best_move, board))
+                                if config.multipv > 1:
+                                    policies.append(
+                                        _policy_from_multipv(
+                                            board,
+                                            infos,
+                                            config.policy_temperature_cp,
+                                            fallback_move=best_move,
+                                        )
+                                    )
                                 values.append(value)
                                 value_deltas.append(value_delta)
                                 fens.append(board.fen())
@@ -125,9 +135,10 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                         fens,
                                         best_moves,
                                         source=str(pgn_path),
+                                        policies=policies if policies else None,
                                     )
                                     written.append(path)
-                                    boards, actions, values = [], [], []
+                                    boards, actions, policies, values = [], [], [], []
                                     value_deltas, fens, best_moves = [], [], []
                         board.push(move)
                     if used_this_game:
@@ -145,9 +156,10 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                         fens,
                         best_moves,
                         source=str(pgn_path),
+                        policies=policies if policies else None,
                     )
                 )
-                boards, actions, values = [], [], []
+                boards, actions, policies, values = [], [], [], []
                 value_deltas, fens, best_moves = [], [], []
             if positions >= config.max_positions:
                 break
@@ -167,6 +179,8 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"files={len(written)}",
                 f"min_value_delta={config.min_value_delta}",
                 f"player_name={config.player_name}",
+                f"multipv={config.multipv}",
+                f"policy_temperature_cp={config.policy_temperature_cp}",
                 f"config={asdict(config)}",
             ]
         )
@@ -179,6 +193,27 @@ def _resolve_pgn_paths(pgn: str | list[str]) -> list[Path]:
     if isinstance(pgn, str):
         return [Path(pgn)]
     return [Path(path) for path in pgn]
+
+
+def _analyse_position(
+    engine: chess.engine.SimpleEngine,
+    board: chess.Board,
+    limit: chess.engine.Limit,
+    multipv: int,
+) -> list[dict]:
+    if multipv > 1:
+        analysis = engine.analyse(board, limit, multipv=max(1, multipv))
+    else:
+        analysis = engine.analyse(board, limit)
+    return analysis if isinstance(analysis, list) else [analysis]
+
+
+def _best_move_from_infos(infos: list[dict]) -> chess.Move | None:
+    for info in infos:
+        pv = info.get("pv")
+        if pv:
+            return pv[0]
+    return None
 
 
 def _score_to_value(score: chess.engine.PovScore | None, turn: chess.Color) -> float:
@@ -194,6 +229,51 @@ def _score_to_value(score: chess.engine.PovScore | None, turn: chess.Color) -> f
 def _matches_player_to_move(game: chess.pgn.Game, board: chess.Board, player_name: str) -> bool:
     header = "White" if board.turn == chess.WHITE else "Black"
     return game.headers.get(header, "").strip().casefold() == player_name.strip().casefold()
+
+
+def _policy_from_multipv(
+    board: chess.Board,
+    infos: list[dict],
+    temperature_cp: float,
+    fallback_move: chess.Move | None = None,
+) -> np.ndarray:
+    action_scores: dict[int, float] = {}
+    for info in infos:
+        pv = info.get("pv")
+        score = info.get("score")
+        if not pv or score is None:
+            continue
+        move = pv[0]
+        if move not in board.legal_moves:
+            continue
+        centipawns = score.pov(board.turn).score(mate_score=10000)
+        if centipawns is None:
+            continue
+        action = move_to_action(move, board)
+        action_scores[action] = max(float(centipawns), action_scores.get(action, -float("inf")))
+
+    if not action_scores and fallback_move is not None and fallback_move in board.legal_moves:
+        action_scores[move_to_action(fallback_move, board)] = 0.0
+
+    policy = np.zeros(ACTION_SIZE, dtype=np.float32)
+    if not action_scores:
+        return policy
+
+    actions = np.asarray(list(action_scores.keys()), dtype=np.int64)
+    scores = np.asarray([action_scores[int(action)] for action in actions], dtype=np.float64)
+    if temperature_cp <= 0:
+        policy[int(actions[int(np.argmax(scores))])] = 1.0
+        return policy
+
+    logits = scores / temperature_cp
+    logits -= float(np.max(logits))
+    probabilities = np.exp(logits)
+    total = float(probabilities.sum())
+    if total <= 0 or not np.isfinite(total):
+        policy[int(actions[int(np.argmax(scores))])] = 1.0
+    else:
+        policy[actions] = (probabilities / total).astype(np.float32)
+    return policy
 
 
 def _value_drop_after_move(
@@ -217,16 +297,19 @@ def _write_teacher_chunk(
     fens: list[str],
     best_moves: list[str],
     source: str,
+    policies: list[np.ndarray] | None = None,
 ) -> Path:
     path = out_dir / f"teacher_{chunk_index:06d}.npz"
-    np.savez_compressed(
-        path,
-        boards=np.asarray(boards, dtype=np.float32),
-        actions=np.asarray(actions, dtype=np.int64),
-        values=np.asarray(values, dtype=np.float32),
-        value_deltas=np.asarray(value_deltas, dtype=np.float32),
-        fens=np.asarray(fens),
-        moves=np.asarray(best_moves),
-        source=np.asarray(source),
-    )
+    payload = {
+        "boards": np.asarray(boards, dtype=np.float32),
+        "actions": np.asarray(actions, dtype=np.int64),
+        "values": np.asarray(values, dtype=np.float32),
+        "value_deltas": np.asarray(value_deltas, dtype=np.float32),
+        "fens": np.asarray(fens),
+        "moves": np.asarray(best_moves),
+        "source": np.asarray(source),
+    }
+    if policies is not None:
+        payload["policies"] = np.asarray(policies, dtype=np.float32)
+    np.savez_compressed(path, **payload)
     return path

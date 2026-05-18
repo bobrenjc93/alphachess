@@ -82,7 +82,9 @@ uv run alpha-chess stockfish-teacher \
   --max-positions 1024 \
   --min-elo 1800 \
   --min-initial-seconds 180 \
-  --min-value-delta 0.25
+  --min-value-delta 0.25 \
+  --multipv 4 \
+  --policy-temperature-cp 200
 
 uv run alpha-chess stockfish-teacher \
   --pgn reports/failed_eval_games_a.pgn reports/failed_eval_games_b.pgn \
