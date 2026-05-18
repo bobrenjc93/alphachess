@@ -75,8 +75,17 @@ val_source_1_policy_acc=0.3309  # all puzzles 50k
 val_source_2_policy_acc=1.0000  # AlphaChess loss replay
 ```
 
-The Stockfish MultiPV accuracy regressed from the prior focused checkpoint, so
-this candidate should not replace `checkpoints/legal_multipv4096_focus_ft/latest.pt`.
+Baseline checkpoint on the same data:
+
+```text
+val_policy_acc=0.3267
+val_source_0_policy_acc=0.4448  # Stockfish MultiPV 4096
+val_source_1_policy_acc=0.3167  # all puzzles 50k
+val_source_2_policy_acc=1.0000  # AlphaChess loss replay
+```
+
+The candidate improved these supervised diagnostics slightly, but failed the
+head-to-head promotion gate against the same base checkpoint.
 
 ## Evaluation
 
@@ -113,7 +122,8 @@ The losses were tactical mate failures:
 
 ## Conclusion
 
-Replay-mixed iteration plumbing works, but this small self-play update is weaker
-than the focused supervised checkpoint. The next useful change is to reduce
-self-play learning rate and/or increase fixed replay weight before attempting
-another promotion candidate.
+Replay-mixed iteration plumbing works and slightly improves fixed-data policy
+accuracy, but this small self-play update is weaker in direct play than the
+focused supervised checkpoint. The next useful change is to reduce self-play
+learning rate and/or increase fixed replay weight before attempting another
+promotion candidate.
