@@ -70,3 +70,44 @@ The filter improves basic tactical hygiene and restored the uniform smoke for
 iteration 2, but it does not solve the deeper Stockfish tactical failures. The
 next search-side improvement needs multi-ply tactical awareness or stronger
 search/evaluation, not only mate-in-one pruning.
+
+## Forced-Mate Extension
+
+Extended the root filter with a small forced-mate search over checking lines:
+
+- default root mate search depth: 3 plies
+- still root-only
+- detects immediate mating moves
+- prunes root moves that allow the opponent a forced mate in the search window
+  when alternatives exist
+
+Verification:
+
+```text
+uv run pytest
+35 passed
+```
+
+Runtime smoke:
+
+```text
+checkpoint=experiments/focus-tactical-strict/checkpoints/iter_0001/latest.pt
+opponent=uniform
+games=1
+simulations=16
+score=1.0/1
+```
+
+Stockfish smoke:
+
+```text
+checkpoint=experiments/focus-tactical-strict/checkpoints/iter_0001/latest.pt
+opponent=stockfish
+games=2
+simulations=16
+score=0.0/2
+pgn=reports/forced_mate_root_strict_vs_stockfish_16sims.pgn
+```
+
+The extension is useful search hygiene but still does not cover the tactical
+depth needed to survive Stockfish.

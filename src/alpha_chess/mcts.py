@@ -18,6 +18,7 @@ class MCTSConfig:
     dirichlet_alpha: float = 0.3
     dirichlet_fraction: float = 0.25
     add_root_noise: bool = False
+    root_mate_search_plies: int = 3
 
 
 @dataclass
@@ -34,10 +35,15 @@ class Node:
     def expanded(self) -> bool:
         return bool(self.children)
 
-    def expand(self, board: chess.Board, policy: np.ndarray, tactical_filter: bool = False) -> None:
+    def expand(
+        self,
+        board: chess.Board,
+        policy: np.ndarray,
+        tactical_filter_plies: int = 0,
+    ) -> None:
         actions = legal_actions(board)
-        if tactical_filter:
-            actions = _filter_root_tactics(board, actions)
+        if tactical_filter_plies > 0:
+            actions = _filter_root_tactics(board, actions, tactical_filter_plies)
         if not actions:
             return
 
@@ -109,7 +115,11 @@ class AlphaZeroMCTS:
         value = terminal_value(board)
         if value is None:
             policy, value = self.evaluator(board)
-            root.expand(board, policy, tactical_filter=True)
+            root.expand(
+                board,
+                policy,
+                tactical_filter_plies=self.config.root_mate_search_plies,
+            )
             if self.config.add_root_noise:
                 root.add_exploration_noise(
                     self.rng, self.config.dirichlet_alpha, self.config.dirichlet_fraction
@@ -166,9 +176,13 @@ class AlphaZeroMCTS:
             value = -value
 
 
-def _filter_root_tactics(board: chess.Board, actions: list[int]) -> list[int]:
+def _filter_root_tactics(
+    board: chess.Board, actions: list[int], mate_search_plies: int
+) -> list[int]:
     mate_actions: list[int] = []
     safe_actions: list[int] = []
+    mate_cache: dict[tuple[str, int], bool] = {}
+    mate_search_plies = max(1, mate_search_plies)
 
     for action in actions:
         move = action_to_move(action, board)
@@ -176,9 +190,12 @@ def _filter_root_tactics(board: chess.Board, actions: list[int]) -> list[int]:
             continue
         child = board.copy(stack=False)
         child.push(move)
-        if child.is_checkmate():
+        if child.is_checkmate() or (
+            mate_search_plies > 1
+            and _all_replies_allow_mate(child, mate_search_plies - 1, mate_cache)
+        ):
             mate_actions.append(action)
-        elif not _side_to_move_has_mate_in_one(child):
+        elif not _side_to_move_can_force_mate(child, mate_search_plies, mate_cache):
             safe_actions.append(action)
 
     if mate_actions:
@@ -188,10 +205,45 @@ def _filter_root_tactics(board: chess.Board, actions: list[int]) -> list[int]:
     return actions
 
 
-def _side_to_move_has_mate_in_one(board: chess.Board) -> bool:
+def _side_to_move_can_force_mate(
+    board: chess.Board,
+    plies: int,
+    cache: dict[tuple[str, int], bool],
+) -> bool:
+    if plies <= 0 or board.is_game_over(claim_draw=True):
+        return False
+    key = (board.fen(), plies)
+    if key in cache:
+        return cache[key]
+
     for move in board.legal_moves:
+        gives_check = board.gives_check(move)
         child = board.copy(stack=False)
         child.push(move)
         if child.is_checkmate():
+            cache[key] = True
             return True
+        if plies > 1 and gives_check and _all_replies_allow_mate(child, plies - 1, cache):
+            cache[key] = True
+            return True
+
+    cache[key] = False
     return False
+
+
+def _all_replies_allow_mate(
+    board: chess.Board,
+    plies: int,
+    cache: dict[tuple[str, int], bool],
+) -> bool:
+    if plies <= 0 or board.is_game_over(claim_draw=True):
+        return False
+
+    has_reply = False
+    for reply in board.legal_moves:
+        has_reply = True
+        child = board.copy(stack=False)
+        child.push(reply)
+        if child.is_checkmate() or not _side_to_move_can_force_mate(child, plies - 1, cache):
+            return False
+    return has_reply
