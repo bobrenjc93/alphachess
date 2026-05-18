@@ -26,6 +26,7 @@ class PGNImportConfig:
     max_imported_games: int | None = None
     min_elo: int | None = None
     rated_only: bool = False
+    min_initial_seconds: int | None = None
     min_plies: int = 1
     chunk_size: int = 4096
     dense_policy: bool = False
@@ -123,6 +124,7 @@ def import_pgn(config: PGNImportConfig) -> list[Path]:
                 f"files={len(written)}",
                 f"min_elo={config.min_elo}",
                 f"rated_only={config.rated_only}",
+                f"min_initial_seconds={config.min_initial_seconds}",
             ]
         )
         + "\n"
@@ -149,6 +151,10 @@ def _passes_filters(game: chess.pgn.Game, config: PGNImportConfig) -> bool:
             return False
         if white_elo < config.min_elo or black_elo < config.min_elo:
             return False
+    if config.min_initial_seconds is not None:
+        initial_seconds = _parse_initial_seconds(game.headers.get("TimeControl"))
+        if initial_seconds is None or initial_seconds < config.min_initial_seconds:
+            return False
     return True
 
 
@@ -157,6 +163,17 @@ def _header_int(value: str | None) -> int | None:
         return None
     try:
         return int(value)
+    except ValueError:
+        return None
+
+
+def _parse_initial_seconds(time_control: str | None) -> int | None:
+    if time_control is None or time_control in {"-", "?"}:
+        return None
+    first_part = time_control.split(":", maxsplit=1)[0]
+    initial = first_part.split("+", maxsplit=1)[0]
+    try:
+        return int(initial)
     except ValueError:
         return None
 

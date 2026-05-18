@@ -55,6 +55,7 @@ Convert PGN games into sparse expert action/value targets:
 uv run alpha-chess import-pgn --pgn games.pgn --out data/expert --max-games 10000
 uv run alpha-chess import-pgn --pgn lichess_elite.pgn.zst --out data/expert/elite --max-games 100000
 uv run alpha-chess import-pgn --pgn lichess_elite.pgn.zst --out data/expert/elite_2200 --min-elo 2200 --max-imported-games 10000
+uv run alpha-chess import-pgn --pgn lichess_elite.pgn.zst --out data/expert/elite_rapid --min-elo 2000 --min-initial-seconds 180
 uv run alpha-chess train --data data/expert --out checkpoints/expert --epochs 4
 ```
 

@@ -147,3 +147,47 @@ def test_rated_only_allows_archives_without_rated_header(tmp_path) -> None:
     import_pgn(PGNImportConfig(pgn=str(pgn), out=str(out), min_elo=2000, rated_only=True))
     summary = (out / "import_summary.txt").read_text()
     assert "games_imported=1" in summary
+
+
+def test_import_pgn_filters_by_time_control(tmp_path) -> None:
+    pgn = tmp_path / "time-control.pgn"
+    pgn.write_text(
+        textwrap.dedent(
+            """
+            [Event "Bullet"]
+            [Site "?"]
+            [Date "2026.05.18"]
+            [Round "1"]
+            [White "A"]
+            [Black "B"]
+            [WhiteElo "2200"]
+            [BlackElo "2200"]
+            [TimeControl "60+0"]
+            [Result "1-0"]
+
+            1. e4 e5 1-0
+
+            [Event "Rapid"]
+            [Site "?"]
+            [Date "2026.05.18"]
+            [Round "2"]
+            [White "C"]
+            [Black "D"]
+            [WhiteElo "2200"]
+            [BlackElo "2200"]
+            [TimeControl "600+5"]
+            [Result "0-1"]
+
+            1. d4 Nf6 0-1
+            """
+        ).strip()
+        + "\n"
+    )
+    out = tmp_path / "time-filtered"
+    import_pgn(PGNImportConfig(pgn=str(pgn), out=str(out), min_initial_seconds=180))
+    summary = (out / "import_summary.txt").read_text()
+    assert "games_seen=2" in summary
+    assert "games_imported=1" in summary
+    dataset = SelfPlayDataset(out)
+    assert len(dataset) == 2
+    assert float(dataset[0]["value"]) == -1.0

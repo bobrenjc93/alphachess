@@ -64,6 +64,7 @@ def main(argv: list[str] | None = None) -> None:
     import_parser.add_argument("--max-imported-games", type=int)
     import_parser.add_argument("--min-elo", type=int)
     import_parser.add_argument("--rated-only", action="store_true")
+    import_parser.add_argument("--min-initial-seconds", type=int)
     import_parser.add_argument("--min-plies", type=int, default=1)
     import_parser.add_argument("--chunk-size", type=int, default=4096)
     import_parser.add_argument("--dense-policy", action="store_true")
