@@ -68,3 +68,82 @@ def test_import_pgn_reads_zstd_archive(tmp_path) -> None:
     dataset = SelfPlayDataset(out)
     assert len(dataset) == 2
     assert float(dataset[0]["value"]) == 0.0
+
+
+def test_import_pgn_filters_by_min_elo(tmp_path) -> None:
+    pgn = tmp_path / "rated.pgn"
+    pgn.write_text(
+        textwrap.dedent(
+            """
+            [Event "Low"]
+            [Site "?"]
+            [Date "2026.05.18"]
+            [Round "1"]
+            [White "A"]
+            [Black "B"]
+            [WhiteElo "1200"]
+            [BlackElo "2400"]
+            [Rated "True"]
+            [Result "1-0"]
+
+            1. e4 e5 1-0
+
+            [Event "High"]
+            [Site "?"]
+            [Date "2026.05.18"]
+            [Round "2"]
+            [White "C"]
+            [Black "D"]
+            [WhiteElo "2300"]
+            [BlackElo "2400"]
+            [Rated "True"]
+            [Result "0-1"]
+
+            1. d4 Nf6 0-1
+            """
+        ).strip()
+        + "\n"
+    )
+    out = tmp_path / "filtered"
+    import_pgn(
+        PGNImportConfig(
+            pgn=str(pgn),
+            out=str(out),
+            min_elo=2200,
+            rated_only=True,
+            max_imported_games=1,
+        )
+    )
+
+    summary = (out / "import_summary.txt").read_text()
+    assert "games_seen=2" in summary
+    assert "games_imported=1" in summary
+    dataset = SelfPlayDataset(out)
+    assert len(dataset) == 2
+    assert float(dataset[0]["value"]) == -1.0
+
+
+def test_rated_only_allows_archives_without_rated_header(tmp_path) -> None:
+    pgn = tmp_path / "missing-rated.pgn"
+    pgn.write_text(
+        textwrap.dedent(
+            """
+            [Event "Archive"]
+            [Site "?"]
+            [Date "2026.05.18"]
+            [Round "1"]
+            [White "A"]
+            [Black "B"]
+            [WhiteElo "2100"]
+            [BlackElo "2200"]
+            [Result "1-0"]
+
+            1. e4 e5 1-0
+            """
+        ).strip()
+        + "\n"
+    )
+    out = tmp_path / "missing-rated-out"
+    import_pgn(PGNImportConfig(pgn=str(pgn), out=str(out), min_elo=2000, rated_only=True))
+    summary = (out / "import_summary.txt").read_text()
+    assert "games_imported=1" in summary

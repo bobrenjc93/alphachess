@@ -23,6 +23,9 @@ class PGNImportConfig:
     pgn: str
     out: str = "data/expert"
     max_games: int | None = None
+    max_imported_games: int | None = None
+    min_elo: int | None = None
+    rated_only: bool = False
     min_plies: int = 1
     chunk_size: int = 4096
     dense_policy: bool = False
@@ -41,17 +44,24 @@ def import_pgn(config: PGNImportConfig) -> list[Path]:
     fens: list[str] = []
     moves: list[str] = []
     games_seen = 0
+    games_imported = 0
+    games_skipped = 0
     positions_seen = 0
 
     with _open_pgn_text(pgn_path) as handle:
-        while config.max_games is None or games_seen < config.max_games:
+        while _should_continue_import(config, games_seen, games_imported):
             game = chess.pgn.read_game(handle)
             if game is None:
                 break
             games_seen += 1
+            if not _passes_filters(game, config):
+                games_skipped += 1
+                continue
             game_positions = _game_to_samples(game, dense_policy=config.dense_policy)
             if len(game_positions["boards"]) < config.min_plies:
+                games_skipped += 1
                 continue
+            games_imported += 1
 
             boards.extend(game_positions["boards"])
             actions.extend(game_positions["actions"])
@@ -103,9 +113,52 @@ def import_pgn(config: PGNImportConfig) -> list[Path]:
 
     summary = out_dir / "import_summary.txt"
     summary.write_text(
-        f"source={pgn_path}\ngames_seen={games_seen}\npositions={positions_seen}\nfiles={len(written)}\n"
+        "\n".join(
+            [
+                f"source={pgn_path}",
+                f"games_seen={games_seen}",
+                f"games_imported={games_imported}",
+                f"games_skipped={games_skipped}",
+                f"positions={positions_seen}",
+                f"files={len(written)}",
+                f"min_elo={config.min_elo}",
+                f"rated_only={config.rated_only}",
+            ]
+        )
+        + "\n"
     )
     return written
+
+
+def _should_continue_import(config: PGNImportConfig, games_seen: int, games_imported: int) -> bool:
+    if config.max_games is not None and games_seen >= config.max_games:
+        return False
+    if config.max_imported_games is not None and games_imported >= config.max_imported_games:
+        return False
+    return True
+
+
+def _passes_filters(game: chess.pgn.Game, config: PGNImportConfig) -> bool:
+    rated = game.headers.get("Rated")
+    if config.rated_only and rated is not None and rated.lower() not in {"true", "yes", "1"}:
+        return False
+    if config.min_elo is not None:
+        white_elo = _header_int(game.headers.get("WhiteElo"))
+        black_elo = _header_int(game.headers.get("BlackElo"))
+        if white_elo is None or black_elo is None:
+            return False
+        if white_elo < config.min_elo or black_elo < config.min_elo:
+            return False
+    return True
+
+
+def _header_int(value: str | None) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
 
 def _open_pgn_text(path: Path) -> TextIO:
