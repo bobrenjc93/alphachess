@@ -28,6 +28,7 @@ class IterationConfig:
     blocks: int = 6
     lr: float = 1e-3
     legal_policy_loss: bool = False
+    material_value_weight: float = 0.0
     replay_data: list[str] | None = None
     self_play_weight: float = 1.0
     replay_weights: list[float] | None = None
@@ -54,7 +55,11 @@ def run_iterations(config: IterationConfig) -> Path:
         candidate_dir = run_dir / "checkpoints" / f"iter_{iteration:04d}"
 
         evaluator = (
-            load_evaluator(best_checkpoint, device=config.device)
+            load_evaluator(
+                best_checkpoint,
+                device=config.device,
+                material_value_weight=config.material_value_weight,
+            )
             if best_checkpoint
             else UniformEvaluator()
         )
@@ -96,6 +101,7 @@ def run_iterations(config: IterationConfig) -> Path:
             "simulations": config.eval_simulations,
             "opponent_checkpoint": best_checkpoint,
             "device": config.device,
+            "material_value_weight": config.material_value_weight,
             "seed": iter_seed,
             "max_plies": config.max_plies,
         }

@@ -25,6 +25,7 @@ def main(argv: list[str] | None = None) -> None:
     self_play = subparsers.add_parser("self-play", help="generate self-play NPZ data")
     self_play.add_argument("--checkpoint")
     self_play.add_argument("--device", default="auto")
+    self_play.add_argument("--material-value-weight", type=float, default=0.0)
     self_play.add_argument("--out", default="data/selfplay/run")
     self_play.add_argument("--games", type=int, default=1)
     self_play.add_argument("--simulations", type=int, default=64)
@@ -68,6 +69,7 @@ def main(argv: list[str] | None = None) -> None:
     eval_parser.add_argument("--engine-time", type=float, default=0.05)
     eval_parser.add_argument("--engine-depth", type=int)
     eval_parser.add_argument("--device", default="auto")
+    eval_parser.add_argument("--material-value-weight", type=float, default=0.0)
     eval_parser.add_argument("--seed", type=int, default=0)
     eval_parser.add_argument("--max-plies", type=int, default=512)
     eval_parser.add_argument("--pgn-out")
@@ -129,6 +131,7 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--blocks", type=int, default=6)
     iterate_parser.add_argument("--lr", type=float, default=1e-3)
     iterate_parser.add_argument("--legal-policy-loss", action="store_true")
+    iterate_parser.add_argument("--material-value-weight", type=float, default=0.0)
     iterate_parser.add_argument("--replay-data", nargs="+")
     iterate_parser.add_argument("--self-play-weight", type=float, default=1.0)
     iterate_parser.add_argument("--replay-weights", type=float, nargs="+")
@@ -142,12 +145,17 @@ def main(argv: list[str] | None = None) -> None:
     uci_parser.add_argument("--checkpoint", required=True)
     uci_parser.add_argument("--simulations", type=int, default=64)
     uci_parser.add_argument("--device", default="auto")
+    uci_parser.add_argument("--material-value-weight", type=float, default=0.0)
 
     args = parser.parse_args(argv)
 
     if args.command == "self-play":
         evaluator = (
-            load_evaluator(args.checkpoint, device=args.device)
+            load_evaluator(
+                args.checkpoint,
+                device=args.device,
+                material_value_weight=args.material_value_weight,
+            )
             if args.checkpoint
             else UniformEvaluator()
         )

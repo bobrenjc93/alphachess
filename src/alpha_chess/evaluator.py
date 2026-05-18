@@ -12,6 +12,14 @@ import torch
 from alpha_chess.chess_env import ACTION_SIZE, encode_board, legal_actions
 from alpha_chess.model import ChessNet, load_checkpoint
 
+PIECE_VALUES = {
+    chess.PAWN: 100,
+    chess.KNIGHT: 320,
+    chess.BISHOP: 330,
+    chess.ROOK: 500,
+    chess.QUEEN: 900,
+}
+
 
 class Evaluator(Protocol):
     def __call__(self, board: chess.Board) -> tuple[np.ndarray, float]: ...
@@ -37,10 +45,18 @@ def resolve_torch_device(device: str | torch.device) -> torch.device:
 class NeuralEvaluator:
     """Torch policy/value evaluator with legal action masking."""
 
-    def __init__(self, model: ChessNet, device: str | torch.device = "cpu") -> None:
+    def __init__(
+        self,
+        model: ChessNet,
+        device: str | torch.device = "cpu",
+        material_value_weight: float = 0.0,
+    ) -> None:
+        if not 0.0 <= material_value_weight <= 1.0:
+            raise ValueError("material_value_weight must be between 0 and 1")
         self.device = resolve_torch_device(device)
         self.model = model.to(self.device)
         self.model.eval()
+        self.material_value_weight = float(material_value_weight)
 
     @torch.no_grad()
     def __call__(self, board: chess.Board) -> tuple[np.ndarray, float]:
@@ -58,9 +74,31 @@ class NeuralEvaluator:
                 policy[actions] = 1.0 / len(actions)
             else:
                 policy[actions] = (probs / total).astype(np.float32)
-        return policy, float(value.item())
+        neural_value = float(value.item())
+        if self.material_value_weight:
+            value_out = (1.0 - self.material_value_weight) * neural_value
+            value_out += self.material_value_weight * material_value(board)
+        else:
+            value_out = neural_value
+        return policy, float(value_out)
 
 
-def load_evaluator(checkpoint: str | Path, device: str | torch.device = "cpu") -> NeuralEvaluator:
+def material_value(board: chess.Board) -> float:
+    score = 0
+    for piece in board.piece_map().values():
+        value = PIECE_VALUES.get(piece.piece_type, 0)
+        score += value if piece.color == board.turn else -value
+    return float(np.tanh(score / 1200.0))
+
+
+def load_evaluator(
+    checkpoint: str | Path,
+    device: str | torch.device = "cpu",
+    material_value_weight: float = 0.0,
+) -> NeuralEvaluator:
     resolved = resolve_torch_device(device)
-    return NeuralEvaluator(load_checkpoint(checkpoint, map_location=resolved), device=resolved)
+    return NeuralEvaluator(
+        load_checkpoint(checkpoint, map_location=resolved),
+        device=resolved,
+        material_value_weight=material_value_weight,
+    )

@@ -15,6 +15,7 @@ CHANNELS="${CHANNELS:-128}"
 BLOCKS="${BLOCKS:-6}"
 LR="${LR:-0.001}"
 LEGAL_POLICY_LOSS="${LEGAL_POLICY_LOSS:-0}"
+MATERIAL_VALUE_WEIGHT="${MATERIAL_VALUE_WEIGHT:-0.0}"
 REPLAY_DATA="${REPLAY_DATA:-}"
 SELF_PLAY_WEIGHT="${SELF_PLAY_WEIGHT:-1.0}"
 REPLAY_WEIGHTS="${REPLAY_WEIGHTS:-}"
@@ -111,6 +112,7 @@ gpu-dev submit \
       --channels $CHANNELS \
       --blocks $BLOCKS \
       --lr $LR \
+      --material-value-weight $MATERIAL_VALUE_WEIGHT \
       --self-play-weight $SELF_PLAY_WEIGHT \
       $REPLAY_DATA_ARG \
       $REPLAY_WEIGHTS_ARG \

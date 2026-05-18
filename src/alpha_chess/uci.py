@@ -17,10 +17,15 @@ class UCIConfig:
     checkpoint: str
     simulations: int = 64
     device: str = "auto"
+    material_value_weight: float = 0.0
 
 
 def run_uci(config: UCIConfig) -> None:
-    evaluator = load_evaluator(config.checkpoint, device=config.device)
+    evaluator = load_evaluator(
+        config.checkpoint,
+        device=config.device,
+        material_value_weight=config.material_value_weight,
+    )
     board = chess.Board()
 
     def send(message: str) -> None:
@@ -101,6 +106,7 @@ def _parse_setoption(line: str, config: UCIConfig) -> UCIConfig:
                 checkpoint=config.checkpoint,
                 simulations=max(1, int(value)),
                 device=config.device,
+                material_value_weight=config.material_value_weight,
             )
         except ValueError:
             return config

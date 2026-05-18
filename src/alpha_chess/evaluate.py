@@ -26,6 +26,7 @@ class EvalConfig:
     engine_time: float = 0.05
     engine_depth: int | None = None
     device: str = "auto"
+    material_value_weight: float = 0.0
     seed: int = 0
     max_plies: int = 512
     pgn_out: str | None = None
@@ -40,13 +41,21 @@ class EvalGameRecord:
 
 
 def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
-    model_eval = load_evaluator(config.checkpoint, device=config.device)
+    model_eval = load_evaluator(
+        config.checkpoint,
+        device=config.device,
+        material_value_weight=config.material_value_weight,
+    )
     if config.opponent in {"uci", "stockfish"}:
         return evaluate_against_engine(config, model_eval)
 
     opponent_eval: Evaluator
     if config.opponent_checkpoint:
-        opponent_eval = load_evaluator(config.opponent_checkpoint, device=config.device)
+        opponent_eval = load_evaluator(
+            config.opponent_checkpoint,
+            device=config.device,
+            material_value_weight=config.material_value_weight,
+        )
     else:
         opponent_eval = UniformEvaluator()
     return evaluate_match(
