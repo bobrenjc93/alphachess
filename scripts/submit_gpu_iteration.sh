@@ -20,6 +20,7 @@ SELF_PLAY_WEIGHT="${SELF_PLAY_WEIGHT:-1.0}"
 REPLAY_WEIGHTS="${REPLAY_WEIGHTS:-}"
 EVAL_GAMES="${EVAL_GAMES:-8}"
 EVAL_SIMULATIONS="${EVAL_SIMULATIONS:-$SIMULATIONS}"
+PROMOTION_SCORE="${PROMOTION_SCORE:-0.50}"
 RUN_NAME="${RUN_NAME:-$(date +%Y%m%d_%H%M%S)}"
 
 WORKSPACE_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
@@ -104,6 +105,7 @@ gpu-dev submit \
       --max-plies $MAX_PLIES \
       --eval-games $EVAL_GAMES \
       --eval-simulations $EVAL_SIMULATIONS \
+      --promotion-score $PROMOTION_SCORE \
       --epochs $EPOCHS \
       --batch-size $BATCH_SIZE \
       --channels $CHANNELS \
