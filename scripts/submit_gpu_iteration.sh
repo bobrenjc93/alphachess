@@ -15,6 +15,9 @@ CHANNELS="${CHANNELS:-128}"
 BLOCKS="${BLOCKS:-6}"
 LR="${LR:-0.001}"
 LEGAL_POLICY_LOSS="${LEGAL_POLICY_LOSS:-0}"
+REPLAY_DATA="${REPLAY_DATA:-}"
+SELF_PLAY_WEIGHT="${SELF_PLAY_WEIGHT:-1.0}"
+REPLAY_WEIGHTS="${REPLAY_WEIGHTS:-}"
 EVAL_GAMES="${EVAL_GAMES:-8}"
 EVAL_SIMULATIONS="${EVAL_SIMULATIONS:-$SIMULATIONS}"
 RUN_NAME="${RUN_NAME:-$(date +%Y%m%d_%H%M%S)}"
@@ -25,6 +28,14 @@ fi
 LEGAL_POLICY_LOSS_ARG=""
 if [[ "$LEGAL_POLICY_LOSS" == "1" || "$LEGAL_POLICY_LOSS" == "true" ]]; then
   LEGAL_POLICY_LOSS_ARG="--legal-policy-loss"
+fi
+REPLAY_DATA_ARG=""
+if [[ -n "$REPLAY_DATA" ]]; then
+  REPLAY_DATA_ARG="--replay-data $REPLAY_DATA"
+fi
+REPLAY_WEIGHTS_ARG=""
+if [[ -n "$REPLAY_WEIGHTS" ]]; then
+  REPLAY_WEIGHTS_ARG="--replay-weights $REPLAY_WEIGHTS"
 fi
 
 gpu-dev submit \
@@ -51,5 +62,8 @@ gpu-dev submit \
       --channels $CHANNELS \
       --blocks $BLOCKS \
       --lr $LR \
+      --self-play-weight $SELF_PLAY_WEIGHT \
+      $REPLAY_DATA_ARG \
+      $REPLAY_WEIGHTS_ARG \
       $LEGAL_POLICY_LOSS_ARG
   "

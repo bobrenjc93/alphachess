@@ -128,6 +128,17 @@ Start self-play from an expert bootstrap checkpoint:
 CHECKPOINT=checkpoints/expert_lichess_10k/latest.pt ITERATIONS=1 GAMES=32 LEGAL_POLICY_LOSS=1 scripts/submit_gpu_iteration.sh
 ```
 
+Keep fixed teacher data in the iteration training mix:
+
+```bash
+CHECKPOINT=checkpoints/legal_multipv4096_focus_ft/latest.pt \
+REPLAY_DATA="data/teacher/stockfish_multipv_elo1800_4096 data/puzzles/all_1200_2400_50k" \
+REPLAY_WEIGHTS="0.45 0.10" \
+SELF_PLAY_WEIGHT=0.45 \
+LEGAL_POLICY_LOSS=1 \
+ITERATIONS=1 GAMES=32 scripts/submit_gpu_iteration.sh
+```
+
 ## Design Notes
 
 AutoGo’s useful pattern is preserved: keep the game implementation deterministic, make MCTS consume a small state/evaluator interface, store each self-play position with the improved visit-count policy, and make experiments reproducible from plain scripts. Chess-specific complexity is kept behind `python-chess` so castling, en passant, promotions, repetition, and draw claims stay correct.
