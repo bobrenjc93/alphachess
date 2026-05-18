@@ -34,8 +34,10 @@ class Node:
     def expanded(self) -> bool:
         return bool(self.children)
 
-    def expand(self, board: chess.Board, policy: np.ndarray) -> None:
+    def expand(self, board: chess.Board, policy: np.ndarray, tactical_filter: bool = False) -> None:
         actions = legal_actions(board)
+        if tactical_filter:
+            actions = _filter_root_tactics(board, actions)
         if not actions:
             return
 
@@ -107,7 +109,7 @@ class AlphaZeroMCTS:
         value = terminal_value(board)
         if value is None:
             policy, value = self.evaluator(board)
-            root.expand(board, policy)
+            root.expand(board, policy, tactical_filter=True)
             if self.config.add_root_noise:
                 root.add_exploration_noise(
                     self.rng, self.config.dirichlet_alpha, self.config.dirichlet_fraction
@@ -162,3 +164,34 @@ class AlphaZeroMCTS:
             node.value_sum += value
             node.visit_count += 1
             value = -value
+
+
+def _filter_root_tactics(board: chess.Board, actions: list[int]) -> list[int]:
+    mate_actions: list[int] = []
+    safe_actions: list[int] = []
+
+    for action in actions:
+        move = action_to_move(action, board)
+        if move is None:
+            continue
+        child = board.copy(stack=False)
+        child.push(move)
+        if child.is_checkmate():
+            mate_actions.append(action)
+        elif not _side_to_move_has_mate_in_one(child):
+            safe_actions.append(action)
+
+    if mate_actions:
+        return mate_actions
+    if safe_actions:
+        return safe_actions
+    return actions
+
+
+def _side_to_move_has_mate_in_one(board: chess.Board) -> bool:
+    for move in board.legal_moves:
+        child = board.copy(stack=False)
+        child.push(move)
+        if child.is_checkmate():
+            return True
+    return False
