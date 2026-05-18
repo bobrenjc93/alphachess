@@ -26,6 +26,7 @@ class StockfishTeacherConfig:
     min_elo: int | None = None
     min_initial_seconds: int | None = None
     min_value_delta: float | None = None
+    player_name: str | None = None
     position_stride: int = 4
     chunk_size: int = 1024
 
@@ -73,7 +74,13 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                         break
                     if move not in board.legal_moves:
                         break
-                    if ply % max(1, config.position_stride) == 0 and not board.is_game_over():
+                    sample_position = ply % max(1, config.position_stride) == 0
+                    sample_position = sample_position and not board.is_game_over()
+                    if config.player_name is not None:
+                        sample_position = sample_position and _matches_player_to_move(
+                            game, board, config.player_name
+                        )
+                    if sample_position:
                         info = engine.analyse(board, limit)
                         pv = info.get("pv")
                         if pv:
@@ -153,6 +160,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"positions={positions}",
                 f"files={len(written)}",
                 f"min_value_delta={config.min_value_delta}",
+                f"player_name={config.player_name}",
                 f"config={asdict(config)}",
             ]
         )
@@ -169,6 +177,11 @@ def _score_to_value(score: chess.engine.PovScore | None, turn: chess.Color) -> f
     if centipawns is None:
         return 0.0
     return float(np.tanh(centipawns / 600.0))
+
+
+def _matches_player_to_move(game: chess.pgn.Game, board: chess.Board, player_name: str) -> bool:
+    header = "White" if board.turn == chess.WHITE else "Black"
+    return game.headers.get(header, "").strip().casefold() == player_name.strip().casefold()
 
 
 def _value_drop_after_move(

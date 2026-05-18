@@ -1,7 +1,12 @@
 import chess
 import chess.engine
+import chess.pgn
 
-from alpha_chess.stockfish_teacher import _score_to_value, _value_drop_after_move
+from alpha_chess.stockfish_teacher import (
+    _matches_player_to_move,
+    _score_to_value,
+    _value_drop_after_move,
+)
 
 
 def test_score_to_value_from_side_to_move() -> None:
@@ -14,3 +19,16 @@ def test_value_drop_after_move_maps_back_to_original_side() -> None:
     best_value = 0.5
     after_score = chess.engine.PovScore(chess.engine.Cp(120), chess.BLACK)
     assert _value_drop_after_move(best_value, after_score, chess.BLACK) > 0.6
+
+
+def test_matches_player_to_move_uses_pgn_headers() -> None:
+    game = chess.pgn.Game()
+    game.headers["White"] = "AlphaChess"
+    game.headers["Black"] = "Stockfish"
+    board = game.board()
+
+    assert _matches_player_to_move(game, board, "alphachess")
+
+    board.push(chess.Move.from_uci("e2e4"))
+    assert not _matches_player_to_move(game, board, "AlphaChess")
+    assert _matches_player_to_move(game, board, "Stockfish")

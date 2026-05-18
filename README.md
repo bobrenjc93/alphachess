@@ -81,6 +81,14 @@ uv run alpha-chess stockfish-teacher \
   --min-elo 1800 \
   --min-initial-seconds 180 \
   --min-value-delta 0.25
+
+uv run alpha-chess stockfish-teacher \
+  --pgn reports/failed_eval_games.pgn \
+  --out data/teacher/alpha_loss_blunders \
+  --engine-path tools/stockfish/bin/stockfish \
+  --player-name AlphaChess \
+  --position-stride 1 \
+  --min-value-delta 0.20
 ```
 
 Import Lichess puzzle CSV tactics:

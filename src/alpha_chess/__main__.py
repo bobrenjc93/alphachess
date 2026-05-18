@@ -86,6 +86,7 @@ def main(argv: list[str] | None = None) -> None:
     teacher_parser.add_argument("--min-elo", type=int)
     teacher_parser.add_argument("--min-initial-seconds", type=int)
     teacher_parser.add_argument("--min-value-delta", type=float)
+    teacher_parser.add_argument("--player-name")
     teacher_parser.add_argument("--position-stride", type=int, default=4)
     teacher_parser.add_argument("--chunk-size", type=int, default=1024)
 
