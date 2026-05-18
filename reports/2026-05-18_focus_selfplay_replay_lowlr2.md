@@ -179,9 +179,68 @@ Iteration 2 improved the fixed Stockfish MultiPV diagnostic again but did not
 improve practical play against Stockfish, and it became less decisive against
 the uniform baseline.
 
+## Iteration 3: Replay-Only Loss Refresh
+
+Generated a v2 AlphaChess loss-replay set from all current Stockfish failure
+PGNs:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn reports/*stockfish*.pgn \
+  --out data/teacher/alpha_loss_reports_v2 \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.01 \
+  --max-positions 256 \
+  --player-name AlphaChess \
+  --min-value-delta 0.15 \
+  --multipv 4 \
+  --policy-temperature-cp 200 \
+  --position-stride 1 \
+  --chunk-size 64
+```
+
+Result: 61 correction positions across 28 games, with mean policy support of
+about 3.95 legal moves.
+
+Then continued the same league with no new self-play:
+
+- Candidate checkpoint: `experiments/focus-selfplay-replay-lowlr2/checkpoints/iter_0003/latest.pt`
+- Runner: `gpu-dev submit`, reservation `bb37bf08`, 1x L4
+- Self-play: 0 games
+- Training: 1 epoch, batch size 128, learning rate `0.00005`
+- Data weights:
+  - accumulated self-play total weight `0.0`
+  - `data/teacher/stockfish_multipv_elo1800_4096`, weight `0.55`
+  - `data/puzzles/all_1200_2400_50k`, weight `0.10`
+  - `data/teacher/alpha_loss_reports_v2`, weight `0.35`
+
+Promotion gate against iteration 2:
+
+```text
+score=1.0/4
+wins=0
+draws=2
+losses=2
+score_rate=0.25
+promoted=false
+```
+
+Diagnostic validation:
+
+```text
+val_policy_acc=0.3445
+val_source_0_policy_acc=0.5369  # Stockfish MultiPV 4096
+val_source_1_policy_acc=0.3282  # all puzzles 50k
+val_source_2_policy_acc=0.7869  # AlphaChess loss replay v2
+```
+
+This fit the new loss-replay data better, but it did not improve head-to-head
+play and should not replace iteration 2.
+
 ## Conclusion
 
 Replay-mixed low-learning-rate iteration is now improving the fixed Stockfish
 MultiPV diagnostic and can promote within the local checkpoint league, but it is
 still far below the Stockfish gate. Iteration 2 is the data-diagnostic leader;
-iteration 1 is the safer play checkpoint. Neither is a solved model.
+iteration 1 is the safer play checkpoint; iteration 3 is a rejected replay-only
+fine-tune. None is a solved model.
