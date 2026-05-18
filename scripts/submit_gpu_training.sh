@@ -20,6 +20,7 @@ gpu-dev submit \
   --name "alphachess-$RUN_NAME" \
   -- bash -lc "
     set -euo pipefail
+    trap 'rm -r .venv 2>/dev/null || true' EXIT
     uv sync
     uv run alpha-chess self-play \
       --games $GAMES \
