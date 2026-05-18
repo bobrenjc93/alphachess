@@ -37,7 +37,11 @@ class SelfPlayDataset(Dataset):
             data = np.load(path)
             self.lengths.append(int(data["boards"].shape[0]))
             if self.cache is not None:
-                self.cache[path] = {key: data[key] for key in data.files}
+                self.cache[path] = {
+                    key: data[key]
+                    for key in data.files
+                    if key in {"boards", "values", "policies", "actions"}
+                }
 
         self.cumsum = np.cumsum([0] + self.lengths)
 
@@ -52,19 +56,18 @@ class SelfPlayDataset(Dataset):
         path = self.files[file_index]
         data = self.cache[path] if self.cache is not None else np.load(path)
 
-        if "policies" in data:
-            policy = torch.from_numpy(data["policies"][local_index]).float()
-        elif "actions" in data:
-            policy = torch.zeros(ACTION_SIZE, dtype=torch.float32)
-            policy[int(data["actions"][local_index])] = 1.0
-        else:
+        if "policies" not in data and "actions" not in data:
             raise KeyError(f"{path} has neither 'policies' nor 'actions'")
 
-        return {
+        sample = {
             "board": torch.from_numpy(data["boards"][local_index]).float(),
-            "policy": policy,
             "value": torch.tensor(float(data["values"][local_index]), dtype=torch.float32),
         }
+        if "policies" in data:
+            sample["policy"] = torch.from_numpy(data["policies"][local_index]).float()
+        if "actions" in data:
+            sample["action"] = torch.tensor(int(data["actions"][local_index]), dtype=torch.long)
+        return sample
 
     def write_index(self, path: str | Path | None = None) -> Path:
         output = Path(path) if path is not None else self.files[0].parent / "index.json"
@@ -81,3 +84,33 @@ class SelfPlayDataset(Dataset):
             )
         )
         return output
+
+
+def collate_samples(samples: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
+    """Collate dense self-play policies or sparse expert action labels."""
+
+    batch = {
+        "board": torch.stack([sample["board"] for sample in samples]),
+        "value": torch.stack([sample["value"] for sample in samples]),
+    }
+
+    has_policy = any("policy" in sample for sample in samples)
+    has_action = any("action" in sample for sample in samples)
+    if has_policy:
+        policies: list[torch.Tensor] = []
+        for sample in samples:
+            if "policy" in sample:
+                policies.append(sample["policy"])
+            elif "action" in sample:
+                policy = torch.zeros(ACTION_SIZE, dtype=torch.float32)
+                policy[int(sample["action"])] = 1.0
+                policies.append(policy)
+            else:
+                raise KeyError("Sample has neither policy nor action")
+        batch["policy"] = torch.stack(policies)
+    elif has_action:
+        batch["action"] = torch.stack([sample["action"] for sample in samples])
+    else:
+        raise KeyError("Batch has neither policies nor actions")
+
+    return batch

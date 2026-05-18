@@ -99,6 +99,19 @@ class ChessNet(nn.Module):
         loss = policy_loss + value_weight * value_loss
         return loss, {"policy_loss": policy_loss.detach(), "value_loss": value_loss.detach()}
 
+    def compute_loss_from_actions(
+        self,
+        board_bchw: torch.Tensor,
+        target_action_b: torch.Tensor,
+        target_value_b: torch.Tensor,
+        value_weight: float = 1.0,
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+        policy_logits, value = self.forward(board_bchw)
+        policy_loss = F.cross_entropy(policy_logits, target_action_b.long())
+        value_loss = F.mse_loss(value, target_value_b)
+        loss = policy_loss + value_weight * value_loss
+        return loss, {"policy_loss": policy_loss.detach(), "value_loss": value_loss.detach()}
+
 
 def save_checkpoint(
     path: str | Path,

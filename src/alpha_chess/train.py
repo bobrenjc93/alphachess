@@ -8,7 +8,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, random_split
 
-from alpha_chess.dataset import SelfPlayDataset
+from alpha_chess.dataset import SelfPlayDataset, collate_samples
 from alpha_chess.model import ChessNet, ChessNetConfig, load_checkpoint, save_checkpoint
 
 
@@ -50,9 +50,21 @@ def train(config: TrainConfig) -> Path:
     else:
         train_ds, val_ds = dataset, None
 
-    loader = DataLoader(train_ds, batch_size=config.batch_size, shuffle=True, num_workers=0)
+    loader = DataLoader(
+        train_ds,
+        batch_size=config.batch_size,
+        shuffle=True,
+        num_workers=0,
+        collate_fn=collate_samples,
+    )
     val_loader = (
-        DataLoader(val_ds, batch_size=config.batch_size, shuffle=False, num_workers=0)
+        DataLoader(
+            val_ds,
+            batch_size=config.batch_size,
+            shuffle=False,
+            num_workers=0,
+            collate_fn=collate_samples,
+        )
         if val_ds is not None
         else None
     )
@@ -73,10 +85,7 @@ def train(config: TrainConfig) -> Path:
         model.train()
         running_loss = 0.0
         for batch in loader:
-            boards = batch["board"].to(device)
-            policies = batch["policy"].to(device)
-            values = batch["value"].to(device)
-            loss, parts = model.compute_loss(boards, policies, values, config.value_weight)
+            loss, parts = _compute_batch_loss(model, batch, device, config.value_weight)
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
@@ -111,10 +120,7 @@ def _evaluate_loss(
     policy_losses: list[float] = []
     value_losses: list[float] = []
     for batch in loader:
-        boards = batch["board"].to(device)
-        policies = batch["policy"].to(device)
-        values = batch["value"].to(device)
-        loss, parts = model.compute_loss(boards, policies, values, value_weight)
+        loss, parts = _compute_batch_loss(model, batch, device, value_weight)
         losses.append(float(loss.item()))
         policy_losses.append(float(parts["policy_loss"].item()))
         value_losses.append(float(parts["value_loss"].item()))
@@ -123,3 +129,16 @@ def _evaluate_loss(
         "val_policy_loss": sum(policy_losses) / max(1, len(policy_losses)),
         "val_value_loss": sum(value_losses) / max(1, len(value_losses)),
     }
+
+
+def _compute_batch_loss(
+    model: ChessNet,
+    batch: dict[str, torch.Tensor],
+    device: torch.device,
+    value_weight: float,
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    boards = batch["board"].to(device)
+    values = batch["value"].to(device)
+    if "policy" in batch:
+        return model.compute_loss(boards, batch["policy"].to(device), values, value_weight)
+    return model.compute_loss_from_actions(boards, batch["action"].to(device), values, value_weight)

@@ -4,7 +4,7 @@ import numpy as np
 import zstandard
 
 from alpha_chess.chess_env import ACTION_SIZE, NUM_INPUT_PLANES
-from alpha_chess.dataset import SelfPlayDataset
+from alpha_chess.dataset import SelfPlayDataset, collate_samples
 from alpha_chess.pgn_import import PGNImportConfig, import_pgn
 
 
@@ -37,7 +37,10 @@ def test_import_pgn_writes_training_npz(tmp_path) -> None:
     sample = dataset[0]
     assert len(dataset) == 6
     assert sample["board"].shape == (NUM_INPUT_PLANES, 8, 8)
-    assert sample["policy"].shape == (ACTION_SIZE,)
+    assert sample["action"].ndim == 0
+    batch = collate_samples([dataset[0], dataset[1]])
+    assert batch["action"].shape == (2,)
+    assert "policy" not in batch
     assert float(sample["value"]) == 1.0
 
 

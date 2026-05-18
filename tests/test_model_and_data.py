@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from alpha_chess.chess_env import ACTION_SIZE, NUM_INPUT_PLANES
-from alpha_chess.dataset import SelfPlayDataset
+from alpha_chess.dataset import SelfPlayDataset, collate_samples
 from alpha_chess.model import ChessNet, ChessNetConfig
 
 
@@ -27,3 +27,6 @@ def test_self_play_dataset_loads_npz(tmp_path) -> None:
     assert sample["board"].shape == (NUM_INPUT_PLANES, 8, 8)
     assert sample["policy"].shape == (ACTION_SIZE,)
     assert float(sample["value"]) == -1.0
+
+    batch = collate_samples([dataset[0], dataset[1]])
+    assert batch["policy"].shape == (2, ACTION_SIZE)
