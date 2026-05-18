@@ -40,7 +40,12 @@ copy_runtime_path() {
     exit 1
   fi
   mkdir -p "$RUNTIME_DIR/$(dirname "$path")"
-  rsync -a --delete "$WORKSPACE_ROOT/$path" "$RUNTIME_DIR/$path"
+  if [[ -d "$WORKSPACE_ROOT/$path" ]]; then
+    mkdir -p "$RUNTIME_DIR/$path"
+    rsync -a --delete "$WORKSPACE_ROOT/$path"/ "$RUNTIME_DIR/$path"/
+  else
+    rsync -a "$WORKSPACE_ROOT/$path" "$RUNTIME_DIR/$path"
+  fi
 }
 
 rsync -a --delete \
