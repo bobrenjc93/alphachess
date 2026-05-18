@@ -1,10 +1,12 @@
+import chess
 import numpy as np
 import pytest
 import torch
 
-from alpha_chess.chess_env import ACTION_SIZE, NUM_INPUT_PLANES
+from alpha_chess.chess_env import ACTION_SIZE, NUM_INPUT_PLANES, encode_board, move_to_action
 from alpha_chess.dataset import SelfPlayDataset, collate_samples
 from alpha_chess.model import ChessNet, ChessNetConfig
+from alpha_chess.train import _compute_batch_loss, _legal_action_mask_from_fens
 
 
 def test_model_forward_shapes() -> None:
@@ -57,6 +59,52 @@ def test_source_sample_weights_balance_input_paths(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="data_weights"):
         dataset.source_sample_weights([1.0])
+
+
+def test_dataset_collates_fens_for_legal_policy_loss(tmp_path) -> None:
+    board = chess.Board()
+    move = chess.Move.from_uci("e2e4")
+    np.savez_compressed(
+        tmp_path / "fen.npz",
+        boards=np.asarray([encode_board(board)], dtype=np.float32),
+        actions=np.asarray([move_to_action(move, board)], dtype=np.int64),
+        values=np.asarray([0.0], dtype=np.float32),
+        fens=np.asarray([board.fen()]),
+    )
+
+    dataset = SelfPlayDataset(tmp_path, in_memory=True)
+    sample = dataset[0]
+    batch = collate_samples([sample])
+
+    assert sample["fen"] == board.fen()
+    assert batch["fen"] == [board.fen()]
+
+
+def test_legal_policy_loss_masks_to_legal_actions() -> None:
+    board = chess.Board()
+    move = chess.Move.from_uci("e2e4")
+    action = move_to_action(move, board)
+    model = ChessNet(ChessNetConfig(channels=8, blocks=1))
+    batch = {
+        "board": torch.from_numpy(np.asarray([encode_board(board)], dtype=np.float32)),
+        "action": torch.tensor([action], dtype=torch.long),
+        "value": torch.zeros(1),
+        "fen": [board.fen()],
+    }
+
+    mask = _legal_action_mask_from_fens([board.fen()], torch.device("cpu"))
+    loss, parts = _compute_batch_loss(
+        model,
+        batch,
+        torch.device("cpu"),
+        value_weight=1.0,
+        legal_policy_loss=True,
+    )
+
+    assert int(mask.sum()) == 20
+    assert bool(mask[0, action])
+    assert loss.ndim == 0
+    assert "policy_acc" in parts
 
 
 def _write_sparse_npz(path, positions: int) -> None:

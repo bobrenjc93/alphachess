@@ -60,6 +60,7 @@ uv run alpha-chess import-pgn --pgn lichess_elite.pgn.zst --out data/expert/elit
 uv run alpha-chess train --data data/expert --out checkpoints/expert --epochs 4
 uv run alpha-chess train --data data/expert/elite data/teacher/tactics --out checkpoints/mixed --epochs 2
 uv run alpha-chess train --data data/expert/elite data/teacher/tactics data/puzzles/mate --data-weights 0.7 0.2 0.1 --out checkpoints/mixed
+uv run alpha-chess train --data data/expert/elite --out checkpoints/expert_legal --legal-policy-loss
 ```
 
 GPU pretraining from an imported expert dataset:
@@ -68,6 +69,7 @@ GPU pretraining from an imported expert dataset:
 DATA_DIR=data/expert/lichess_2013_01_10k OUT_DIR=checkpoints/expert_10k scripts/submit_gpu_expert_train.sh
 CHECKPOINT=checkpoints/expert_10k/latest.pt OUT_DIR=checkpoints/expert_10k_e2 scripts/submit_gpu_expert_train.sh
 DATA_DIR="data/expert/elite data/teacher/tactics data/puzzles/mate" DATA_WEIGHTS="0.7 0.2 0.1" OUT_DIR=checkpoints/mixed scripts/submit_gpu_expert_train.sh
+DATA_DIR=data/expert/elite LEGAL_POLICY_LOSS=1 OUT_DIR=checkpoints/expert_legal scripts/submit_gpu_expert_train.sh
 ```
 
 Generate Stockfish teacher labels from selected PGN positions:

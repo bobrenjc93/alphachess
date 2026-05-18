@@ -11,6 +11,8 @@ from torch.utils.data import Dataset
 
 from alpha_chess.chess_env import ACTION_SIZE
 
+Sample = dict[str, torch.Tensor | str]
+
 
 class SelfPlayDataset(Dataset):
     """Dataset backed by AlphaChess self-play NPZ files."""
@@ -45,7 +47,7 @@ class SelfPlayDataset(Dataset):
                 self.cache[path] = {
                     key: data[key]
                     for key in data.files
-                    if key in {"boards", "values", "policies", "actions"}
+                    if key in {"boards", "values", "policies", "actions", "fens"}
                 }
 
         self.cumsum = np.cumsum([0] + self.lengths)
@@ -96,7 +98,7 @@ class SelfPlayDataset(Dataset):
 
         return torch.as_tensor(sample_weights, dtype=torch.double)
 
-    def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
+    def __getitem__(self, index: int) -> Sample:
         if index < 0 or index >= len(self):
             raise IndexError(index)
         file_index = int(np.searchsorted(self.cumsum[1:], index, side="right"))
@@ -115,6 +117,8 @@ class SelfPlayDataset(Dataset):
             sample["policy"] = torch.from_numpy(data["policies"][local_index]).float()
         if "actions" in data:
             sample["action"] = torch.tensor(int(data["actions"][local_index]), dtype=torch.long)
+        if "fens" in data:
+            sample["fen"] = str(data["fens"][local_index])
         return sample
 
     def write_index(self, path: str | Path | None = None) -> Path:
@@ -134,7 +138,7 @@ class SelfPlayDataset(Dataset):
         return output
 
 
-def collate_samples(samples: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
+def collate_samples(samples: list[Sample]) -> dict[str, torch.Tensor | list[str]]:
     """Collate dense self-play policies or sparse expert action labels."""
 
     batch = {
@@ -160,5 +164,8 @@ def collate_samples(samples: list[dict[str, torch.Tensor]]) -> dict[str, torch.T
         batch["action"] = torch.stack([sample["action"] for sample in samples])
     else:
         raise KeyError("Batch has neither policies nor actions")
+
+    if all("fen" in sample for sample in samples):
+        batch["fen"] = [str(sample["fen"]) for sample in samples]
 
     return batch

@@ -6,6 +6,7 @@ GPUS="${GPUS:-1}"
 HOURS="${HOURS:-4}"
 DATA_DIR="${DATA_DIR:-data/expert/lichess_2013_01_10k}"
 DATA_WEIGHTS="${DATA_WEIGHTS:-}"
+LEGAL_POLICY_LOSS="${LEGAL_POLICY_LOSS:-0}"
 OUT_DIR="${OUT_DIR:-checkpoints/expert_$(date +%Y%m%d_%H%M%S)}"
 CHECKPOINT="${CHECKPOINT:-}"
 EPOCHS="${EPOCHS:-1}"
@@ -22,6 +23,10 @@ DATA_WEIGHTS_ARG=""
 if [[ -n "$DATA_WEIGHTS" ]]; then
   DATA_WEIGHTS_ARG="--data-weights $DATA_WEIGHTS"
 fi
+LEGAL_POLICY_LOSS_ARG=""
+if [[ "$LEGAL_POLICY_LOSS" == "1" || "$LEGAL_POLICY_LOSS" == "true" ]]; then
+  LEGAL_POLICY_LOSS_ARG="--legal-policy-loss"
+fi
 
 gpu-dev submit \
   --gpu-type "$GPU_TYPE" \
@@ -36,6 +41,7 @@ gpu-dev submit \
     uv run alpha-chess train \
       --data $DATA_DIR \
       $DATA_WEIGHTS_ARG \
+      $LEGAL_POLICY_LOSS_ARG \
       --out $OUT_DIR \
       $CHECKPOINT_ARG \
       --epochs $EPOCHS \

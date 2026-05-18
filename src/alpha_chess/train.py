@@ -5,9 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import chess
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, Subset, WeightedRandomSampler, random_split
 
+from alpha_chess.chess_env import ACTION_SIZE, legal_actions
 from alpha_chess.dataset import SelfPlayDataset, collate_samples
 from alpha_chess.model import ChessNet, ChessNetConfig, load_checkpoint, save_checkpoint
 
@@ -23,6 +26,7 @@ class TrainConfig:
     weight_decay: float = 1e-4
     value_weight: float = 1.0
     data_weights: list[float] | None = None
+    legal_policy_loss: bool = False
     channels: int = 128
     blocks: int = 6
     seed: int = 0
@@ -88,7 +92,13 @@ def train(config: TrainConfig) -> Path:
         model.train()
         running_loss = 0.0
         for batch in loader:
-            loss, parts = _compute_batch_loss(model, batch, device, config.value_weight)
+            loss, parts = _compute_batch_loss(
+                model,
+                batch,
+                device,
+                config.value_weight,
+                legal_policy_loss=config.legal_policy_loss,
+            )
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
@@ -104,7 +114,15 @@ def train(config: TrainConfig) -> Path:
 
         latest_metrics["epoch_loss"] = running_loss / max(1, len(loader))
         if val_loader is not None:
-            latest_metrics.update(_evaluate_loss(model, val_loader, device, config.value_weight))
+            latest_metrics.update(
+                _evaluate_loss(
+                    model,
+                    val_loader,
+                    device,
+                    config.value_weight,
+                    legal_policy_loss=config.legal_policy_loss,
+                )
+            )
 
         save_checkpoint(out_dir / f"epoch_{epoch + 1:04d}.pt", model, optimizer, step, latest_metrics)
         save_checkpoint(out_dir / "latest.pt", model, optimizer, step, latest_metrics)
@@ -141,6 +159,7 @@ def _evaluate_loss(
     loader: DataLoader,
     device: torch.device,
     value_weight: float,
+    legal_policy_loss: bool = False,
 ) -> dict[str, float]:
     model.eval()
     losses: list[float] = []
@@ -148,7 +167,13 @@ def _evaluate_loss(
     policy_accs: list[float] = []
     value_losses: list[float] = []
     for batch in loader:
-        loss, parts = _compute_batch_loss(model, batch, device, value_weight)
+        loss, parts = _compute_batch_loss(
+            model,
+            batch,
+            device,
+            value_weight,
+            legal_policy_loss=legal_policy_loss,
+        )
         losses.append(float(loss.item()))
         policy_losses.append(float(parts["policy_loss"].item()))
         policy_accs.append(float(parts["policy_acc"].item()))
@@ -163,12 +188,82 @@ def _evaluate_loss(
 
 def _compute_batch_loss(
     model: ChessNet,
-    batch: dict[str, torch.Tensor],
+    batch: dict[str, torch.Tensor | list[str]],
+    device: torch.device,
+    value_weight: float,
+    legal_policy_loss: bool = False,
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    boards = _batch_tensor(batch, "board").to(device)
+    values = _batch_tensor(batch, "value").to(device)
+    if legal_policy_loss:
+        return _compute_legal_masked_loss(model, batch, boards, values, device, value_weight)
+    if "policy" in batch:
+        return model.compute_loss(
+            boards,
+            _batch_tensor(batch, "policy").to(device),
+            values,
+            value_weight,
+        )
+    return model.compute_loss_from_actions(
+        boards,
+        _batch_tensor(batch, "action").to(device),
+        values,
+        value_weight,
+    )
+
+
+def _compute_legal_masked_loss(
+    model: ChessNet,
+    batch: dict[str, torch.Tensor | list[str]],
+    boards: torch.Tensor,
+    values: torch.Tensor,
     device: torch.device,
     value_weight: float,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
-    boards = batch["board"].to(device)
-    values = batch["value"].to(device)
+    if "fen" not in batch:
+        raise ValueError("legal_policy_loss requires training NPZ files with stored FENs")
+    fens = batch["fen"]
+    if not isinstance(fens, list):
+        raise TypeError("Batch FENs must be a list of strings")
+
+    policy_logits, value = model(boards)
+    legal_mask = _legal_action_mask_from_fens(fens, device)
+    masked_logits = policy_logits.masked_fill(~legal_mask, -1e9)
+
     if "policy" in batch:
-        return model.compute_loss(boards, batch["policy"].to(device), values, value_weight)
-    return model.compute_loss_from_actions(boards, batch["action"].to(device), values, value_weight)
+        target_policy = _batch_tensor(batch, "policy").to(device)
+        log_probs = F.log_softmax(masked_logits, dim=-1)
+        policy_loss = -(target_policy * log_probs).sum(dim=-1).mean()
+        target_action = target_policy.argmax(dim=-1)
+    else:
+        target_action = _batch_tensor(batch, "action").to(device).long()
+        policy_loss = F.cross_entropy(masked_logits, target_action)
+
+    target_is_legal = legal_mask.gather(1, target_action.unsqueeze(1)).squeeze(1)
+    if not bool(target_is_legal.all().item()):
+        raise ValueError("legal_policy_loss received a target action that is illegal for its FEN")
+
+    policy_acc = (masked_logits.argmax(dim=-1) == target_action).float().mean()
+    value_loss = F.mse_loss(value, values)
+    loss = policy_loss + value_weight * value_loss
+    return loss, {
+        "policy_loss": policy_loss.detach(),
+        "policy_acc": policy_acc.detach(),
+        "value_loss": value_loss.detach(),
+    }
+
+
+def _legal_action_mask_from_fens(fens: list[str], device: torch.device) -> torch.Tensor:
+    mask = torch.zeros((len(fens), ACTION_SIZE), dtype=torch.bool, device=device)
+    for row, fen in enumerate(fens):
+        actions = legal_actions(chess.Board(fen))
+        if actions:
+            mask[row, torch.as_tensor(actions, dtype=torch.long, device=device)] = True
+    return mask
+
+
+def _batch_tensor(batch: dict[str, torch.Tensor | list[str]], key: str) -> torch.Tensor:
+    value = batch[key]
+    if not isinstance(value, torch.Tensor):
+        raise TypeError(f"Batch field {key} must be a tensor")
+    return value
