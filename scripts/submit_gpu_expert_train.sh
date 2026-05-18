@@ -6,12 +6,17 @@ GPUS="${GPUS:-1}"
 HOURS="${HOURS:-4}"
 DATA_DIR="${DATA_DIR:-data/expert/lichess_2013_01_10k}"
 OUT_DIR="${OUT_DIR:-checkpoints/expert_$(date +%Y%m%d_%H%M%S)}"
+CHECKPOINT="${CHECKPOINT:-}"
 EPOCHS="${EPOCHS:-1}"
 BATCH_SIZE="${BATCH_SIZE:-256}"
 CHANNELS="${CHANNELS:-128}"
 BLOCKS="${BLOCKS:-6}"
 LR="${LR:-0.001}"
 RUN_NAME="${RUN_NAME:-expert-train-$(date +%Y%m%d-%H%M%S)}"
+CHECKPOINT_ARG=""
+if [[ -n "$CHECKPOINT" ]]; then
+  CHECKPOINT_ARG="--checkpoint $CHECKPOINT"
+fi
 
 gpu-dev submit \
   --gpu-type "$GPU_TYPE" \
@@ -26,6 +31,7 @@ gpu-dev submit \
     uv run alpha-chess train \
       --data $DATA_DIR \
       --out $OUT_DIR \
+      $CHECKPOINT_ARG \
       --epochs $EPOCHS \
       --batch-size $BATCH_SIZE \
       --channels $CHANNELS \

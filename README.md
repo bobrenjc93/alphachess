@@ -61,6 +61,7 @@ GPU pretraining from an imported expert dataset:
 
 ```bash
 DATA_DIR=data/expert/lichess_2013_01_10k OUT_DIR=checkpoints/expert_10k scripts/submit_gpu_expert_train.sh
+CHECKPOINT=checkpoints/expert_10k/latest.pt OUT_DIR=checkpoints/expert_10k_e2 scripts/submit_gpu_expert_train.sh
 ```
 
 ## GPU Training
