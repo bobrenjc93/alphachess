@@ -95,6 +95,7 @@ def train(config: TrainConfig) -> Path:
             latest_metrics = {
                 "loss": float(loss.item()),
                 "policy_loss": float(parts["policy_loss"].item()),
+                "policy_acc": float(parts["policy_acc"].item()),
                 "value_loss": float(parts["value_loss"].item()),
             }
 
@@ -118,15 +119,18 @@ def _evaluate_loss(
     model.eval()
     losses: list[float] = []
     policy_losses: list[float] = []
+    policy_accs: list[float] = []
     value_losses: list[float] = []
     for batch in loader:
         loss, parts = _compute_batch_loss(model, batch, device, value_weight)
         losses.append(float(loss.item()))
         policy_losses.append(float(parts["policy_loss"].item()))
+        policy_accs.append(float(parts["policy_acc"].item()))
         value_losses.append(float(parts["value_loss"].item()))
     return {
         "val_loss": sum(losses) / max(1, len(losses)),
         "val_policy_loss": sum(policy_losses) / max(1, len(policy_losses)),
+        "val_policy_acc": sum(policy_accs) / max(1, len(policy_accs)),
         "val_value_loss": sum(value_losses) / max(1, len(value_losses)),
     }
 

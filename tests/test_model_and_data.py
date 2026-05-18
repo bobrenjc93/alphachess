@@ -13,6 +13,12 @@ def test_model_forward_shapes() -> None:
     assert policy.shape == (2, ACTION_SIZE)
     assert value.shape == (2,)
 
+    actions = torch.zeros(2, dtype=torch.long)
+    values = torch.zeros(2)
+    loss, parts = model.compute_loss_from_actions(boards, actions, values)
+    assert loss.ndim == 0
+    assert "policy_acc" in parts
+
 
 def test_self_play_dataset_loads_npz(tmp_path) -> None:
     boards = np.zeros((3, NUM_INPUT_PLANES, 8, 8), dtype=np.float32)

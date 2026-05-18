@@ -95,9 +95,15 @@ class ChessNet(nn.Module):
         policy_logits, value = self.forward(board_bchw)
         log_probs = F.log_softmax(policy_logits, dim=-1)
         policy_loss = -(target_policy_ba * log_probs).sum(dim=-1).mean()
+        target_action = target_policy_ba.argmax(dim=-1)
+        policy_acc = (policy_logits.argmax(dim=-1) == target_action).float().mean()
         value_loss = F.mse_loss(value, target_value_b)
         loss = policy_loss + value_weight * value_loss
-        return loss, {"policy_loss": policy_loss.detach(), "value_loss": value_loss.detach()}
+        return loss, {
+            "policy_loss": policy_loss.detach(),
+            "policy_acc": policy_acc.detach(),
+            "value_loss": value_loss.detach(),
+        }
 
     def compute_loss_from_actions(
         self,
@@ -108,9 +114,14 @@ class ChessNet(nn.Module):
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         policy_logits, value = self.forward(board_bchw)
         policy_loss = F.cross_entropy(policy_logits, target_action_b.long())
+        policy_acc = (policy_logits.argmax(dim=-1) == target_action_b.long()).float().mean()
         value_loss = F.mse_loss(value, target_value_b)
         loss = policy_loss + value_weight * value_loss
-        return loss, {"policy_loss": policy_loss.detach(), "value_loss": value_loss.detach()}
+        return loss, {
+            "policy_loss": policy_loss.detach(),
+            "policy_acc": policy_acc.detach(),
+            "value_loss": value_loss.detach(),
+        }
 
 
 def save_checkpoint(
