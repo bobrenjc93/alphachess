@@ -13,6 +13,7 @@ from alpha_chess.iteration import IterationConfig, run_iterations
 from alpha_chess.pgn_import import PGNImportConfig, import_pgn
 from alpha_chess.self_play import SelfPlayConfig, generate_self_play
 from alpha_chess.train import TrainConfig, train
+from alpha_chess.uci import UCIConfig, run_uci
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -82,6 +83,11 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--seed", type=int, default=0)
     iterate_parser.add_argument("--device", default="auto")
 
+    uci_parser = subparsers.add_parser("uci", help="serve a checkpoint through UCI")
+    uci_parser.add_argument("--checkpoint", required=True)
+    uci_parser.add_argument("--simulations", type=int, default=64)
+    uci_parser.add_argument("--device", default="auto")
+
     args = parser.parse_args(argv)
 
     if args.command == "self-play":
@@ -122,6 +128,10 @@ def main(argv: list[str] | None = None) -> None:
         config = IterationConfig(**kwargs)
         league = run_iterations(config)
         print({"league": str(league), "config": asdict(config)})
+    elif args.command == "uci":
+        kwargs = vars(args).copy()
+        kwargs.pop("command", None)
+        run_uci(UCIConfig(**kwargs))
 
 
 if __name__ == "__main__":
