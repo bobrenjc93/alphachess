@@ -116,9 +116,72 @@ pgn=reports/focus_selfplay_replay_lowlr2_s64_vs_stockfish.pgn
 The 64-simulation loss dropped material in the opening after `4. Bc4 Nxe4`
 and was mated on move 23.
 
+## Iteration 2
+
+Continued the same league for one more iteration from the promoted iteration-1
+checkpoint.
+
+- Candidate checkpoint: `experiments/focus-selfplay-replay-lowlr2/checkpoints/iter_0002/latest.pt`
+- Runner: `gpu-dev submit`, reservation `a5de3fe8`, 1x L4
+- Self-play: 16 additional games, 32 simulations, 160 max plies
+- Training: 1 epoch, batch size 128, learning rate `0.0001`
+
+Promotion gate against iteration 1:
+
+```text
+score=2.0/4
+wins=0
+draws=4
+losses=0
+score_rate=0.50
+promoted=true
+```
+
+Final checkpoint training metrics:
+
+```text
+loss=1.6504
+policy_loss=1.6025
+policy_acc=0.5663
+value_loss=0.0479
+epoch_loss=1.6527
+val_loss=2.7057
+val_policy_loss=2.4977
+val_policy_acc=0.3612
+val_value_loss=0.2080
+```
+
+Diagnostic validation:
+
+```text
+val_policy_acc=0.3492
+val_source_0_policy_acc=0.5371  # Stockfish MultiPV 4096
+val_source_1_policy_acc=0.3335  # all puzzles 50k
+val_source_2_policy_acc=1.0000  # AlphaChess loss replay
+```
+
+Evaluation:
+
+```text
+uniform: score=3.0/4, wins=2, draws=2, losses=0
+stockfish 16 sims: score=0.0/2, wins=0, draws=0, losses=2
+stockfish 64 sims: score=0.0/1, wins=0, draws=0, losses=1
+```
+
+PGNs:
+
+```text
+reports/focus_selfplay_replay_lowlr2_iter2_vs_stockfish_16sims.pgn
+reports/focus_selfplay_replay_lowlr2_iter2_s64_vs_stockfish.pgn
+```
+
+Iteration 2 improved the fixed Stockfish MultiPV diagnostic again but did not
+improve practical play against Stockfish, and it became less decisive against
+the uniform baseline.
+
 ## Conclusion
 
-This is the first replay-mixed self-play candidate in this sequence to promote
-against the prior best checkpoint while improving the fixed Stockfish MultiPV
-diagnostic. It is still far below the Stockfish gate and should be treated as a
-better training base, not as a solved model.
+Replay-mixed low-learning-rate iteration is now improving the fixed Stockfish
+MultiPV diagnostic and can promote within the local checkpoint league, but it is
+still far below the Stockfish gate. Iteration 2 is the data-diagnostic leader;
+iteration 1 is the safer play checkpoint. Neither is a solved model.
