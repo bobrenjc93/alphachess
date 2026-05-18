@@ -25,6 +25,7 @@ class StockfishTeacherConfig:
     max_positions: int = 1024
     min_elo: int | None = None
     min_initial_seconds: int | None = None
+    min_value_delta: float | None = None
     position_stride: int = 4
     chunk_size: int = 1024
 
@@ -45,6 +46,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     boards: list[np.ndarray] = []
     actions: list[int] = []
     values: list[float] = []
+    value_deltas: list[float] = []
     fens: list[str] = []
     best_moves: list[str] = []
     written: list[Path] = []
@@ -82,9 +84,23 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                         if best_move in board.legal_moves:
                             score = info.get("score")
                             value = _score_to_value(score, board.turn)
+                            value_delta = 0.0
+                            if config.min_value_delta is not None:
+                                after_board = board.copy(stack=False)
+                                after_board.push(move)
+                                after_info = engine.analyse(after_board, limit)
+                                value_delta = _value_drop_after_move(
+                                    best_value=value,
+                                    after_score=after_info.get("score"),
+                                    after_turn=after_board.turn,
+                                )
+                                if value_delta < config.min_value_delta:
+                                    board.push(move)
+                                    continue
                             boards.append(encode_board(board))
                             actions.append(move_to_action(best_move, board))
                             values.append(value)
+                            value_deltas.append(value_delta)
                             fens.append(board.fen())
                             best_moves.append(best_move.uci())
                             positions += 1
@@ -97,12 +113,14 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                     boards,
                                     actions,
                                     values,
+                                    value_deltas,
                                     fens,
                                     best_moves,
                                     source=str(pgn_path),
                                 )
                                 written.append(path)
-                                boards, actions, values, fens, best_moves = [], [], [], [], []
+                                boards, actions, values = [], [], []
+                                value_deltas, fens, best_moves = [], [], []
                     board.push(move)
                 if used_this_game:
                     games_used += 1
@@ -115,6 +133,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 boards,
                 actions,
                 values,
+                value_deltas,
                 fens,
                 best_moves,
                 source=str(pgn_path),
@@ -133,6 +152,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"games_used={games_used}",
                 f"positions={positions}",
                 f"files={len(written)}",
+                f"min_value_delta={config.min_value_delta}",
                 f"config={asdict(config)}",
             ]
         )
@@ -151,12 +171,24 @@ def _score_to_value(score: chess.engine.PovScore | None, turn: chess.Color) -> f
     return float(np.tanh(centipawns / 600.0))
 
 
+def _value_drop_after_move(
+    best_value: float,
+    after_score: chess.engine.PovScore | None,
+    after_turn: chess.Color,
+) -> float:
+    # after_score is from the opponent-to-move side after the game move.
+    # Negating maps it back to the original side-to-move perspective.
+    original_value_after_game_move = -_score_to_value(after_score, after_turn)
+    return best_value - original_value_after_game_move
+
+
 def _write_teacher_chunk(
     out_dir: Path,
     chunk_index: int,
     boards: list[np.ndarray],
     actions: list[int],
     values: list[float],
+    value_deltas: list[float],
     fens: list[str],
     best_moves: list[str],
     source: str,
@@ -167,6 +199,7 @@ def _write_teacher_chunk(
         boards=np.asarray(boards, dtype=np.float32),
         actions=np.asarray(actions, dtype=np.int64),
         values=np.asarray(values, dtype=np.float32),
+        value_deltas=np.asarray(value_deltas, dtype=np.float32),
         fens=np.asarray(fens),
         moves=np.asarray(best_moves),
         source=np.asarray(source),

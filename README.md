@@ -76,7 +76,8 @@ uv run alpha-chess stockfish-teacher \
   --engine-path tools/stockfish/bin/stockfish \
   --max-positions 1024 \
   --min-elo 1800 \
-  --min-initial-seconds 180
+  --min-initial-seconds 180 \
+  --min-value-delta 0.25
 ```
 
 ## GPU Training
