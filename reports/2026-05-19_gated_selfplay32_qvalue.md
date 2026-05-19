@@ -109,3 +109,12 @@ Fixed validation:
 | `alpha_loss_gamelines_recent_v1` | `0.2442` |
 
 The lower self-play mix produced a candidate that beat the qvalue parent and improved broad Stockfish policy accuracy, but the Stockfish promotion gate correctly rejected it. Direct play remains the limiting signal.
+
+Additional inference-only check:
+
+- `root_mate_search_plies=5`
+- 16 simulations, 2 Stockfish games
+- score: `0.0/2`
+- PGN: `reports/gated_selfplay32_qvalue_iter2_rootmate5_stockfish_16sims.pgn`
+
+Deepening the existing root mate filter did not recover the direct-play gate.
