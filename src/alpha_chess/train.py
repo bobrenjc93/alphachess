@@ -25,6 +25,8 @@ class TrainConfig:
     lr: float = 1e-3
     weight_decay: float = 1e-4
     value_weight: float = 1.0
+    bad_action_weight: float = 0.0
+    bad_action_margin: float = 1.0
     data_weights: list[float] | None = None
     legal_policy_loss: bool = False
     channels: int = 128
@@ -39,6 +41,8 @@ class ValidateConfig:
     data: str | list[str]
     batch_size: int = 256
     value_weight: float = 1.0
+    bad_action_weight: float = 0.0
+    bad_action_margin: float = 1.0
     legal_policy_loss: bool = False
     device: str = "auto"
 
@@ -108,6 +112,8 @@ def train(config: TrainConfig) -> Path:
                 device,
                 config.value_weight,
                 legal_policy_loss=config.legal_policy_loss,
+                bad_action_weight=config.bad_action_weight,
+                bad_action_margin=config.bad_action_margin,
             )
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -121,6 +127,8 @@ def train(config: TrainConfig) -> Path:
                 "policy_acc": float(parts["policy_acc"].item()),
                 "value_loss": float(parts["value_loss"].item()),
             }
+            if "bad_action_loss" in parts:
+                latest_metrics["bad_action_loss"] = float(parts["bad_action_loss"].item())
 
         latest_metrics["epoch_loss"] = running_loss / max(1, len(loader))
         if val_loader is not None:
@@ -131,6 +139,8 @@ def train(config: TrainConfig) -> Path:
                     device,
                     config.value_weight,
                     legal_policy_loss=config.legal_policy_loss,
+                    bad_action_weight=config.bad_action_weight,
+                    bad_action_margin=config.bad_action_margin,
                     source_names=dataset.source_names if len(dataset.source_names) > 1 else None,
                 )
             )
@@ -160,6 +170,8 @@ def validate(config: ValidateConfig) -> dict[str, float]:
         device,
         config.value_weight,
         legal_policy_loss=config.legal_policy_loss,
+        bad_action_weight=config.bad_action_weight,
+        bad_action_margin=config.bad_action_margin,
         source_names=dataset.source_names if len(dataset.source_names) > 1 else None,
     )
 
@@ -194,6 +206,8 @@ def _evaluate_loss(
     device: torch.device,
     value_weight: float,
     legal_policy_loss: bool = False,
+    bad_action_weight: float = 0.0,
+    bad_action_margin: float = 1.0,
     source_names: list[str] | None = None,
 ) -> dict[str, float]:
     model.eval()
@@ -210,6 +224,8 @@ def _evaluate_loss(
             device,
             value_weight,
             legal_policy_loss=legal_policy_loss,
+            bad_action_weight=bad_action_weight,
+            bad_action_margin=bad_action_margin,
         )
         _add_eval_totals(totals, _batch_size(batch), loss, parts)
 
@@ -227,6 +243,8 @@ def _evaluate_loss(
                     device,
                     value_weight,
                     legal_policy_loss=legal_policy_loss,
+                    bad_action_weight=bad_action_weight,
+                    bad_action_margin=bad_action_margin,
                 )
                 _add_eval_totals(
                     source_totals[source_id],
@@ -248,6 +266,7 @@ def _new_eval_totals() -> dict[str, float]:
         "policy_loss": 0.0,
         "policy_acc": 0.0,
         "value_loss": 0.0,
+        "bad_action_loss": 0.0,
     }
 
 
@@ -262,6 +281,8 @@ def _add_eval_totals(
     totals["policy_loss"] += float(parts["policy_loss"].item()) * examples
     totals["policy_acc"] += float(parts["policy_acc"].item()) * examples
     totals["value_loss"] += float(parts["value_loss"].item()) * examples
+    if "bad_action_loss" in parts:
+        totals["bad_action_loss"] += float(parts["bad_action_loss"].item()) * examples
 
 
 def _finalize_eval_totals(prefix: str, totals: dict[str, float]) -> dict[str, float]:
@@ -273,6 +294,7 @@ def _finalize_eval_totals(prefix: str, totals: dict[str, float]) -> dict[str, fl
         f"{prefix}_policy_loss": totals["policy_loss"] / examples,
         f"{prefix}_policy_acc": totals["policy_acc"] / examples,
         f"{prefix}_value_loss": totals["value_loss"] / examples,
+        f"{prefix}_bad_action_loss": totals["bad_action_loss"] / examples,
         f"{prefix}_examples": examples,
     }
 
@@ -283,11 +305,33 @@ def _compute_batch_loss(
     device: torch.device,
     value_weight: float,
     legal_policy_loss: bool = False,
+    bad_action_weight: float = 0.0,
+    bad_action_margin: float = 1.0,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     boards = _batch_tensor(batch, "board").to(device)
     values = _batch_tensor(batch, "value").to(device)
     if legal_policy_loss:
-        return _compute_legal_masked_loss(model, batch, boards, values, device, value_weight)
+        return _compute_legal_masked_loss(
+            model,
+            batch,
+            boards,
+            values,
+            device,
+            value_weight,
+            bad_action_weight,
+            bad_action_margin,
+        )
+    if bad_action_weight > 0 and "bad_action" in batch:
+        return _compute_unmasked_loss(
+            model,
+            batch,
+            boards,
+            values,
+            device,
+            value_weight,
+            bad_action_weight,
+            bad_action_margin,
+        )
     if "policy" in batch:
         return model.compute_loss(
             boards,
@@ -310,6 +354,8 @@ def _compute_legal_masked_loss(
     values: torch.Tensor,
     device: torch.device,
     value_weight: float,
+    bad_action_weight: float = 0.0,
+    bad_action_margin: float = 1.0,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     if "fen" not in batch:
         raise ValueError("legal_policy_loss requires training NPZ files with stored FENs")
@@ -336,12 +382,80 @@ def _compute_legal_masked_loss(
 
     policy_acc = (masked_logits.argmax(dim=-1) == target_action).float().mean()
     value_loss = F.mse_loss(value, values)
-    loss = policy_loss + value_weight * value_loss
-    return loss, {
+    bad_action_loss = _bad_action_margin_loss(
+        masked_logits,
+        target_action,
+        batch,
+        device,
+        margin=bad_action_margin,
+    )
+    loss = policy_loss + value_weight * value_loss + bad_action_weight * bad_action_loss
+    parts = {
         "policy_loss": policy_loss.detach(),
         "policy_acc": policy_acc.detach(),
         "value_loss": value_loss.detach(),
     }
+    if bad_action_weight > 0 and "bad_action" in batch:
+        parts["bad_action_loss"] = bad_action_loss.detach()
+    return loss, parts
+
+
+def _compute_unmasked_loss(
+    model: ChessNet,
+    batch: dict[str, torch.Tensor | list[str]],
+    boards: torch.Tensor,
+    values: torch.Tensor,
+    device: torch.device,
+    value_weight: float,
+    bad_action_weight: float,
+    bad_action_margin: float,
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    policy_logits, value = model(boards)
+    if "policy" in batch:
+        target_policy = _batch_tensor(batch, "policy").to(device)
+        log_probs = F.log_softmax(policy_logits, dim=-1)
+        policy_loss = -(target_policy * log_probs).sum(dim=-1).mean()
+        target_action = target_policy.argmax(dim=-1)
+    else:
+        target_action = _batch_tensor(batch, "action").to(device).long()
+        policy_loss = F.cross_entropy(policy_logits, target_action)
+
+    policy_acc = (policy_logits.argmax(dim=-1) == target_action).float().mean()
+    value_loss = F.mse_loss(value, values)
+    bad_action_loss = _bad_action_margin_loss(
+        policy_logits,
+        target_action,
+        batch,
+        device,
+        margin=bad_action_margin,
+    )
+    loss = policy_loss + value_weight * value_loss + bad_action_weight * bad_action_loss
+    return loss, {
+        "policy_loss": policy_loss.detach(),
+        "policy_acc": policy_acc.detach(),
+        "value_loss": value_loss.detach(),
+        "bad_action_loss": bad_action_loss.detach(),
+    }
+
+
+def _bad_action_margin_loss(
+    policy_logits: torch.Tensor,
+    target_action: torch.Tensor,
+    batch: dict[str, torch.Tensor | list[str]],
+    device: torch.device,
+    margin: float,
+) -> torch.Tensor:
+    if "bad_action" not in batch:
+        return policy_logits.new_zeros(())
+
+    bad_action = _batch_tensor(batch, "bad_action").to(device).long()
+    valid = (bad_action >= 0) & (bad_action != target_action)
+    if not bool(valid.any().item()):
+        return policy_logits.new_zeros(())
+
+    target_logits = policy_logits.gather(1, target_action.unsqueeze(1)).squeeze(1)
+    bad_logits = policy_logits.gather(1, bad_action.clamp_min(0).unsqueeze(1)).squeeze(1)
+    return F.softplus(bad_logits[valid] - target_logits[valid] + margin).mean()
 
 
 def _legal_action_mask_from_fens(fens: list[str], device: torch.device) -> torch.Tensor:

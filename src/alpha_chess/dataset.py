@@ -47,7 +47,15 @@ class SelfPlayDataset(Dataset):
                 self.cache[path] = {
                     key: data[key]
                     for key in data.files
-                    if key in {"boards", "values", "policies", "actions", "fens"}
+                    if key
+                    in {
+                        "boards",
+                        "values",
+                        "policies",
+                        "actions",
+                        "fens",
+                        "bad_actions",
+                    }
                 }
 
         self.cumsum = np.cumsum([0] + self.lengths)
@@ -120,6 +128,10 @@ class SelfPlayDataset(Dataset):
             sample["action"] = torch.tensor(int(data["actions"][local_index]), dtype=torch.long)
         if "fens" in data:
             sample["fen"] = str(data["fens"][local_index])
+        if "bad_actions" in data:
+            sample["bad_action"] = torch.tensor(
+                int(data["bad_actions"][local_index]), dtype=torch.long
+            )
         return sample
 
     def write_index(self, path: str | Path | None = None) -> Path:
@@ -169,5 +181,15 @@ def collate_samples(samples: list[Sample]) -> dict[str, torch.Tensor | list[str]
 
     if all("fen" in sample for sample in samples):
         batch["fen"] = [str(sample["fen"]) for sample in samples]
+
+    if any("bad_action" in sample for sample in samples):
+        batch["bad_action"] = torch.stack(
+            [
+                sample["bad_action"]
+                if "bad_action" in sample
+                else torch.tensor(-1, dtype=torch.long)
+                for sample in samples
+            ]
+        )
 
     return batch

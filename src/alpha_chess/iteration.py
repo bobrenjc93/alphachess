@@ -35,6 +35,8 @@ class IterationConfig:
     blocks: int = 6
     lr: float = 1e-3
     value_weight: float = 1.0
+    bad_action_weight: float = 0.0
+    bad_action_margin: float = 1.0
     legal_policy_loss: bool = False
     material_value_weight: float = 0.0
     material_value_search_plies: int = 0
@@ -123,6 +125,8 @@ def run_iterations(config: IterationConfig) -> Path:
                 batch_size=config.batch_size,
                 lr=config.lr,
                 value_weight=config.value_weight,
+                bad_action_weight=config.bad_action_weight,
+                bad_action_margin=config.bad_action_margin,
                 data_weights=data_weights,
                 legal_policy_loss=config.legal_policy_loss,
                 channels=config.channels,

@@ -113,6 +113,21 @@ uv run alpha-chess stockfish-teacher \
   --game-line-plies 2
 ```
 
+When `stockfish-teacher` is run with `--min-value-delta`, it also stores the
+played PGN move as `bad_actions` when that move differs from Stockfish's target
+move. Training can use those negative labels with a margin loss:
+
+```bash
+uv run alpha-chess train \
+  --checkpoint checkpoints/current/latest.pt \
+  --data data/teacher/stockfish_sample data/teacher/alpha_loss_blunders \
+  --data-weights 0.8 0.2 \
+  --legal-policy-loss \
+  --bad-action-weight 0.25 \
+  --bad-action-margin 1.0 \
+  --out checkpoints/bad_action_repair
+```
+
 Import Lichess puzzle CSV tactics:
 
 ```bash

@@ -18,6 +18,8 @@ CHANNELS="${CHANNELS:-128}"
 BLOCKS="${BLOCKS:-6}"
 LR="${LR:-0.001}"
 VALUE_WEIGHT="${VALUE_WEIGHT:-1.0}"
+BAD_ACTION_WEIGHT="${BAD_ACTION_WEIGHT:-0.0}"
+BAD_ACTION_MARGIN="${BAD_ACTION_MARGIN:-1.0}"
 LEGAL_POLICY_LOSS="${LEGAL_POLICY_LOSS:-0}"
 MATERIAL_VALUE_WEIGHT="${MATERIAL_VALUE_WEIGHT:-0.0}"
 MATERIAL_VALUE_SEARCH_PLIES="${MATERIAL_VALUE_SEARCH_PLIES:-0}"
@@ -144,6 +146,8 @@ gpu-dev submit \
       --blocks $BLOCKS \
       --lr $LR \
       --value-weight $VALUE_WEIGHT \
+      --bad-action-weight $BAD_ACTION_WEIGHT \
+      --bad-action-margin $BAD_ACTION_MARGIN \
       --material-value-weight $MATERIAL_VALUE_WEIGHT \
       --material-value-search-plies $MATERIAL_VALUE_SEARCH_PLIES \
       --root-mate-search-plies $ROOT_MATE_SEARCH_PLIES \

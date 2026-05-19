@@ -50,6 +50,8 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     value_deltas: list[float] = []
     fens: list[str] = []
     best_moves: list[str] = []
+    bad_actions: list[int] = []
+    played_moves: list[str] = []
     written: list[Path] = []
     games_seen = 0
     games_used = 0
@@ -57,6 +59,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
 
     def flush_chunk(source: str) -> None:
         nonlocal boards, actions, policies, values, value_deltas, fens, best_moves
+        nonlocal bad_actions, played_moves
         if not boards:
             return
         written.append(
@@ -69,12 +72,15 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 value_deltas,
                 fens,
                 best_moves,
+                bad_actions,
+                played_moves,
                 source=source,
                 policies=policies if policies else None,
             )
         )
         boards, actions, policies, values = [], [], [], []
         value_deltas, fens, best_moves = [], [], []
+        bad_actions, played_moves = [], []
 
     def append_teacher_sample(
         source: str,
@@ -83,6 +89,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
         best_move: chess.Move,
         value: float,
         value_delta: float,
+        bad_move: chess.Move | None = None,
     ) -> None:
         nonlocal positions
         boards.append(encode_board(sample_board))
@@ -100,6 +107,12 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
         value_deltas.append(value_delta)
         fens.append(sample_board.fen())
         best_moves.append(best_move.uci())
+        if bad_move is not None and bad_move in sample_board.legal_moves and bad_move != best_move:
+            bad_actions.append(move_to_action(bad_move, sample_board))
+            played_moves.append(bad_move.uci())
+        else:
+            bad_actions.append(-1)
+            played_moves.append("")
         positions += 1
         if len(boards) >= config.chunk_size:
             flush_chunk(source)
@@ -232,6 +245,12 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                     if value_delta < config.min_value_delta:
                                         board.push(move)
                                         continue
+                                bad_move = (
+                                    move
+                                    if config.min_value_delta is not None
+                                    and value_delta > 0.0
+                                    else None
+                                )
                                 append_teacher_sample(
                                     source,
                                     board,
@@ -239,6 +258,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                     best_move,
                                     value,
                                     value_delta,
+                                    bad_move=bad_move,
                                 )
                                 if positions < config.max_positions:
                                     append_pv_line_samples(source, board, infos)
@@ -401,6 +421,8 @@ def _write_teacher_chunk(
     value_deltas: list[float],
     fens: list[str],
     best_moves: list[str],
+    bad_actions: list[int],
+    played_moves: list[str],
     source: str,
     policies: list[np.ndarray] | None = None,
 ) -> Path:
@@ -412,6 +434,8 @@ def _write_teacher_chunk(
         "value_deltas": np.asarray(value_deltas, dtype=np.float32),
         "fens": np.asarray(fens),
         "moves": np.asarray(best_moves),
+        "bad_actions": np.asarray(bad_actions, dtype=np.int64),
+        "played_moves": np.asarray(played_moves),
         "source": np.asarray(source),
     }
     if policies is not None:
