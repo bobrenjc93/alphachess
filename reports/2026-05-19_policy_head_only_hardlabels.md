@@ -91,6 +91,7 @@ Additional 16-simulation inference sweep:
 | Setting | Games | Score | PGN |
 | --- | ---: | ---: | --- |
 | `root_material_search_plies=2`, `root_material_max_loss_cp=250` | 2 | `0.0/2` | `reports/policyhead_hardlabels_qvalue_rootmaterial250_stockfish_16sims.pgn` |
+| `root_material_search_plies=3`, `root_material_max_loss_cp=250` | 2 | `0.0/2` | `reports/policyhead_hardlabels_qvalue_rootmaterial3_stockfish_16sims.pgn` |
 | `material_value_weight=0.30` | 2 | `0.0/2` | `reports/policyhead_hardlabels_qvalue_material030_stockfish_16sims.pgn` |
 | `c_puct=0.8` | 2 | `0.0/2` | `reports/policyhead_hardlabels_qvalue_cpuct08_stockfish_16sims.pgn` |
 | `policy_prior_temperature=2.0` | 2 | `0.0/2` | `reports/policyhead_hardlabels_qvalue_priorT2_stockfish_16sims.pgn` |
