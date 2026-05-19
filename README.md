@@ -189,6 +189,17 @@ uv run alpha-chess train \
   --out checkpoints/bad_action_repair
 ```
 
+To repair policy ranking directly, mine the checkpoint's current top legal
+wrong move on Stockfish-labeled replay and use that as `bad_actions`:
+
+```bash
+uv run alpha-chess hard-negatives \
+  --checkpoint checkpoints/current/latest.pt \
+  --data data/teacher/stockfish_sample \
+  --out data/teacher/current_hard_negatives \
+  --prefer-action-labels
+```
+
 Training can also double FEN-backed replay with exact color-mirror symmetry:
 
 ```bash

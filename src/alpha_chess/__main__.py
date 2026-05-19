@@ -8,6 +8,7 @@ from dataclasses import asdict
 from rich import print
 
 from alpha_chess.evaluate import EvalConfig, evaluate_checkpoint
+from alpha_chess.hard_negatives import HardNegativeConfig, mine_hard_negatives
 from alpha_chess.iteration import IterationConfig, run_iterations
 from alpha_chess.model import blend_checkpoints
 from alpha_chess.pgn_import import PGNImportConfig, import_pgn
@@ -80,6 +81,18 @@ def main(argv: list[str] | None = None) -> None:
     validate_parser.add_argument("--legal-policy-loss", action="store_true")
     validate_parser.add_argument("--prefer-action-labels", action="store_true")
     validate_parser.add_argument("--device", default="auto")
+
+    hard_negative_parser = subparsers.add_parser(
+        "hard-negatives",
+        help="mine model top-wrong legal moves as bad-action replay data",
+    )
+    hard_negative_parser.add_argument("--checkpoint", required=True)
+    hard_negative_parser.add_argument("--data", required=True, nargs="+")
+    hard_negative_parser.add_argument("--out", required=True)
+    hard_negative_parser.add_argument("--batch-size", type=int, default=256)
+    hard_negative_parser.add_argument("--chunk-size", type=int, default=1024)
+    hard_negative_parser.add_argument("--prefer-action-labels", action="store_true")
+    hard_negative_parser.add_argument("--device", default="auto")
 
     blend_parser = subparsers.add_parser(
         "blend-checkpoints", help="linearly interpolate two checkpoints"
@@ -273,6 +286,12 @@ def main(argv: list[str] | None = None) -> None:
         kwargs.pop("command", None)
         config = ValidateConfig(**kwargs)
         print({"metrics": validate(config), "config": asdict(config)})
+    elif args.command == "hard-negatives":
+        kwargs = vars(args).copy()
+        kwargs.pop("command", None)
+        config = HardNegativeConfig(**kwargs)
+        paths = mine_hard_negatives(config)
+        print({"written": [str(path) for path in paths], "config": asdict(config)})
     elif args.command == "blend-checkpoints":
         output = blend_checkpoints(
             args.checkpoint_a,
