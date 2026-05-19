@@ -127,3 +127,11 @@ Material-value inference sweep:
 | `0.50` | 2 | 16 | `0.0/2` | `reports/gated_selfplay32_qvalue_iter2_material050_stockfish_16sims.pgn` |
 
 Increasing the tactical material/value blend also did not recover the direct-play gate.
+
+Higher-search direct check:
+
+- 64 simulations, 1 Stockfish game
+- score: `0.0/1`
+- PGN: `reports/gated_selfplay32_qvalue_iter2_stockfish_64sims.pgn`
+
+The candidate remains below the direct gate even with more visits.
