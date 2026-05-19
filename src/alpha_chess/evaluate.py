@@ -10,9 +10,9 @@ import chess.engine
 import chess.pgn
 import numpy as np
 
-from alpha_chess.chess_env import action_to_move, result_value_for_color
+from alpha_chess.chess_env import action_to_move, move_to_action, result_value_for_color
 from alpha_chess.evaluator import Evaluator, UniformEvaluator, load_evaluator
-from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig
+from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig, Node, advance_root
 
 
 @dataclass
@@ -192,18 +192,26 @@ def play_eval_game(
     )
     model_mcts = AlphaZeroMCTS(model_eval, mcts_config, rng=rng)
     opponent_mcts = AlphaZeroMCTS(opponent_eval, mcts_config, rng=rng)
+    model_root: Node | None = None
+    opponent_root: Node | None = None
 
     for _ in range(max_plies):
         if board.is_game_over(claim_draw=True):
             break
-        mcts = model_mcts if board.turn == model_color else opponent_mcts
-        result = mcts.run(board)
+        if board.turn == model_color:
+            result = model_mcts.run(board, root=model_root)
+            model_root = result.root
+        else:
+            result = opponent_mcts.run(board, root=opponent_root)
+            opponent_root = result.root
         action = result.select_action(temperature=0.0, rng=rng)
         if action is None:
             break
         move = action_to_move(action, board)
         if move is None:
             raise RuntimeError(f"Evaluator selected illegal action {action} in {board.fen()}")
+        model_root = advance_root(model_root, action)
+        opponent_root = advance_root(opponent_root, action)
         board.push(move)
 
     value = result_value_for_color(board, model_color)
@@ -238,12 +246,14 @@ def play_eval_game_against_engine(
         ),
         rng=rng,
     )
+    model_root: Node | None = None
 
     for _ in range(max_plies):
         if board.is_game_over(claim_draw=True):
             break
         if board.turn == model_color:
-            result = model_mcts.run(board)
+            result = model_mcts.run(board, root=model_root)
+            model_root = result.root
             action = result.select_action(temperature=0.0, rng=rng)
             if action is None:
                 break
@@ -252,6 +262,8 @@ def play_eval_game_against_engine(
                 raise RuntimeError(f"Model selected illegal action {action} in {board.fen()}")
         else:
             move = engine.play(board, limit).move
+            action = move_to_action(move, board)
+        model_root = advance_root(model_root, action)
         board.push(move)
 
     value = result_value_for_color(board, model_color)

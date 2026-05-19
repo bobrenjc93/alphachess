@@ -127,6 +127,17 @@ class SearchResult:
             return int(nonzero[np.argmax(policy[nonzero])])
         return int(rng.choice(np.arange(ACTION_SIZE), p=policy))
 
+    def child_for_action(self, action: int) -> Node | None:
+        return self.root.children.get(action)
+
+
+def advance_root(root: Node | None, action: int) -> Node | None:
+    """Return the subtree reached by ``action`` if it is already available."""
+
+    if root is None:
+        return None
+    return root.children.get(action)
+
 
 class AlphaZeroMCTS:
     def __init__(
@@ -139,19 +150,22 @@ class AlphaZeroMCTS:
         self.config = config or MCTSConfig()
         self.rng = rng or np.random.default_rng()
 
-    def run(self, board: chess.Board) -> SearchResult:
-        root = Node(prior=1.0)
+    def run(self, board: chess.Board, root: Node | None = None) -> SearchResult:
+        root = root or Node(prior=1.0)
         value = terminal_value(board)
         if value is None:
-            policy, value = self.evaluator(board)
-            root.expand(
-                board,
-                policy,
-                policy_prior_temperature=self.config.policy_prior_temperature,
-                tactical_filter_plies=self.config.root_mate_search_plies,
-                material_filter_plies=self.config.root_material_search_plies,
-                material_max_loss_cp=self.config.root_material_max_loss_cp,
-            )
+            if not root.expanded():
+                policy, value = self.evaluator(board)
+                root.expand(
+                    board,
+                    policy,
+                    policy_prior_temperature=self.config.policy_prior_temperature,
+                    tactical_filter_plies=self.config.root_mate_search_plies,
+                    material_filter_plies=self.config.root_material_search_plies,
+                    material_max_loss_cp=self.config.root_material_max_loss_cp,
+                )
+            else:
+                self._filter_root_children(board, root)
             if self.config.add_root_noise:
                 root.add_exploration_noise(
                     self.rng, self.config.dirichlet_alpha, self.config.dirichlet_fraction
@@ -185,6 +199,29 @@ class AlphaZeroMCTS:
         for action, child in root.children.items():
             visits[action] = child.visit_count
         return SearchResult(root=root, visits=visits, root_value=root.value)
+
+    def _filter_root_children(self, board: chess.Board, root: Node) -> None:
+        actions = list(root.children)
+        if not actions:
+            return
+
+        forced_mate_found = False
+        if self.config.root_mate_search_plies > 0:
+            actions, forced_mate_found = _filter_root_tactics(
+                board,
+                actions,
+                self.config.root_mate_search_plies,
+            )
+        if self.config.root_material_search_plies > 0 and not forced_mate_found:
+            actions = _filter_root_material(
+                board,
+                actions,
+                self.config.root_material_search_plies,
+                self.config.root_material_max_loss_cp,
+            )
+        root.children = {
+            action: root.children[action] for action in actions if action in root.children
+        }
 
     def _select_child(self, node: Node) -> tuple[int, Node]:
         _, action, child = max(

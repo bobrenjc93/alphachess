@@ -1,9 +1,9 @@
 import chess
 import numpy as np
 
-from alpha_chess.chess_env import ACTION_SIZE, action_to_move, move_to_action
+from alpha_chess.chess_env import ACTION_SIZE, action_to_move, legal_actions, move_to_action
 from alpha_chess.evaluator import UniformEvaluator
-from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig
+from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig, Node, advance_root
 
 
 class SparsePolicyEvaluator:
@@ -36,6 +36,46 @@ def test_mcts_handles_terminal_board() -> None:
     search = AlphaZeroMCTS(UniformEvaluator(), MCTSConfig(simulations=4))
     result = search.run(board)
     assert result.visits.sum() == 0
+
+
+def test_mcts_can_reuse_advanced_root() -> None:
+    board = chess.Board()
+    search = AlphaZeroMCTS(UniformEvaluator(), MCTSConfig(simulations=4))
+    result = search.run(board)
+    action = result.select_action(temperature=0.0, rng=search.rng)
+    assert action is not None
+    reused_root = advance_root(result.root, action)
+    assert reused_root is not None
+
+    move = action_to_move(action, board)
+    assert move is not None
+    board.push(move)
+
+    reused_result = search.run(board, root=reused_root)
+    assert reused_result.root is reused_root
+    assert reused_result.visits.sum() > 0
+
+
+def test_mcts_applies_root_filters_to_reused_root() -> None:
+    board = chess.Board("3r2k1/8/8/8/8/8/3N4/3Q2K1 w - - 0 1")
+    blunder_action = move_to_action(chess.Move.from_uci("d2f3"), board)
+    root = Node(prior=1.0)
+    actions = legal_actions(board)
+    root.children = {action: Node(prior=1.0 / len(actions)) for action in actions}
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=1,
+            root_material_max_loss_cp=350,
+        ),
+    )
+    result = search.run(board, root=root)
+
+    assert result.root is root
+    assert blunder_action not in result.root.children
 
 
 def test_mcts_policy_prior_temperature_flattens_priors() -> None:

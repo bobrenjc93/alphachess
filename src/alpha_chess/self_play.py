@@ -13,7 +13,7 @@ import numpy as np
 
 from alpha_chess.chess_env import action_to_move, encode_board, result_value_for_color
 from alpha_chess.evaluator import Evaluator, UniformEvaluator, load_evaluator
-from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig
+from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig, Node, advance_root
 
 
 @dataclass
@@ -53,11 +53,12 @@ def play_game(evaluator: Evaluator, config: SelfPlayConfig, game_seed: int) -> d
         ),
         rng=rng,
     )
+    root: Node | None = None
 
     for ply in range(config.max_plies):
         if board.is_game_over(claim_draw=True):
             break
-        result = mcts.run(board)
+        result = mcts.run(board, root=root)
         temperature = 1.0 if ply < config.temperature_moves else 0.0
         policy = result.policy(temperature)
         action = result.select_action(temperature, rng)
@@ -72,6 +73,7 @@ def play_game(evaluator: Evaluator, config: SelfPlayConfig, game_seed: int) -> d
         turns.append(board.turn)
         fens.append(board.fen())
         moves.append(move.uci())
+        root = advance_root(result.root, action)
         board.push(move)
 
     white_value = result_value_for_color(board, chess.WHITE)
