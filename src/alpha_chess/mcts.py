@@ -370,7 +370,7 @@ def _filter_root_material(
             continue
         child = board.copy(stack=False)
         child.push(move)
-        score = _material_full_width_score(
+        score = _material_worst_depth_score(
             child,
             material_search_plies,
             perspective,
@@ -452,6 +452,27 @@ def _material_search_value(board: chess.Board, search_plies: int) -> float:
             {},
         )
     return float(np.tanh(score / 1200.0))
+
+
+def _material_worst_depth_score(
+    board: chess.Board,
+    max_plies: int,
+    perspective: chess.Color,
+    cache: dict[tuple[str, int, bool], int],
+    quiescence_cache: dict[tuple[str, int, bool], int],
+) -> int:
+    max_plies = max(1, max_plies)
+    scores = [
+        _material_full_width_score(
+            board,
+            plies,
+            perspective,
+            cache,
+            quiescence_cache,
+        )
+        for plies in range(1, max_plies + 1)
+    ]
+    return min(scores)
 
 
 def _static_safety_full_width_score(

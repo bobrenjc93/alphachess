@@ -292,3 +292,34 @@ nudged target top-1 to `0.1300`, but it also regressed broad 16k Stockfish
 teacher accuracy to `0.3762` top-1 / `0.6453` top-3 / `0.7579` top-5 and still
 failed the direct Stockfish gate. The current direct-loss replay is too narrow
 or too weak to repair high-confidence direct-play blunders by fine-tuning alone.
+
+## Root Material Worst-Depth Guard
+
+Timestamp: `2026-05-19T16:00:27-07:00`
+
+A follow-up guarded direct check on
+`experiments/policyhead-lossblunder-directmix-v1/checkpoints/iter_0001/latest.pt`
+still failed with both root material and king-safety filters enabled:
+
+| Variant | Direct Stockfish score | PGN |
+| --- | ---: | --- |
+| pre-fix `root_material_search_plies=3`, `root_material_max_loss_cp=100`, `root_king_safety_search_plies=2`, `root_king_safety_max_loss_cp=100` | `0.0/2` | `reports/policyhead_lossblunder_directmix_rootguards_stockfish.pgn` |
+| pre-fix `root_material_search_plies=2`, `root_material_max_loss_cp=100`, `root_king_safety_search_plies=2`, `root_king_safety_max_loss_cp=100` | `0.0/2` | `reports/policyhead_lossblunder_directmix_rootguards2_stockfish.pgn` |
+| post-fix worst-depth material guard, same 3-ply/2-ply settings | `0.0/2` | `reports/policyhead_lossblunder_directmix_rootguards_worstdepth_stockfish.pgn` |
+
+The pre-fix `3`-ply material filter had a non-monotonic failure: in
+`rnb1kbnr/1p1p1ppp/p3p3/1N2q3/8/4BN2/PPP2PPP/R2QKB1R b KQkq - 1 8`, it kept
+`Qxb5`, while the same filter at `1` or `2` plies pruned it. The root material
+filter now uses the worst material score across depths `1..N`, so increasing
+the search depth cannot re-allow a shallow material collapse.
+
+Tests:
+
+```text
+tests/test_mcts.py: 19 passed
+full suite: 83 passed
+```
+
+This is a search-safety fix, not a strength breakthrough. The updated guard
+still loses direct Stockfish games, so the remaining failures are broader than
+this depth-horizon issue.
