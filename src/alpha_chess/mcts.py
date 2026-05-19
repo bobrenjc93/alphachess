@@ -25,6 +25,8 @@ class MCTSConfig:
     root_mate_search_plies: int = 3
     root_material_search_plies: int = 0
     root_material_max_loss_cp: int = 250
+    leaf_material_value_weight: float = 0.0
+    leaf_material_search_plies: int = 0
 
     def __post_init__(self) -> None:
         if (
@@ -32,6 +34,12 @@ class MCTSConfig:
             or self.policy_prior_temperature <= 0
         ):
             raise ValueError("policy_prior_temperature must be finite and positive")
+        if (
+            not np.isfinite(self.leaf_material_value_weight)
+            or not 0.0 <= self.leaf_material_value_weight <= 1.0
+        ):
+            raise ValueError("leaf_material_value_weight must be between 0 and 1")
+        self.leaf_material_search_plies = max(0, int(self.leaf_material_search_plies))
 
 
 @dataclass
@@ -209,6 +217,7 @@ class AlphaZeroMCTS:
             leaf_value = terminal_value(scratch)
             if leaf_value is None:
                 policy, leaf_value = self.evaluator(scratch)
+                leaf_value = self._blend_leaf_value(scratch, float(leaf_value))
                 node.expand(
                     scratch,
                     policy,
@@ -262,6 +271,16 @@ class AlphaZeroMCTS:
         # Child value is from the child side-to-move perspective; negate it for parent.
         value_score = -child.value
         return float(value_score + prior_score)
+
+    def _blend_leaf_value(self, board: chess.Board, neural_value: float) -> float:
+        weight = self.config.leaf_material_value_weight
+        if weight <= 0:
+            return neural_value
+        material = _material_search_value(
+            board,
+            self.config.leaf_material_search_plies,
+        )
+        return float((1.0 - weight) * neural_value + weight * material)
 
     @staticmethod
     def _backpropagate(search_path: list[Node], value: float) -> None:
@@ -344,6 +363,21 @@ def _filter_root_material(
     best_score = max(score for _, score in scored_actions)
     fallback_actions = [action for action, score in scored_actions if score == best_score]
     return fallback_actions if fallback_actions else [scored_actions[0][0]]
+
+
+def _material_search_value(board: chess.Board, search_plies: int) -> float:
+    perspective = board.turn
+    if search_plies <= 0:
+        score = _material_score_cp(board, perspective)
+    else:
+        score = _material_full_width_score(
+            board,
+            search_plies,
+            perspective,
+            {},
+            {},
+        )
+    return float(np.tanh(score / 1200.0))
 
 
 def _material_full_width_score(

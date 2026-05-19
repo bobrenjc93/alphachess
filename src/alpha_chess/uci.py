@@ -21,6 +21,8 @@ class UCIConfig:
     device: str = "auto"
     material_value_weight: float = 0.0
     material_value_search_plies: int = 0
+    leaf_material_value_weight: float = 0.0
+    leaf_material_search_plies: int = 0
     root_mate_search_plies: int = 3
     root_material_search_plies: int = 0
     root_material_max_loss_cp: int = 250
@@ -43,6 +45,8 @@ def run_uci(config: UCIConfig) -> None:
     send("option name Simulations type spin default 64 min 1 max 100000")
     send("option name CPuct type string default 1.5")
     send("option name PolicyPriorTemperature type string default 1.0")
+    send("option name LeafMaterialValueWeight type string default 0.0")
+    send("option name LeafMaterialSearchPlies type spin default 0 min 0 max 8")
     send("option name MaterialValueSearchPlies type spin default 0 min 0 max 8")
     send("option name RootMateSearchPlies type spin default 3 min 0 max 8")
     send("option name RootMaterialSearchPlies type spin default 0 min 0 max 8")
@@ -58,6 +62,8 @@ def run_uci(config: UCIConfig) -> None:
             send("option name Simulations type spin default 64 min 1 max 100000")
             send("option name CPuct type string default 1.5")
             send("option name PolicyPriorTemperature type string default 1.0")
+            send("option name LeafMaterialValueWeight type string default 0.0")
+            send("option name LeafMaterialSearchPlies type spin default 0 min 0 max 8")
             send("option name MaterialValueSearchPlies type spin default 0 min 0 max 8")
             send("option name RootMateSearchPlies type spin default 3 min 0 max 8")
             send("option name RootMaterialSearchPlies type spin default 0 min 0 max 8")
@@ -90,6 +96,8 @@ def _choose_move(board: chess.Board, evaluator, config: UCIConfig) -> chess.Move
             root_mate_search_plies=config.root_mate_search_plies,
             root_material_search_plies=config.root_material_search_plies,
             root_material_max_loss_cp=config.root_material_max_loss_cp,
+            leaf_material_value_weight=config.leaf_material_value_weight,
+            leaf_material_search_plies=config.leaf_material_search_plies,
         ),
     )
     result = search.run(board)
@@ -147,6 +155,17 @@ def _parse_setoption(line: str, config: UCIConfig) -> UCIConfig:
     if name == "materialvaluesearchplies":
         try:
             return replace(config, material_value_search_plies=max(0, int(value)))
+        except ValueError:
+            return config
+    if name == "leafmaterialvalueweight":
+        try:
+            weight = min(1.0, max(0.0, float(value)))
+            return replace(config, leaf_material_value_weight=weight)
+        except ValueError:
+            return config
+    if name == "leafmaterialsearchplies":
+        try:
+            return replace(config, leaf_material_search_plies=max(0, int(value)))
         except ValueError:
             return config
     if name == "rootmatesearchplies":

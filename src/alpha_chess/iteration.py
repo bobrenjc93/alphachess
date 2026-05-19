@@ -45,6 +45,8 @@ class IterationConfig:
     value_head_only: bool = False
     material_value_weight: float = 0.0
     material_value_search_plies: int = 0
+    leaf_material_value_weight: float = 0.0
+    leaf_material_search_plies: int = 0
     root_mate_search_plies: int = 3
     root_material_search_plies: int = 0
     root_material_max_loss_cp: int = 250
@@ -93,6 +95,8 @@ def run_iterations(config: IterationConfig) -> Path:
             root_mate_search_plies=config.root_mate_search_plies,
             root_material_search_plies=config.root_material_search_plies,
             root_material_max_loss_cp=config.root_material_max_loss_cp,
+            leaf_material_value_weight=config.leaf_material_value_weight,
+            leaf_material_search_plies=config.leaf_material_search_plies,
             seed=iter_seed,
             workers=config.self_play_workers,
         )
@@ -164,6 +168,8 @@ def run_iterations(config: IterationConfig) -> Path:
             "device": config.device,
             "material_value_weight": config.material_value_weight,
             "material_value_search_plies": config.material_value_search_plies,
+            "leaf_material_value_weight": config.leaf_material_value_weight,
+            "leaf_material_search_plies": config.leaf_material_search_plies,
             "root_mate_search_plies": config.root_mate_search_plies,
             "root_material_search_plies": config.root_material_search_plies,
             "root_material_max_loss_cp": config.root_material_max_loss_cp,
@@ -190,6 +196,8 @@ def run_iterations(config: IterationConfig) -> Path:
                 "device": config.device,
                 "material_value_weight": config.material_value_weight,
                 "material_value_search_plies": config.material_value_search_plies,
+                "leaf_material_value_weight": config.leaf_material_value_weight,
+                "leaf_material_search_plies": config.leaf_material_search_plies,
                 "root_mate_search_plies": config.root_mate_search_plies,
                 "root_material_search_plies": config.root_material_search_plies,
                 "root_material_max_loss_cp": config.root_material_max_loss_cp,

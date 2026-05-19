@@ -27,6 +27,8 @@ def main(argv: list[str] | None = None) -> None:
     self_play.add_argument("--device", default="auto")
     self_play.add_argument("--material-value-weight", type=float, default=0.0)
     self_play.add_argument("--material-value-search-plies", type=int, default=0)
+    self_play.add_argument("--leaf-material-value-weight", type=float, default=0.0)
+    self_play.add_argument("--leaf-material-search-plies", type=int, default=0)
     self_play.add_argument("--out", default="data/selfplay/run")
     self_play.add_argument("--games", type=int, default=1)
     self_play.add_argument("--workers", type=int, default=1)
@@ -100,6 +102,8 @@ def main(argv: list[str] | None = None) -> None:
     eval_parser.add_argument("--device", default="auto")
     eval_parser.add_argument("--material-value-weight", type=float, default=0.0)
     eval_parser.add_argument("--material-value-search-plies", type=int, default=0)
+    eval_parser.add_argument("--leaf-material-value-weight", type=float, default=0.0)
+    eval_parser.add_argument("--leaf-material-search-plies", type=int, default=0)
     eval_parser.add_argument("--root-mate-search-plies", type=int, default=3)
     eval_parser.add_argument("--root-material-search-plies", type=int, default=0)
     eval_parser.add_argument("--root-material-max-loss-cp", type=int, default=250)
@@ -183,6 +187,8 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--value-head-only", action="store_true")
     iterate_parser.add_argument("--material-value-weight", type=float, default=0.0)
     iterate_parser.add_argument("--material-value-search-plies", type=int, default=0)
+    iterate_parser.add_argument("--leaf-material-value-weight", type=float, default=0.0)
+    iterate_parser.add_argument("--leaf-material-search-plies", type=int, default=0)
     iterate_parser.add_argument("--root-mate-search-plies", type=int, default=3)
     iterate_parser.add_argument("--root-material-search-plies", type=int, default=0)
     iterate_parser.add_argument("--root-material-max-loss-cp", type=int, default=250)
@@ -212,6 +218,8 @@ def main(argv: list[str] | None = None) -> None:
     uci_parser.add_argument("--device", default="auto")
     uci_parser.add_argument("--material-value-weight", type=float, default=0.0)
     uci_parser.add_argument("--material-value-search-plies", type=int, default=0)
+    uci_parser.add_argument("--leaf-material-value-weight", type=float, default=0.0)
+    uci_parser.add_argument("--leaf-material-search-plies", type=int, default=0)
     uci_parser.add_argument("--root-mate-search-plies", type=int, default=3)
     uci_parser.add_argument("--root-material-search-plies", type=int, default=0)
     uci_parser.add_argument("--root-material-max-loss-cp", type=int, default=250)
@@ -230,6 +238,8 @@ def main(argv: list[str] | None = None) -> None:
             root_mate_search_plies=args.root_mate_search_plies,
             root_material_search_plies=args.root_material_search_plies,
             root_material_max_loss_cp=args.root_material_max_loss_cp,
+            leaf_material_value_weight=args.leaf_material_value_weight,
+            leaf_material_search_plies=args.leaf_material_search_plies,
             seed=args.seed,
             workers=args.workers,
         )

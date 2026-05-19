@@ -28,6 +28,8 @@ class SelfPlayConfig:
     root_mate_search_plies: int = 3
     root_material_search_plies: int = 0
     root_material_max_loss_cp: int = 250
+    leaf_material_value_weight: float = 0.0
+    leaf_material_search_plies: int = 0
     seed: int = 0
     workers: int = 1
 
@@ -51,6 +53,8 @@ def play_game(evaluator: Evaluator, config: SelfPlayConfig, game_seed: int) -> d
             root_mate_search_plies=config.root_mate_search_plies,
             root_material_search_plies=config.root_material_search_plies,
             root_material_max_loss_cp=config.root_material_max_loss_cp,
+            leaf_material_value_weight=config.leaf_material_value_weight,
+            leaf_material_search_plies=config.leaf_material_search_plies,
         ),
         rng=rng,
     )

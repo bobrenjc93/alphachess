@@ -143,6 +143,35 @@ def test_mcts_rejects_invalid_policy_prior_temperature() -> None:
             raise AssertionError("invalid policy prior temperature was accepted")
 
 
+def test_mcts_rejects_invalid_leaf_material_weight() -> None:
+    for weight in (-0.1, 1.1, float("nan")):
+        try:
+            MCTSConfig(leaf_material_value_weight=weight)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid leaf material weight was accepted")
+
+
+def test_mcts_leaf_material_value_blend_scores_leaf_from_side_to_move() -> None:
+    board = chess.Board("7k/8/8/8/8/8/6q1/Q6K w - - 0 1")
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(
+            simulations=1,
+            root_mate_search_plies=0,
+            leaf_material_value_weight=1.0,
+            leaf_material_search_plies=0,
+        ),
+    )
+    result = search.run(board)
+    action = move_to_action(chess.Move.from_uci("h1g2"), board)
+
+    assert result.root.children[action].value < -0.5
+    assert result.root_value > 0.5
+
+
 def test_mcts_root_prioritizes_mate_in_one() -> None:
     board = chess.Board("rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq g3 0 2")
     mate_action = move_to_action(chess.Move.from_uci("d8h4"), board)
