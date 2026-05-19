@@ -17,10 +17,12 @@ from alpha_chess.chess_env import (
 from alpha_chess.dataset import SelfPlayDataset, collate_samples
 from alpha_chess.model import ChessNet, ChessNetConfig, blend_checkpoints, save_checkpoint
 from alpha_chess.train import (
+    TrainConfig,
     ValidateConfig,
     _compute_batch_loss,
     _evaluate_loss,
     _legal_action_mask_from_fens,
+    train,
     validate,
 )
 
@@ -304,6 +306,47 @@ def test_validate_checkpoint_reports_metrics(tmp_path) -> None:
     assert metrics["val_examples"] == 8.0
     assert metrics["val_source_0_examples"] == 3.0
     assert metrics["val_source_1_examples"] == 5.0
+
+
+def test_train_policy_head_only_freezes_body_and_value_head(tmp_path) -> None:
+    data_dir = tmp_path / "data"
+    out_dir = tmp_path / "out"
+    data_dir.mkdir()
+    _write_sparse_npz(data_dir / "game.npz", positions=8)
+
+    checkpoint = tmp_path / "checkpoint.pt"
+    save_checkpoint(checkpoint, ChessNet(ChessNetConfig(channels=8, blocks=1)))
+    before = torch.load(checkpoint, map_location="cpu")["model_state"]
+
+    train(
+        TrainConfig(
+            data=str(data_dir),
+            out=str(out_dir),
+            checkpoint=str(checkpoint),
+            epochs=1,
+            batch_size=4,
+            lr=0.01,
+            value_weight=0.0,
+            weight_decay=0.0,
+            policy_head_only=True,
+            device="cpu",
+        )
+    )
+
+    after = torch.load(out_dir / "latest.pt", map_location="cpu")["model_state"]
+    changed_policy_keys = []
+    for key, before_tensor in before.items():
+        after_tensor = after[key]
+        if key.startswith("policy_head."):
+            if torch.is_floating_point(before_tensor) and not torch.allclose(
+                before_tensor,
+                after_tensor,
+            ):
+                changed_policy_keys.append(key)
+            continue
+        assert torch.equal(after_tensor, before_tensor), key
+
+    assert changed_policy_keys
 
 
 def test_blend_checkpoints_interpolates_floating_weights(tmp_path) -> None:

@@ -32,6 +32,7 @@ class TrainConfig:
     source_policy_weights: list[float] | None = None
     legal_policy_loss: bool = False
     color_mirror_augmentation: bool = False
+    policy_head_only: bool = False
     channels: int = 128
     blocks: int = 6
     seed: int = 0
@@ -102,7 +103,16 @@ def train(config: TrainConfig) -> Path:
     else:
         model = ChessNet(ChessNetConfig(channels=config.channels, blocks=config.blocks))
     model.to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
+    if config.policy_head_only:
+        _freeze_except_policy_head(model)
+    trainable_parameters = [param for param in model.parameters() if param.requires_grad]
+    if not trainable_parameters:
+        raise ValueError("No trainable parameters are available")
+    optimizer = torch.optim.AdamW(
+        trainable_parameters,
+        lr=config.lr,
+        weight_decay=config.weight_decay,
+    )
 
     out_dir = Path(config.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -110,7 +120,7 @@ def train(config: TrainConfig) -> Path:
     latest_metrics: dict[str, float] = {}
 
     for epoch in range(config.epochs):
-        model.train()
+        _set_train_mode(model, config.policy_head_only)
         running_loss = 0.0
         for batch in loader:
             loss, parts = _compute_batch_loss(
@@ -157,6 +167,23 @@ def train(config: TrainConfig) -> Path:
         save_checkpoint(out_dir / "latest.pt", model, optimizer, step, latest_metrics)
 
     return out_dir / "latest.pt"
+
+
+def _freeze_except_policy_head(model: ChessNet) -> None:
+    for param in model.parameters():
+        param.requires_grad_(False)
+    for param in model.policy_head.parameters():
+        param.requires_grad_(True)
+
+
+def _set_train_mode(model: ChessNet, policy_head_only: bool) -> None:
+    model.train()
+    if not policy_head_only:
+        return
+    model.stem.eval()
+    model.blocks.eval()
+    model.value_head.eval()
+    model.policy_head.train()
 
 
 @torch.no_grad()

@@ -198,6 +198,19 @@ LEGAL_POLICY_LOSS=1 \
 ITERATIONS=1 GAMES=64 scripts/submit_gpu_iteration.sh
 ```
 
+For policy repair runs that should not perturb the shared trunk or value head,
+train only the policy head:
+
+```bash
+CHECKPOINT=experiments/current-best/checkpoints/iter_0001/latest.pt \
+REPLAY_DATA="data/teacher/stockfish_multipv_elo1800_4096 data/puzzles/lines_1200_2400_100k" \
+REPLAY_WEIGHTS="0.70 0.30" \
+POLICY_HEAD_ONLY=1 \
+VALUE_WEIGHT=0.0 \
+LEGAL_POLICY_LOSS=1 \
+ITERATIONS=1 GAMES=0 scripts/submit_gpu_iteration.sh
+```
+
 Require candidates that pass the parent match to also score at least 50% in a
 direct Stockfish smoke before promotion:
 

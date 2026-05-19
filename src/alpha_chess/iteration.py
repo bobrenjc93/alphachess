@@ -39,6 +39,7 @@ class IterationConfig:
     bad_action_margin: float = 1.0
     legal_policy_loss: bool = False
     color_mirror_augmentation: bool = False
+    policy_head_only: bool = False
     material_value_weight: float = 0.0
     material_value_search_plies: int = 0
     root_mate_search_plies: int = 3
@@ -138,6 +139,7 @@ def run_iterations(config: IterationConfig) -> Path:
                 source_policy_weights=source_policy_weights,
                 legal_policy_loss=config.legal_policy_loss,
                 color_mirror_augmentation=config.color_mirror_augmentation,
+                policy_head_only=config.policy_head_only,
                 channels=config.channels,
                 blocks=config.blocks,
                 seed=iter_seed,
