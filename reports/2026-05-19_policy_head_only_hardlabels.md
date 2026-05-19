@@ -86,6 +86,15 @@ Stockfish gate:
 - PGN: `reports/policyhead_hardlabels_qvalue_stockfish_gate_16sims.pgn`
 - promoted: `false`
 
+Additional 16-simulation inference sweep:
+
+| Setting | Games | Score | PGN |
+| --- | ---: | ---: | --- |
+| `root_material_search_plies=2`, `root_material_max_loss_cp=250` | 2 | `0.0/2` | `reports/policyhead_hardlabels_qvalue_rootmaterial250_stockfish_16sims.pgn` |
+| `material_value_weight=0.30` | 2 | `0.0/2` | `reports/policyhead_hardlabels_qvalue_material030_stockfish_16sims.pgn` |
+| `c_puct=0.8` | 2 | `0.0/2` | `reports/policyhead_hardlabels_qvalue_cpuct08_stockfish_16sims.pgn` |
+| `policy_prior_temperature=2.0` | 2 | `0.0/2` | `reports/policyhead_hardlabels_qvalue_priorT2_stockfish_16sims.pgn` |
+
 ## Fixed Validation
 
 Candidate-only CPU validation used batch size 512, legal policy loss,
@@ -106,6 +115,6 @@ Overall policy accuracy was `0.4669` over 108954 examples.
 
 Rejected as a direct-play candidate. Hard best-move labels improved the parent
 match and fixed Stockfish/puzzle/action-label diagnostics relative to the soft
-v4/PV policy-head run, but the direct Stockfish gate remained `0.0/4`. The
-losses still show short tactical collapses and mating attacks, so hard labels
-alone are not sufficient.
+v4/PV policy-head run, but the direct Stockfish gate remained `0.0/4`, and the
+small inference sweep did not recover a draw. The losses still show short
+tactical collapses and mating attacks, so hard labels alone are not sufficient.
