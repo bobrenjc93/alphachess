@@ -55,8 +55,17 @@ Results:
 | 64 | 1 | `0.0/1` | `0/0/1` | `reports/tree_reuse_pvrecent_stockfish_64sims.pgn` |
 | 256 | 1 | `0.0/1` | `0/0/1` | `reports/tree_reuse_pvrecent_stockfish_256sims.pgn` |
 
+Root-material follow-up:
+
+| Root Material Plies | Max Loss CP | Sims | Games | Score | W/D/L | PGN |
+| ---: | ---: | ---: | ---: | ---: | --- | --- |
+| 2 | 250 | 16 | 2 | `0.0/2` | `0/0/2` | `reports/tree_reuse_pvrecent_rootmaterial250_stockfish_16sims.pgn` |
+| 2 | 250 | 64 | 1 | `0.0/1` | `0/0/1` | `reports/tree_reuse_pvrecent_rootmaterial250_stockfish_64sims.pgn` |
+
 ## Conclusion
 
 Kept as a search implementation improvement, but rejected as a direct-play fix.
 Tree reuse does not recover the PV-recent checkpoint's Stockfish gate; the games
-still fail through tactical and positional collapse even at 256 simulations.
+still fail through tactical and positional collapse even at 256 simulations. The
+existing root-material guard also does not recover the direct gate under
+tree-reuse search.
