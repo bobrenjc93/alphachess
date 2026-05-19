@@ -21,6 +21,7 @@ class SelfPlayConfig:
     simulations: int = 64
     max_plies: int = 512
     temperature_moves: int = 20
+    root_mate_search_plies: int = 3
     root_material_search_plies: int = 0
     root_material_max_loss_cp: int = 250
     seed: int = 0
@@ -41,6 +42,7 @@ def play_game(evaluator: Evaluator, config: SelfPlayConfig, game_seed: int) -> d
         MCTSConfig(
             simulations=config.simulations,
             add_root_noise=True,
+            root_mate_search_plies=config.root_mate_search_plies,
             root_material_search_plies=config.root_material_search_plies,
             root_material_max_loss_cp=config.root_material_max_loss_cp,
         ),

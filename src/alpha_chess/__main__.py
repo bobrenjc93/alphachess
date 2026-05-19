@@ -33,6 +33,7 @@ def main(argv: list[str] | None = None) -> None:
     self_play.add_argument("--simulations", type=int, default=64)
     self_play.add_argument("--max-plies", type=int, default=512)
     self_play.add_argument("--temperature-moves", type=int, default=20)
+    self_play.add_argument("--root-mate-search-plies", type=int, default=3)
     self_play.add_argument("--root-material-search-plies", type=int, default=0)
     self_play.add_argument("--root-material-max-loss-cp", type=int, default=250)
     self_play.add_argument("--seed", type=int, default=0)
@@ -75,6 +76,7 @@ def main(argv: list[str] | None = None) -> None:
     eval_parser.add_argument("--device", default="auto")
     eval_parser.add_argument("--material-value-weight", type=float, default=0.0)
     eval_parser.add_argument("--material-value-search-plies", type=int, default=0)
+    eval_parser.add_argument("--root-mate-search-plies", type=int, default=3)
     eval_parser.add_argument("--root-material-search-plies", type=int, default=0)
     eval_parser.add_argument("--root-material-max-loss-cp", type=int, default=250)
     eval_parser.add_argument("--seed", type=int, default=0)
@@ -143,6 +145,7 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--legal-policy-loss", action="store_true")
     iterate_parser.add_argument("--material-value-weight", type=float, default=0.0)
     iterate_parser.add_argument("--material-value-search-plies", type=int, default=0)
+    iterate_parser.add_argument("--root-mate-search-plies", type=int, default=3)
     iterate_parser.add_argument("--root-material-search-plies", type=int, default=0)
     iterate_parser.add_argument("--root-material-max-loss-cp", type=int, default=250)
     iterate_parser.add_argument("--replay-data", nargs="+")
@@ -160,6 +163,7 @@ def main(argv: list[str] | None = None) -> None:
     uci_parser.add_argument("--device", default="auto")
     uci_parser.add_argument("--material-value-weight", type=float, default=0.0)
     uci_parser.add_argument("--material-value-search-plies", type=int, default=0)
+    uci_parser.add_argument("--root-mate-search-plies", type=int, default=3)
     uci_parser.add_argument("--root-material-search-plies", type=int, default=0)
     uci_parser.add_argument("--root-material-max-loss-cp", type=int, default=250)
 
@@ -181,6 +185,7 @@ def main(argv: list[str] | None = None) -> None:
             simulations=args.simulations,
             max_plies=args.max_plies,
             temperature_moves=args.temperature_moves,
+            root_mate_search_plies=args.root_mate_search_plies,
             root_material_search_plies=args.root_material_search_plies,
             root_material_max_loss_cp=args.root_material_max_loss_cp,
             seed=args.seed,

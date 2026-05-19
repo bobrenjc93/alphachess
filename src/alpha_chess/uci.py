@@ -19,6 +19,7 @@ class UCIConfig:
     device: str = "auto"
     material_value_weight: float = 0.0
     material_value_search_plies: int = 0
+    root_mate_search_plies: int = 3
     root_material_search_plies: int = 0
     root_material_max_loss_cp: int = 250
 
@@ -39,6 +40,7 @@ def run_uci(config: UCIConfig) -> None:
     send("id author bobrenjc93")
     send("option name Simulations type spin default 64 min 1 max 100000")
     send("option name MaterialValueSearchPlies type spin default 0 min 0 max 8")
+    send("option name RootMateSearchPlies type spin default 3 min 0 max 8")
     send("option name RootMaterialSearchPlies type spin default 0 min 0 max 8")
     send("option name RootMaterialMaxLossCp type spin default 250 min 0 max 5000")
 
@@ -51,6 +53,7 @@ def run_uci(config: UCIConfig) -> None:
             send("id author bobrenjc93")
             send("option name Simulations type spin default 64 min 1 max 100000")
             send("option name MaterialValueSearchPlies type spin default 0 min 0 max 8")
+            send("option name RootMateSearchPlies type spin default 3 min 0 max 8")
             send("option name RootMaterialSearchPlies type spin default 0 min 0 max 8")
             send("option name RootMaterialMaxLossCp type spin default 250 min 0 max 5000")
             send("uciok")
@@ -76,6 +79,7 @@ def _choose_move(board: chess.Board, evaluator, config: UCIConfig) -> chess.Move
         evaluator,
         MCTSConfig(
             simulations=config.simulations,
+            root_mate_search_plies=config.root_mate_search_plies,
             root_material_search_plies=config.root_material_search_plies,
             root_material_max_loss_cp=config.root_material_max_loss_cp,
         ),
@@ -125,6 +129,7 @@ def _parse_setoption(line: str, config: UCIConfig) -> UCIConfig:
                 device=config.device,
                 material_value_weight=config.material_value_weight,
                 material_value_search_plies=config.material_value_search_plies,
+                root_mate_search_plies=config.root_mate_search_plies,
                 root_material_search_plies=config.root_material_search_plies,
                 root_material_max_loss_cp=config.root_material_max_loss_cp,
             )
@@ -138,6 +143,21 @@ def _parse_setoption(line: str, config: UCIConfig) -> UCIConfig:
                 device=config.device,
                 material_value_weight=config.material_value_weight,
                 material_value_search_plies=max(0, int(value)),
+                root_mate_search_plies=config.root_mate_search_plies,
+                root_material_search_plies=config.root_material_search_plies,
+                root_material_max_loss_cp=config.root_material_max_loss_cp,
+            )
+        except ValueError:
+            return config
+    if name == "rootmatesearchplies":
+        try:
+            return UCIConfig(
+                checkpoint=config.checkpoint,
+                simulations=config.simulations,
+                device=config.device,
+                material_value_weight=config.material_value_weight,
+                material_value_search_plies=config.material_value_search_plies,
+                root_mate_search_plies=max(0, int(value)),
                 root_material_search_plies=config.root_material_search_plies,
                 root_material_max_loss_cp=config.root_material_max_loss_cp,
             )
@@ -151,6 +171,7 @@ def _parse_setoption(line: str, config: UCIConfig) -> UCIConfig:
                 device=config.device,
                 material_value_weight=config.material_value_weight,
                 material_value_search_plies=config.material_value_search_plies,
+                root_mate_search_plies=config.root_mate_search_plies,
                 root_material_search_plies=max(0, int(value)),
                 root_material_max_loss_cp=config.root_material_max_loss_cp,
             )
@@ -164,6 +185,7 @@ def _parse_setoption(line: str, config: UCIConfig) -> UCIConfig:
                 device=config.device,
                 material_value_weight=config.material_value_weight,
                 material_value_search_plies=config.material_value_search_plies,
+                root_mate_search_plies=config.root_mate_search_plies,
                 root_material_search_plies=config.root_material_search_plies,
                 root_material_max_loss_cp=max(0, int(value)),
             )

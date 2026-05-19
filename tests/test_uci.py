@@ -34,10 +34,15 @@ def test_parse_root_material_options() -> None:
         config,
     )
     config = _parse_setoption(
+        "setoption name RootMateSearchPlies value 5",
+        config,
+    )
+    config = _parse_setoption(
         "setoption name RootMaterialMaxLossCp value 250",
         config,
     )
 
     assert config.material_value_search_plies == 2
+    assert config.root_mate_search_plies == 5
     assert config.root_material_search_plies == 2
     assert config.root_material_max_loss_cp == 250
