@@ -22,6 +22,7 @@ Defaults:
 - `stockfish_gate_games=0`, so existing runs are unchanged.
 - if enabled without an explicit minimum, `stockfish_gate_min_score=0.50`.
 - if gate simulations are omitted, the gate uses `eval_simulations`.
+- when the gate runs, PGNs are written to `experiments/<run>/eval/iter_XXXX_stockfish_gate.pgn`.
 
 The GPU iteration helper now exposes matching environment variables:
 

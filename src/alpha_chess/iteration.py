@@ -171,6 +171,7 @@ def run_iterations(config: IterationConfig) -> Path:
                 "root_material_max_loss_cp": config.root_material_max_loss_cp,
                 "seed": iter_seed + 100_000,
                 "max_plies": config.max_plies,
+                "pgn_out": str(run_dir / "eval" / f"iter_{iteration:04d}_stockfish_gate.pgn"),
             }
             stockfish_gate_metrics = evaluate_checkpoint_from_dict(stockfish_gate_eval)
             promoted = stockfish_gate_metrics["score_rate"] >= config.stockfish_gate_min_score

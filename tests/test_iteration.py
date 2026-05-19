@@ -171,6 +171,7 @@ def test_iteration_stockfish_gate_can_block_promotion(monkeypatch, tmp_path) -> 
         assert config["engine_path"] == "tools/stockfish/bin/stockfish"
         assert config["games"] == 1
         assert config["simulations"] == 16
+        assert config["pgn_out"].endswith("eval/iter_0001_stockfish_gate.pgn")
         return {"score_rate": 0.0}
 
     monkeypatch.setattr(
