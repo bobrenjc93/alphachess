@@ -11,3 +11,10 @@ def test_material_value_is_from_side_to_move_perspective() -> None:
     assert material_value(white_to_move) > 0
     assert material_value(black_to_move) < 0
     assert material_value(white_to_move) == pytest.approx(-material_value(black_to_move))
+
+
+def test_material_value_search_sees_forced_recapture() -> None:
+    board = chess.Board("r1b1kbnr/p4ppp/2p1p3/2pp4/2P1PB1P/3P1N2/Pq1N1PP1/R2QK2R b KQkq - 0 9")
+    board.push(chess.Move.from_uci("b2a1"))
+
+    assert material_value(board, search_plies=1) > material_value(board)

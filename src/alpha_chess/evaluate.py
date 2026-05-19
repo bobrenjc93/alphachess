@@ -27,6 +27,7 @@ class EvalConfig:
     engine_depth: int | None = None
     device: str = "auto"
     material_value_weight: float = 0.0
+    material_value_search_plies: int = 0
     root_material_search_plies: int = 0
     root_material_max_loss_cp: int = 250
     seed: int = 0
@@ -47,6 +48,7 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
         config.checkpoint,
         device=config.device,
         material_value_weight=config.material_value_weight,
+        material_value_search_plies=config.material_value_search_plies,
     )
     if config.opponent in {"uci", "stockfish"}:
         return evaluate_against_engine(config, model_eval)
@@ -57,6 +59,7 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
             config.opponent_checkpoint,
             device=config.device,
             material_value_weight=config.material_value_weight,
+            material_value_search_plies=config.material_value_search_plies,
         )
     else:
         opponent_eval = UniformEvaluator()

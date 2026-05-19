@@ -26,13 +26,18 @@ def test_parse_simulations_option() -> None:
 
 def test_parse_root_material_options() -> None:
     config = _parse_setoption(
-        "setoption name RootMaterialSearchPlies value 2",
+        "setoption name MaterialValueSearchPlies value 2",
         UCIConfig(checkpoint="model.pt"),
+    )
+    config = _parse_setoption(
+        "setoption name RootMaterialSearchPlies value 2",
+        config,
     )
     config = _parse_setoption(
         "setoption name RootMaterialMaxLossCp value 250",
         config,
     )
 
+    assert config.material_value_search_plies == 2
     assert config.root_material_search_plies == 2
     assert config.root_material_max_loss_cp == 250

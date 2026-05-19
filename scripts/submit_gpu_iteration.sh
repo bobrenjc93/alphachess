@@ -17,6 +17,7 @@ LR="${LR:-0.001}"
 VALUE_WEIGHT="${VALUE_WEIGHT:-1.0}"
 LEGAL_POLICY_LOSS="${LEGAL_POLICY_LOSS:-0}"
 MATERIAL_VALUE_WEIGHT="${MATERIAL_VALUE_WEIGHT:-0.0}"
+MATERIAL_VALUE_SEARCH_PLIES="${MATERIAL_VALUE_SEARCH_PLIES:-0}"
 ROOT_MATERIAL_SEARCH_PLIES="${ROOT_MATERIAL_SEARCH_PLIES:-0}"
 ROOT_MATERIAL_MAX_LOSS_CP="${ROOT_MATERIAL_MAX_LOSS_CP:-250}"
 REPLAY_DATA="${REPLAY_DATA:-}"
@@ -117,6 +118,7 @@ gpu-dev submit \
       --lr $LR \
       --value-weight $VALUE_WEIGHT \
       --material-value-weight $MATERIAL_VALUE_WEIGHT \
+      --material-value-search-plies $MATERIAL_VALUE_SEARCH_PLIES \
       --root-material-search-plies $ROOT_MATERIAL_SEARCH_PLIES \
       --root-material-max-loss-cp $ROOT_MATERIAL_MAX_LOSS_CP \
       --self-play-weight $SELF_PLAY_WEIGHT \
