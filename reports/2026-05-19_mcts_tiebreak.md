@@ -41,6 +41,7 @@ The selector fix is not sufficient to recover the Stockfish gate:
 | --- | ---: | --- |
 | patched selector, default root guards | `0.0/2` | `reports/focus_openingmultipv12_iter2_tiebreak_stockfish_16sims.pgn` |
 | existing root material guard, `plies=2`, `max_loss_cp=250` | `0.0/2` | `reports/focus_openingmultipv12_iter2_rootmaterial250_stockfish_16sims.pgn` |
+| broad qvalue baseline, patched selector, 2 eval workers | `0.0/4` | `reports/qvalue_puzzlelines20_tiebreak_w2_stockfish_16sims.pgn` |
 
 ## Tests
 
