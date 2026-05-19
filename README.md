@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T16:00:27-07:00`.
+Last updated: `2026-05-19T16:49:45-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -73,6 +73,7 @@ latest committed report.
 | `2026-05-19T15:34:00-07:00` report timestamp | Direct loss-blunder replay repairs (`reports/2026-05-19_hard_negative_repair.md`). | balanced repair `4.0/8`; direct-loss mix `8.0/8` vs soft-mix parent | both `0.0/2` | A 100-position direct-loss replay improved top-3/top-5 and bad-action loss slightly, but target top-1 stayed `0.12` and direct play still failed. |
 | `2026-05-19T15:48:50-07:00` report timestamp | Full-network loss-blunder repair (`reports/2026-05-19_hard_negative_repair.md`). | `4.0/8` vs direct-loss mix parent | `0.0/2` | Unfreezing the trunk reduced targeted bad-action loss and nudged target top-1 to `0.13`, but broad teacher accuracy regressed and direct play still failed. |
 | `2026-05-19T16:00:27-07:00` report timestamp | Root material worst-depth guard (`reports/2026-05-19_hard_negative_repair.md`). | N/A | guarded variants all `0.0/2` | Fixed a non-monotonic material-pruning issue, but the combined root guards still did not recover direct play. |
+| `2026-05-19T16:49:45-07:00` report timestamp | Broader all-loss bad-action replay from direct-mix parent (`reports/2026-05-19_hard_negative_repair.md`). | `4.0/8`, all draws vs direct-loss mix parent | `0.0/2` | Broader bad-action data preserved broad teacher accuracy and improved top-3/margin diagnostics slightly, but top-1 and direct play did not improve. |
 
 Current practical status:
 
@@ -106,6 +107,9 @@ Current practical status:
 - The root material filter is now more conservative across search depths, but
   guarded direct checks still fail, so the current blocker is broader than one
   tactical root-pruning horizon issue.
+- Broader all-loss bad-action replay preserves broad teacher accuracy better
+  than the small direct-loss slice, but it still does not move direct-loss
+  top-1 or the direct Stockfish gate.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 

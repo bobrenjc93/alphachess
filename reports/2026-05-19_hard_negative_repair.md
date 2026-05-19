@@ -323,3 +323,59 @@ full suite: 83 passed
 This is a search-safety fix, not a strength breakthrough. The updated guard
 still loses direct Stockfish games, so the remaining failures are broader than
 this depth-horizon issue.
+
+## All-Loss Bad-Action Replay From Direct-Mix Parent
+
+Timestamp: `2026-05-19T16:49:45-07:00`
+
+The 100-position policy-head loss-blunder slice was too narrow, so this run
+reused the broader all-loss bad-action replay:
+
+```text
+data/teacher/alpha_loss_badactions_all_v1
+```
+
+That dataset has `706` positions and `695` valid bad actions from `165`
+AlphaChess-vs-Stockfish loss games.
+
+Run:
+
+```text
+experiments/policyhead-allloss-badaction-directmix-noguard-v1
+```
+
+Config highlights:
+
+- GPU: A100 reservation `1506c365`
+- checkpoint: `experiments/policyhead-lossblunder-directmix-v1/checkpoints/iter_0001/latest.pt`
+- `policy_head_only=true`
+- `epochs=2`
+- `lr=0.000001`
+- `bad_action_weight=0.05`
+- replay weights: broad 16k `0.70`, all-loss bad actions `0.20`,
+  direct-loss blunders `0.10`
+
+Results:
+
+| Check | Score |
+| --- | ---: |
+| parent/internal vs direct-loss mix parent | `4.0/8` (`8` draws) |
+| forced Stockfish gate | `0.0/2` |
+
+PGN:
+
+```text
+reports/policyhead_allloss_badaction_directmix_noguard_stockfish_gate.pgn
+```
+
+Validation:
+
+| Dataset | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| `alpha_loss_badactions_all_v1` | `0.1799` | `0.4547` | `0.5637` | `2.3256` |
+| `policyhead_hardneg_lossblunders_v1` | `0.1200` | `0.3700` | `0.5000` | `2.6803` |
+| broad 16k Stockfish | `0.3961` | `0.6581` | `0.7689` | N/A |
+
+The broader all-loss replay preserved broad Stockfish teacher accuracy and
+slightly improved the direct-loss top-3 / margin diagnostics, but it still did
+not move direct-loss top-1 or recover the Stockfish gate.
