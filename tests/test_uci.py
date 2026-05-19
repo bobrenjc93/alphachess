@@ -24,6 +24,14 @@ def test_parse_simulations_option() -> None:
     assert config.simulations == 17
 
 
+def test_parse_c_puct_option() -> None:
+    config = _parse_setoption(
+        "setoption name CPuct value 0.75",
+        UCIConfig(checkpoint="model.pt"),
+    )
+    assert config.c_puct == 0.75
+
+
 def test_parse_root_material_options() -> None:
     config = _parse_setoption(
         "setoption name MaterialValueSearchPlies value 2",

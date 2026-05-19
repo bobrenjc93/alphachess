@@ -31,6 +31,7 @@ def main(argv: list[str] | None = None) -> None:
     self_play.add_argument("--games", type=int, default=1)
     self_play.add_argument("--workers", type=int, default=1)
     self_play.add_argument("--simulations", type=int, default=64)
+    self_play.add_argument("--c-puct", type=float, default=1.5)
     self_play.add_argument("--max-plies", type=int, default=512)
     self_play.add_argument("--temperature-moves", type=int, default=20)
     self_play.add_argument("--root-mate-search-plies", type=int, default=3)
@@ -68,6 +69,7 @@ def main(argv: list[str] | None = None) -> None:
     eval_parser.add_argument("--checkpoint", required=True)
     eval_parser.add_argument("--games", type=int, default=2)
     eval_parser.add_argument("--simulations", type=int, default=64)
+    eval_parser.add_argument("--c-puct", type=float, default=1.5)
     eval_parser.add_argument("--opponent", default="uniform")
     eval_parser.add_argument("--opponent-checkpoint")
     eval_parser.add_argument("--engine-path", default="stockfish")
@@ -134,6 +136,7 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--games", type=int, default=16)
     iterate_parser.add_argument("--self-play-workers", type=int, default=1)
     iterate_parser.add_argument("--simulations", type=int, default=64)
+    iterate_parser.add_argument("--c-puct", type=float, default=1.5)
     iterate_parser.add_argument("--max-plies", type=int, default=512)
     iterate_parser.add_argument("--temperature-moves", type=int, default=20)
     iterate_parser.add_argument("--epochs", type=int, default=2)
@@ -160,6 +163,7 @@ def main(argv: list[str] | None = None) -> None:
     uci_parser = subparsers.add_parser("uci", help="serve a checkpoint through UCI")
     uci_parser.add_argument("--checkpoint", required=True)
     uci_parser.add_argument("--simulations", type=int, default=64)
+    uci_parser.add_argument("--c-puct", type=float, default=1.5)
     uci_parser.add_argument("--device", default="auto")
     uci_parser.add_argument("--material-value-weight", type=float, default=0.0)
     uci_parser.add_argument("--material-value-search-plies", type=int, default=0)
@@ -183,6 +187,7 @@ def main(argv: list[str] | None = None) -> None:
         config = SelfPlayConfig(
             games=args.games,
             simulations=args.simulations,
+            c_puct=args.c_puct,
             max_plies=args.max_plies,
             temperature_moves=args.temperature_moves,
             root_mate_search_plies=args.root_mate_search_plies,

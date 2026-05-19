@@ -20,6 +20,7 @@ class EvalConfig:
     checkpoint: str
     games: int = 2
     simulations: int = 64
+    c_puct: float = 1.5
     opponent: str = "uniform"
     opponent_checkpoint: str | None = None
     engine_path: str = "stockfish"
@@ -69,6 +70,7 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
         opponent_eval=opponent_eval,
         games=config.games,
         simulations=config.simulations,
+        c_puct=config.c_puct,
         root_mate_search_plies=config.root_mate_search_plies,
         root_material_search_plies=config.root_material_search_plies,
         root_material_max_loss_cp=config.root_material_max_loss_cp,
@@ -92,6 +94,7 @@ def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[s
                 engine=engine,
                 model_color=model_color,
                 simulations=config.simulations,
+                c_puct=config.c_puct,
                 root_mate_search_plies=config.root_mate_search_plies,
                 root_material_search_plies=config.root_material_search_plies,
                 root_material_max_loss_cp=config.root_material_max_loss_cp,
@@ -118,6 +121,7 @@ def evaluate_match(
     opponent_eval: Evaluator,
     games: int,
     simulations: int,
+    c_puct: float,
     root_mate_search_plies: int,
     root_material_search_plies: int,
     root_material_max_loss_cp: int,
@@ -137,6 +141,7 @@ def evaluate_match(
             opponent_eval,
             model_color,
             simulations=simulations,
+            c_puct=c_puct,
             root_mate_search_plies=root_mate_search_plies,
             root_material_search_plies=root_material_search_plies,
             root_material_max_loss_cp=root_material_max_loss_cp,
@@ -163,6 +168,7 @@ def play_eval_game(
     opponent_eval: Evaluator,
     model_color: chess.Color,
     simulations: int,
+    c_puct: float,
     root_mate_search_plies: int,
     root_material_search_plies: int,
     root_material_max_loss_cp: int,
@@ -172,6 +178,7 @@ def play_eval_game(
     board = chess.Board()
     mcts_config = MCTSConfig(
         simulations=simulations,
+        c_puct=c_puct,
         root_mate_search_plies=root_mate_search_plies,
         root_material_search_plies=root_material_search_plies,
         root_material_max_loss_cp=root_material_max_loss_cp,
@@ -202,6 +209,7 @@ def play_eval_game_against_engine(
     engine: chess.engine.SimpleEngine,
     model_color: chess.Color,
     simulations: int,
+    c_puct: float,
     root_mate_search_plies: int,
     root_material_search_plies: int,
     root_material_max_loss_cp: int,
@@ -214,6 +222,7 @@ def play_eval_game_against_engine(
         model_eval,
         MCTSConfig(
             simulations=simulations,
+            c_puct=c_puct,
             root_mate_search_plies=root_mate_search_plies,
             root_material_search_plies=root_material_search_plies,
             root_material_max_loss_cp=root_material_max_loss_cp,
