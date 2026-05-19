@@ -1,0 +1,44 @@
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "1"]
+[White "AlphaChess"]
+[Black "tools/stockfish/bin/stockfish"]
+[Result "0-1"]
+[AlphaChessScore "0.0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. Bxc6 dxc6 6. d3 Bd6 7. O-O Be6 8. a4 Qe7 9. Nc3 O-O-O 10. Be3 Rdg8 11. Qe2 Bg4 12. h3 Bh5 13. a5 g5 14. Nd2 Bxe2 15. Nxe2 Bc5 16. Bxc5 Qxc5 17. Rac1 Qf8 18. Ng3 Ne8 19. b3 h5 20. Nc4 Nd6 21. Nxe5 Qe7 22. Nf3 g4 23. hxg4 hxg4 24. Nd2 Qh4 25. Rfe1 Kb8 26. e5 Nf5 27. Ndf1 Ka8 28. Re4 Rd8 29. Re2 Nxg3 30. Nxg3 Qh2+ 31. Kf1 Qh1+ 32. Nxh1 Rxh1# 0-1
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "2"]
+[White "tools/stockfish/bin/stockfish"]
+[Black "AlphaChess"]
+[Result "1-0"]
+[AlphaChessScore "0.0"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 e5 5. Nb5 Qb6 6. Be3 Qxe3+ 7. fxe3 Bb4+ 8. N1c3 a6 9. Nc7+ Ke7 10. Bd3 Bxc3+ 11. bxc3 Ra7 12. Nd5+ Kd8 13. O-O f6 14. Nb6 Nh6 15. Rb1 Ng4 16. Qxg4 g6 17. Qh4 g5 18. Qh6 Ra8 19. Qxf6+ Kc7 20. Qxh8 Ra7 21. Qxc8+ Kd6 22. Qxd7+ Kc5 23. Qd5# 1-0
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "3"]
+[White "AlphaChess"]
+[Black "tools/stockfish/bin/stockfish"]
+[Result "0-1"]
+[AlphaChessScore "0.0"]
+
+1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. d4 d5 6. c3 Bd6 7. Bd3 O-O 8. O-O Re8 9. Re1 Bf5 10. Nbd2 Nxf2 11. Bxf5 Nxd1 12. Rxd1 Bf4 13. Nf1 Bxc1 14. Rdxc1 g6 15. Bh3 Nc6 16. b4 b5 17. a4 bxa4 18. b5 Na5 19. Rxa4 Nc4 20. Ne5 Nxe5 21. dxe5 Rxe5 22. c4 Qh4 23. cxd5 Qxa4 24. Rxc7 Qd4+ 25. Kh1 Re1 26. Rc8+ Rxc8 27. g4 Qf2 28. g5 Rxf1+ 29. Bxf1 Qxf1# 0-1
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "4"]
+[White "tools/stockfish/bin/stockfish"]
+[Black "AlphaChess"]
+[Result "1-0"]
+[AlphaChessScore "0.0"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 e5 5. Nb5 Qb6 6. Be3 Qxe3+ 7. fxe3 Bb4+ 8. N1c3 a6 9. Nc7+ Ke7 10. Nxa8 Bxc3+ 11. bxc3 Nd8 12. Nb6 Ne6 13. Nxc8+ Ke8 14. Nd6+ Ke7 15. Nf5+ Kf6 16. Qxd7 Nc5 17. Qd8+ Ne7 18. Qxe7+ Kg6 19. Qxe5 f6 20. Qg3+ Kf7 21. Qxg7+ Ke6 22. Qe7# 1-0
+
