@@ -50,6 +50,7 @@ class IterationConfig:
     promotion_score: float = 0.50
     eval_games: int = 8
     eval_simulations: int = 64
+    eval_workers: int = 1
     stockfish_gate_games: int = 0
     stockfish_gate_simulations: int | None = None
     stockfish_gate_min_score: float = 0.50
@@ -151,6 +152,7 @@ def run_iterations(config: IterationConfig) -> Path:
             "root_mate_search_plies": config.root_mate_search_plies,
             "root_material_search_plies": config.root_material_search_plies,
             "root_material_max_loss_cp": config.root_material_max_loss_cp,
+            "workers": config.eval_workers,
             "seed": iter_seed,
             "max_plies": config.max_plies,
         }
@@ -175,6 +177,7 @@ def run_iterations(config: IterationConfig) -> Path:
                 "root_mate_search_plies": config.root_mate_search_plies,
                 "root_material_search_plies": config.root_material_search_plies,
                 "root_material_max_loss_cp": config.root_material_max_loss_cp,
+                "workers": config.eval_workers,
                 "seed": iter_seed + 100_000,
                 "max_plies": config.max_plies,
                 "pgn_out": str(run_dir / "eval" / f"iter_{iteration:04d}_stockfish_gate.pgn"),

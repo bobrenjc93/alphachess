@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -36,6 +38,7 @@ class EvalConfig:
     seed: int = 0
     max_plies: int = 512
     pgn_out: str | None = None
+    workers: int = 1
 
 
 @dataclass
@@ -47,6 +50,9 @@ class EvalGameRecord:
 
 
 def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
+    if config.workers > 1 and config.games > 1:
+        return evaluate_checkpoint_parallel(config)
+
     model_eval = load_evaluator(
         config.checkpoint,
         device=config.device,
@@ -83,8 +89,31 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
     )
 
 
+def evaluate_checkpoint_parallel(config: EvalConfig) -> dict[str, float]:
+    workers = min(max(1, int(config.workers)), max(1, int(config.games)))
+    game_seeds = _game_seeds(config.seed, config.games)
+    tasks = [(config, game_idx, game_seeds[game_idx]) for game_idx in range(config.games)]
+    worker = (
+        _evaluate_engine_game_task
+        if config.opponent in {"uci", "stockfish"}
+        else _evaluate_match_game_task
+    )
+    with ProcessPoolExecutor(
+        max_workers=workers,
+        mp_context=mp.get_context("spawn"),
+    ) as executor:
+        results = list(executor.map(worker, tasks))
+
+    results.sort(key=lambda result: result[0])
+    scores = [score for _, score, _ in results]
+    records = [record for _, _, record in results]
+    if config.pgn_out:
+        write_eval_pgns(config.pgn_out, records)
+    return summarize_scores(scores)
+
+
 def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[str, float]:
-    rng = np.random.default_rng(config.seed)
+    game_seeds = _game_seeds(config.seed, config.games)
     scores: list[float] = []
     records: list[EvalGameRecord] = []
     limit = chess.engine.Limit(time=config.engine_time, depth=config.engine_depth)
@@ -103,7 +132,7 @@ def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[s
                 root_material_max_loss_cp=config.root_material_max_loss_cp,
                 max_plies=config.max_plies,
                 limit=limit,
-                rng=np.random.default_rng(int(rng.integers(0, 2**31 - 1))),
+                rng=np.random.default_rng(game_seeds[game_idx]),
             )
             scores.append(score)
             records.append(
@@ -134,7 +163,7 @@ def evaluate_match(
     pgn_out: str | None = None,
     opponent_name: str = "opponent",
 ) -> dict[str, float]:
-    rng = np.random.default_rng(seed)
+    game_seeds = _game_seeds(seed, games)
     scores: list[float] = []
     records: list[EvalGameRecord] = []
 
@@ -151,7 +180,7 @@ def evaluate_match(
             root_material_search_plies=root_material_search_plies,
             root_material_max_loss_cp=root_material_max_loss_cp,
             max_plies=max_plies,
-            rng=np.random.default_rng(int(rng.integers(0, 2**31 - 1))),
+            rng=np.random.default_rng(game_seeds[game_idx]),
         )
         scores.append(score)
         records.append(
@@ -166,6 +195,96 @@ def evaluate_match(
     if pgn_out:
         write_eval_pgns(pgn_out, records)
     return summarize_scores(scores)
+
+
+def _evaluate_match_game_task(
+    task: tuple[EvalConfig, int, int],
+) -> tuple[int, float, EvalGameRecord]:
+    config, game_idx, game_seed = task
+    model_eval = load_evaluator(
+        config.checkpoint,
+        device=config.device,
+        material_value_weight=config.material_value_weight,
+        material_value_search_plies=config.material_value_search_plies,
+    )
+    opponent_eval: Evaluator
+    if config.opponent_checkpoint:
+        opponent_eval = load_evaluator(
+            config.opponent_checkpoint,
+            device=config.device,
+            material_value_weight=config.material_value_weight,
+            material_value_search_plies=config.material_value_search_plies,
+        )
+    else:
+        opponent_eval = UniformEvaluator()
+    model_color = chess.WHITE if game_idx % 2 == 0 else chess.BLACK
+    score, board = play_eval_game(
+        model_eval,
+        opponent_eval,
+        model_color,
+        simulations=config.simulations,
+        c_puct=config.c_puct,
+        policy_prior_temperature=config.policy_prior_temperature,
+        root_mate_search_plies=config.root_mate_search_plies,
+        root_material_search_plies=config.root_material_search_plies,
+        root_material_max_loss_cp=config.root_material_max_loss_cp,
+        max_plies=config.max_plies,
+        rng=np.random.default_rng(game_seed),
+    )
+    return (
+        game_idx,
+        score,
+        EvalGameRecord(
+            board=board,
+            model_color=model_color,
+            score=score,
+            opponent_name=config.opponent_checkpoint or config.opponent,
+        ),
+    )
+
+
+def _evaluate_engine_game_task(
+    task: tuple[EvalConfig, int, int],
+) -> tuple[int, float, EvalGameRecord]:
+    config, game_idx, game_seed = task
+    model_eval = load_evaluator(
+        config.checkpoint,
+        device=config.device,
+        material_value_weight=config.material_value_weight,
+        material_value_search_plies=config.material_value_search_plies,
+    )
+    model_color = chess.WHITE if game_idx % 2 == 0 else chess.BLACK
+    limit = chess.engine.Limit(time=config.engine_time, depth=config.engine_depth)
+    with chess.engine.SimpleEngine.popen_uci(config.engine_path) as engine:
+        score, board = play_eval_game_against_engine(
+            model_eval=model_eval,
+            engine=engine,
+            model_color=model_color,
+            simulations=config.simulations,
+            c_puct=config.c_puct,
+            policy_prior_temperature=config.policy_prior_temperature,
+            root_mate_search_plies=config.root_mate_search_plies,
+            root_material_search_plies=config.root_material_search_plies,
+            root_material_max_loss_cp=config.root_material_max_loss_cp,
+            max_plies=config.max_plies,
+            limit=limit,
+            rng=np.random.default_rng(game_seed),
+        )
+    return (
+        game_idx,
+        score,
+        EvalGameRecord(
+            board=board,
+            model_color=model_color,
+            score=score,
+            opponent_name=config.engine_path,
+        ),
+    )
+
+
+def _game_seeds(seed: int, games: int) -> list[int]:
+    rng = np.random.default_rng(seed)
+    return [int(rng.integers(0, 2**31 - 1)) for _ in range(games)]
 
 
 def play_eval_game(

@@ -196,6 +196,13 @@ STOCKFISH_GATE_ENGINE_PATH=tools/stockfish/bin/stockfish \
 ITERATIONS=1 GAMES=32 scripts/submit_gpu_iteration.sh
 ```
 
+Use multiple evaluation workers when parent or Stockfish gates are taking too
+long:
+
+```bash
+EVAL_WORKERS=4 EVAL_GAMES=16 STOCKFISH_GATE_GAMES=4 scripts/submit_gpu_iteration.sh
+```
+
 ## Design Notes
 
 AutoGo’s useful pattern is preserved: keep the game implementation deterministic, make MCTS consume a small state/evaluator interface, store each self-play position with the improved visit-count policy, and make experiments reproducible from plain scripts. Chess-specific complexity is kept behind `python-chess` so castling, en passant, promotions, repetition, and draw claims stay correct.

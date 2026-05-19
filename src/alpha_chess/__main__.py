@@ -99,6 +99,7 @@ def main(argv: list[str] | None = None) -> None:
     eval_parser.add_argument("--seed", type=int, default=0)
     eval_parser.add_argument("--max-plies", type=int, default=512)
     eval_parser.add_argument("--pgn-out")
+    eval_parser.add_argument("--workers", type=int, default=1)
 
     import_parser = subparsers.add_parser("import-pgn", help="convert expert PGN games to NPZ data")
     import_parser.add_argument("--pgn", required=True)
@@ -180,6 +181,7 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--promotion-score", type=float, default=0.50)
     iterate_parser.add_argument("--eval-games", type=int, default=8)
     iterate_parser.add_argument("--eval-simulations", type=int, default=64)
+    iterate_parser.add_argument("--eval-workers", type=int, default=1)
     iterate_parser.add_argument("--stockfish-gate-games", type=int, default=0)
     iterate_parser.add_argument("--stockfish-gate-simulations", type=int)
     iterate_parser.add_argument("--stockfish-gate-min-score", type=float, default=0.50)
