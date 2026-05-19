@@ -11,6 +11,7 @@ from alpha_chess.chess_env import ACTION_SIZE, action_to_move, legal_actions, te
 from alpha_chess.evaluator import PIECE_VALUES, Evaluator
 
 MATE_SCORE_CP = 100_000
+QUIET_MATERIAL_CANDIDATE_LIMIT = 8
 
 
 @dataclass
@@ -237,7 +238,8 @@ def _filter_root_material(
     perspective = board.turn
     baseline = _material_score_cp(board, perspective)
     min_allowed = baseline - max_loss_cp
-    cache: dict[tuple[str, int, bool], int] = {}
+    full_width_cache: dict[tuple[str, int, bool], int] = {}
+    quiescence_cache: dict[tuple[str, int, bool], int] = {}
     safe_actions: list[int] = []
     scored_actions: list[tuple[int, int]] = []
 
@@ -247,11 +249,12 @@ def _filter_root_material(
             continue
         child = board.copy(stack=False)
         child.push(move)
-        score = _material_quiescence_score(
+        score = _material_full_width_score(
             child,
             material_search_plies,
             perspective,
-            cache,
+            full_width_cache,
+            quiescence_cache,
         )
         scored_actions.append((action, score))
         if score >= min_allowed:
@@ -265,6 +268,69 @@ def _filter_root_material(
     best_score = max(score for _, score in scored_actions)
     fallback_actions = [action for action, score in scored_actions if score == best_score]
     return fallback_actions if fallback_actions else [scored_actions[0][0]]
+
+
+def _material_full_width_score(
+    board: chess.Board,
+    plies: int,
+    perspective: chess.Color,
+    cache: dict[tuple[str, int, bool], int],
+    quiescence_cache: dict[tuple[str, int, bool], int],
+) -> int:
+    key = (board.fen(), plies, perspective)
+    if key in cache:
+        return cache[key]
+
+    if plies <= 0 or board.is_game_over(claim_draw=True):
+        score = _material_quiescence_score(board, 1, perspective, quiescence_cache)
+        cache[key] = score
+        return score
+
+    moves = _material_candidate_moves(board)
+
+    if board.turn == perspective:
+        best = -MATE_SCORE_CP
+        for move in moves:
+            child = board.copy(stack=False)
+            child.push(move)
+            best = max(
+                best,
+                _material_full_width_score(
+                    child,
+                    plies - 1,
+                    perspective,
+                    cache,
+                    quiescence_cache,
+                ),
+            )
+    else:
+        best = MATE_SCORE_CP
+        for move in moves:
+            child = board.copy(stack=False)
+            child.push(move)
+            best = min(
+                best,
+                _material_full_width_score(
+                    child,
+                    plies - 1,
+                    perspective,
+                    cache,
+                    quiescence_cache,
+                ),
+            )
+
+    cache[key] = best
+    return best
+
+
+def _material_candidate_moves(board: chess.Board) -> list[chess.Move]:
+    tactical_moves = _material_tactical_moves(board)
+    if tactical_moves:
+        return tactical_moves
+
+    quiet_moves = list(board.legal_moves)
+    quiet_moves.sort(key=lambda move: _quiet_threat_priority(board, move), reverse=True)
+    return quiet_moves[:QUIET_MATERIAL_CANDIDATE_LIMIT]
 
 
 def _material_quiescence_score(
@@ -321,6 +387,20 @@ def _move_material_priority(board: chess.Board, move: chess.Move) -> int:
     moving_piece = board.piece_at(move.from_square)
     moving_value = PIECE_VALUES.get(moving_piece.piece_type, 0) if moving_piece else 0
     return check_bonus + captured_value + promotion_value - moving_value
+
+
+def _quiet_threat_priority(board: chess.Board, move: chess.Move) -> int:
+    child = board.copy(stack=False)
+    child.push(move)
+    mover = not child.turn
+    threat_score = 0
+    for square, piece in child.piece_map().items():
+        if piece.color != mover and child.is_attacked_by(mover, square):
+            threat_score = max(threat_score, PIECE_VALUES.get(piece.piece_type, 0))
+
+    moving_piece = board.piece_at(move.from_square)
+    moving_value = PIECE_VALUES.get(moving_piece.piece_type, 0) if moving_piece else 0
+    return threat_score - moving_value
 
 
 def _captured_piece_value(board: chess.Board, move: chess.Move) -> int:
