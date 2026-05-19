@@ -1,0 +1,11 @@
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "1"]
+[White "AlphaChess"]
+[Black "tools/stockfish/bin/stockfish"]
+[Result "0-1"]
+[AlphaChessScore "0.0"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. Nxc6 bxc6 6. e5 Qe7 7. Qe2 Nd5 8. Nd2 a5 9. Nc4 Qe6 10. f4 Bc5 11. g4 Ba6 12. f5 Qe7 13. Bd2 Bxc4 14. Qxc4 Qxe5+ 15. Be2 Qxb2 16. Qxc5 Qxa1+ 17. Kf2 Qxh1 18. Qa3 Qxh2+ 19. Kf3 Qh3+ 20. Kf2 Qxa3 21. Bc1 Qxc1 22. a3 Qe3+ 23. Kg2 Nf4+ 24. Kh2 Qh3+ 25. Kg1 Qg2# 0-1
+
