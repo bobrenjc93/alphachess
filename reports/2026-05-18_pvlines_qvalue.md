@@ -108,10 +108,13 @@ PGN=reports/focus_pvlines_qvalue_s64_vs_stockfish.pgn
 
 stockfish 64 sims, seed 9164: 0.0/2
 PGN=reports/focus_pvlines_qvalue_s64_2g_vs_stockfish.pgn
+
+stockfish 128 sims, seed 9128: 0.0/2
+PGN=reports/focus_pvlines_qvalue_s128_vs_stockfish.pgn
 ```
 
 The single 64-simulation draw is the first recent direct Stockfish non-loss,
-but the two-game 64-simulation follow-up still lost both games.
+but the two-game 64- and 128-simulation follow-ups still lost both games.
 
 ## Conclusion
 
