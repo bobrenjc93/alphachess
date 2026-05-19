@@ -383,6 +383,65 @@ def test_train_policy_head_only_freezes_body_and_value_head(tmp_path) -> None:
     assert changed_policy_keys
 
 
+def test_train_value_head_only_freezes_body_and_policy_head(tmp_path) -> None:
+    data_dir = tmp_path / "data"
+    out_dir = tmp_path / "out"
+    data_dir.mkdir()
+    _write_sparse_npz(data_dir / "game.npz", positions=8)
+
+    checkpoint = tmp_path / "checkpoint.pt"
+    save_checkpoint(checkpoint, ChessNet(ChessNetConfig(channels=8, blocks=1)))
+    before = torch.load(checkpoint, map_location="cpu")["model_state"]
+
+    train(
+        TrainConfig(
+            data=str(data_dir),
+            out=str(out_dir),
+            checkpoint=str(checkpoint),
+            epochs=1,
+            batch_size=4,
+            lr=0.01,
+            value_weight=1.0,
+            weight_decay=0.0,
+            value_head_only=True,
+            device="cpu",
+        )
+    )
+
+    after = torch.load(out_dir / "latest.pt", map_location="cpu")["model_state"]
+    changed_value_keys = []
+    for key, before_tensor in before.items():
+        after_tensor = after[key]
+        if key.startswith("value_head."):
+            if torch.is_floating_point(before_tensor) and not torch.allclose(
+                before_tensor,
+                after_tensor,
+            ):
+                changed_value_keys.append(key)
+            continue
+        assert torch.equal(after_tensor, before_tensor), key
+
+    assert changed_value_keys
+
+
+def test_train_rejects_policy_and_value_head_only_together(tmp_path) -> None:
+    data_dir = tmp_path / "data"
+    out_dir = tmp_path / "out"
+    data_dir.mkdir()
+    _write_sparse_npz(data_dir / "game.npz", positions=1)
+
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        train(
+            TrainConfig(
+                data=str(data_dir),
+                out=str(out_dir),
+                policy_head_only=True,
+                value_head_only=True,
+                device="cpu",
+            )
+        )
+
+
 def test_blend_checkpoints_interpolates_floating_weights(tmp_path) -> None:
     checkpoint_a = tmp_path / "a.pt"
     checkpoint_b = tmp_path / "b.pt"

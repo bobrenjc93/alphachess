@@ -34,6 +34,7 @@ class TrainConfig:
     color_mirror_augmentation: bool = False
     prefer_action_labels: bool = False
     policy_head_only: bool = False
+    value_head_only: bool = False
     channels: int = 128
     blocks: int = 6
     seed: int = 0
@@ -106,8 +107,12 @@ def train(config: TrainConfig) -> Path:
     else:
         model = ChessNet(ChessNetConfig(channels=config.channels, blocks=config.blocks))
     model.to(device)
+    if config.policy_head_only and config.value_head_only:
+        raise ValueError("policy_head_only and value_head_only are mutually exclusive")
     if config.policy_head_only:
         _freeze_except_policy_head(model)
+    if config.value_head_only:
+        _freeze_except_value_head(model)
     trainable_parameters = [param for param in model.parameters() if param.requires_grad]
     if not trainable_parameters:
         raise ValueError("No trainable parameters are available")
@@ -123,7 +128,11 @@ def train(config: TrainConfig) -> Path:
     latest_metrics: dict[str, float] = {}
 
     for epoch in range(config.epochs):
-        _set_train_mode(model, config.policy_head_only)
+        _set_train_mode(
+            model,
+            policy_head_only=config.policy_head_only,
+            value_head_only=config.value_head_only,
+        )
         running_loss = 0.0
         for batch in loader:
             loss, parts = _compute_batch_loss(
@@ -179,14 +188,29 @@ def _freeze_except_policy_head(model: ChessNet) -> None:
         param.requires_grad_(True)
 
 
-def _set_train_mode(model: ChessNet, policy_head_only: bool) -> None:
+def _freeze_except_value_head(model: ChessNet) -> None:
+    for param in model.parameters():
+        param.requires_grad_(False)
+    for param in model.value_head.parameters():
+        param.requires_grad_(True)
+
+
+def _set_train_mode(
+    model: ChessNet,
+    policy_head_only: bool,
+    value_head_only: bool,
+) -> None:
     model.train()
-    if not policy_head_only:
+    if not policy_head_only and not value_head_only:
         return
     model.stem.eval()
     model.blocks.eval()
-    model.value_head.eval()
-    model.policy_head.train()
+    if policy_head_only:
+        model.value_head.eval()
+        model.policy_head.train()
+    if value_head_only:
+        model.policy_head.eval()
+        model.value_head.train()
 
 
 @torch.no_grad()
