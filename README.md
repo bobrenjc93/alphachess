@@ -128,6 +128,17 @@ uv run alpha-chess train \
   --out checkpoints/bad_action_repair
 ```
 
+Training can also double FEN-backed replay with exact color-mirror symmetry:
+
+```bash
+uv run alpha-chess train \
+  --checkpoint checkpoints/current/latest.pt \
+  --data data/teacher/stockfish_sample data/puzzles/mate_1200_2200 \
+  --legal-policy-loss \
+  --color-mirror-augmentation \
+  --out checkpoints/mirror_augmented
+```
+
 Import Lichess puzzle CSV tactics:
 
 ```bash

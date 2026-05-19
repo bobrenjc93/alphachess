@@ -29,6 +29,7 @@ class TrainConfig:
     bad_action_margin: float = 1.0
     data_weights: list[float] | None = None
     legal_policy_loss: bool = False
+    color_mirror_augmentation: bool = False
     channels: int = 128
     blocks: int = 6
     seed: int = 0
@@ -56,7 +57,11 @@ def resolve_device(device: str) -> torch.device:
 def train(config: TrainConfig) -> Path:
     torch.manual_seed(config.seed)
     device = resolve_device(config.device)
-    dataset = SelfPlayDataset(config.data, in_memory=True)
+    dataset = SelfPlayDataset(
+        config.data,
+        in_memory=True,
+        color_mirror_augmentation=config.color_mirror_augmentation,
+    )
 
     val_size = max(1, int(0.1 * len(dataset))) if len(dataset) > 10 else 0
     train_size = len(dataset) - val_size

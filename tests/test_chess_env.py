@@ -5,6 +5,10 @@ from alpha_chess.chess_env import (
     ACTION_SIZE,
     NUM_INPUT_PLANES,
     action_to_move,
+    color_mirror_action,
+    color_mirror_board,
+    color_mirror_move,
+    color_mirror_policy,
     encode_board,
     legal_action_mask,
     move_to_action,
@@ -44,3 +48,22 @@ def test_encode_board_shape_and_mask() -> None:
     assert encoded.dtype == np.float32
     assert mask.shape == (ACTION_SIZE,)
     assert int(mask.sum()) == board.legal_moves.count()
+
+
+def test_color_mirror_maps_moves_and_policies() -> None:
+    board = chess.Board()
+    mirrored = color_mirror_board(board)
+    move = chess.Move.from_uci("g1f3")
+    mirrored_move = color_mirror_move(move)
+    action = move_to_action(move, board)
+    mirrored_action = color_mirror_action(action, board)
+
+    assert mirrored.turn == chess.BLACK
+    assert mirrored_move == chess.Move.from_uci("g8f6")
+    assert action_to_move(mirrored_action, mirrored) == mirrored_move
+
+    policy = np.zeros(ACTION_SIZE, dtype=np.float32)
+    policy[action] = 1.0
+    mirrored_policy = color_mirror_policy(policy, board)
+    assert mirrored_policy[mirrored_action] == 1.0
+    assert mirrored_policy.sum() == 1.0

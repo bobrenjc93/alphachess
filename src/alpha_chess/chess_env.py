@@ -82,6 +82,26 @@ def unorient_square(square: chess.Square, turn: chess.Color) -> chess.Square:
     return square if turn == chess.WHITE else rotate_square(square)
 
 
+def color_mirror_board(board: chess.Board) -> chess.Board:
+    """Return the color-swapped vertical mirror of a board.
+
+    This is an exact chess symmetry: white and black trade roles, ranks are
+    mirrored, and castling/en-passant metadata are transformed by python-chess.
+    """
+
+    return board.mirror()
+
+
+def color_mirror_move(move: chess.Move) -> chess.Move:
+    """Mirror a move through :func:`color_mirror_board`."""
+
+    return chess.Move(
+        chess.square_mirror(move.from_square),
+        chess.square_mirror(move.to_square),
+        promotion=move.promotion,
+    )
+
+
 def _sign(value: int) -> int:
     return (value > 0) - (value < 0)
 
@@ -182,6 +202,38 @@ def action_to_move(action: int, board: chess.Board) -> chess.Move | None:
         return None
     move = decoded.to_move()
     return move if move in board.legal_moves else None
+
+
+def color_mirror_action(action: int, board: chess.Board) -> int:
+    """Map an action on ``board`` to the equivalent action on ``board.mirror()``."""
+
+    move = action_to_move(action, board)
+    if move is None:
+        raise ValueError(f"Cannot mirror illegal action {action} in {board.fen()}")
+    mirrored_board = color_mirror_board(board)
+    mirrored_move = color_mirror_move(move)
+    if mirrored_move not in mirrored_board.legal_moves:
+        raise ValueError(
+            f"Mirrored move {mirrored_move.uci()} is illegal in {mirrored_board.fen()}"
+        )
+    return move_to_action(mirrored_move, mirrored_board)
+
+
+def color_mirror_policy(policy: np.ndarray, board: chess.Board) -> np.ndarray:
+    """Mirror a dense policy vector through :func:`color_mirror_board`."""
+
+    mirrored = np.zeros_like(policy, dtype=np.float32)
+    mirrored_board = color_mirror_board(board)
+    for action in np.flatnonzero(policy > 0):
+        move = action_to_move(int(action), board)
+        if move is None:
+            continue
+        mirrored_action = move_to_action(color_mirror_move(move), mirrored_board)
+        mirrored[mirrored_action] += float(policy[int(action)])
+    total = float(mirrored.sum())
+    if total > 0:
+        mirrored /= total
+    return mirrored
 
 
 def legal_actions(board: chess.Board) -> list[int]:

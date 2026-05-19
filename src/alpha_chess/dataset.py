@@ -5,11 +5,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import chess
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from alpha_chess.chess_env import ACTION_SIZE
+from alpha_chess.chess_env import (
+    ACTION_SIZE,
+    color_mirror_action,
+    color_mirror_board,
+    color_mirror_policy,
+    encode_board,
+)
 
 Sample = dict[str, torch.Tensor | str]
 
@@ -17,12 +24,18 @@ Sample = dict[str, torch.Tensor | str]
 class SelfPlayDataset(Dataset):
     """Dataset backed by AlphaChess self-play NPZ files."""
 
-    def __init__(self, data_dir: str | Path | list[str | Path], in_memory: bool = False) -> None:
+    def __init__(
+        self,
+        data_dir: str | Path | list[str | Path],
+        in_memory: bool = False,
+        color_mirror_augmentation: bool = False,
+    ) -> None:
         if isinstance(data_dir, (str, Path)):
             data_dirs = [Path(data_dir)]
         else:
             data_dirs = [Path(path) for path in data_dir]
 
+        self.color_mirror_augmentation = bool(color_mirror_augmentation)
         self.files: list[Path] = []
         self.source_names = [str(path) for path in data_dirs]
         self.file_source_ids: list[int] = []
@@ -42,6 +55,10 @@ class SelfPlayDataset(Dataset):
         self.cache: dict[Path, dict[str, np.ndarray]] | None = {} if in_memory else None
         for path in self.files:
             data = np.load(path)
+            if self.color_mirror_augmentation and "fens" not in data.files:
+                raise ValueError(
+                    f"color_mirror_augmentation requires stored FENs, but {path} has none"
+                )
             self.lengths.append(int(data["boards"].shape[0]))
             if self.cache is not None:
                 self.cache[path] = {
@@ -59,9 +76,12 @@ class SelfPlayDataset(Dataset):
                 }
 
         self.cumsum = np.cumsum([0] + self.lengths)
+        self.base_length = int(self.cumsum[-1])
 
     def __len__(self) -> int:
-        return int(self.cumsum[-1])
+        if self.color_mirror_augmentation:
+            return self.base_length * 2
+        return self.base_length
 
     def source_sample_weights(self, source_weights: list[float]) -> torch.Tensor:
         """Return per-sample weights that balance input data sources.
@@ -95,7 +115,7 @@ class SelfPlayDataset(Dataset):
                 + ", ".join(empty_weighted_sources)
             )
 
-        sample_weights = np.zeros(len(self), dtype=np.float64)
+        sample_weights = np.zeros(self.base_length, dtype=np.float64)
         for file_index, (source_id, length) in enumerate(zip(self.file_source_ids, self.lengths)):
             source_positions = positions_per_source[source_id]
             if source_positions <= 0:
@@ -104,11 +124,17 @@ class SelfPlayDataset(Dataset):
             end = int(self.cumsum[file_index + 1])
             sample_weights[start:end] = weights[source_id] / source_positions
 
+        if self.color_mirror_augmentation:
+            sample_weights = np.concatenate([sample_weights, sample_weights])
         return torch.as_tensor(sample_weights, dtype=torch.double)
 
     def __getitem__(self, index: int) -> Sample:
         if index < 0 or index >= len(self):
             raise IndexError(index)
+        mirrored = False
+        if self.color_mirror_augmentation and index >= self.base_length:
+            index -= self.base_length
+            mirrored = True
         file_index = int(np.searchsorted(self.cumsum[1:], index, side="right"))
         local_index = index - int(self.cumsum[file_index])
         path = self.files[file_index]
@@ -117,21 +143,39 @@ class SelfPlayDataset(Dataset):
         if "policies" not in data and "actions" not in data:
             raise KeyError(f"{path} has neither 'policies' nor 'actions'")
 
+        board = chess.Board(str(data["fens"][local_index])) if mirrored else None
+        mirrored_board = color_mirror_board(board) if board is not None else None
+
         sample = {
-            "board": torch.from_numpy(data["boards"][local_index]).float(),
+            "board": (
+                torch.from_numpy(encode_board(mirrored_board)).float()
+                if mirrored_board is not None
+                else torch.from_numpy(data["boards"][local_index]).float()
+            ),
             "value": torch.tensor(float(data["values"][local_index]), dtype=torch.float32),
             "source_id": torch.tensor(self.file_source_ids[file_index], dtype=torch.long),
         }
         if "policies" in data:
-            sample["policy"] = torch.from_numpy(data["policies"][local_index]).float()
+            policy = data["policies"][local_index]
+            if mirrored_board is not None and board is not None:
+                policy = color_mirror_policy(policy, board)
+            sample["policy"] = torch.from_numpy(policy).float()
         if "actions" in data:
-            sample["action"] = torch.tensor(int(data["actions"][local_index]), dtype=torch.long)
+            action = int(data["actions"][local_index])
+            if mirrored_board is not None and board is not None:
+                action = color_mirror_action(action, board)
+            sample["action"] = torch.tensor(action, dtype=torch.long)
         if "fens" in data:
-            sample["fen"] = str(data["fens"][local_index])
-        if "bad_actions" in data:
-            sample["bad_action"] = torch.tensor(
-                int(data["bad_actions"][local_index]), dtype=torch.long
+            sample["fen"] = (
+                mirrored_board.fen()
+                if mirrored_board is not None
+                else str(data["fens"][local_index])
             )
+        if "bad_actions" in data:
+            bad_action = int(data["bad_actions"][local_index])
+            if bad_action >= 0 and mirrored_board is not None and board is not None:
+                bad_action = color_mirror_action(bad_action, board)
+            sample["bad_action"] = torch.tensor(bad_action, dtype=torch.long)
         return sample
 
     def write_index(self, path: str | Path | None = None) -> Path:

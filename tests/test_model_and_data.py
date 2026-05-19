@@ -4,7 +4,15 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
-from alpha_chess.chess_env import ACTION_SIZE, NUM_INPUT_PLANES, encode_board, move_to_action
+from alpha_chess.chess_env import (
+    ACTION_SIZE,
+    NUM_INPUT_PLANES,
+    action_to_move,
+    color_mirror_board,
+    color_mirror_move,
+    encode_board,
+    move_to_action,
+)
 from alpha_chess.dataset import SelfPlayDataset, collate_samples
 from alpha_chess.model import ChessNet, ChessNetConfig, blend_checkpoints, save_checkpoint
 from alpha_chess.train import (
@@ -93,6 +101,58 @@ def test_dataset_collates_fens_for_legal_policy_loss(tmp_path) -> None:
     assert int(sample["bad_action"]) == move_to_action(bad_move, board)
     assert batch["fen"] == [board.fen()]
     assert int(batch["bad_action"][0]) == move_to_action(bad_move, board)
+
+
+def test_dataset_color_mirror_augmentation_maps_labels(tmp_path) -> None:
+    board = chess.Board()
+    move = chess.Move.from_uci("g1f3")
+    bad_move = chess.Move.from_uci("d2d4")
+    policy = np.zeros(ACTION_SIZE, dtype=np.float32)
+    policy[move_to_action(move, board)] = 0.75
+    policy[move_to_action(bad_move, board)] = 0.25
+    np.savez_compressed(
+        tmp_path / "fen.npz",
+        boards=np.asarray([encode_board(board)], dtype=np.float32),
+        policies=np.asarray([policy], dtype=np.float32),
+        actions=np.asarray([move_to_action(move, board)], dtype=np.int64),
+        bad_actions=np.asarray([move_to_action(bad_move, board)], dtype=np.int64),
+        values=np.asarray([0.5], dtype=np.float32),
+        fens=np.asarray([board.fen()]),
+    )
+
+    dataset = SelfPlayDataset(tmp_path, in_memory=True, color_mirror_augmentation=True)
+    mirrored = dataset[1]
+    mirrored_board = color_mirror_board(board)
+    mirrored_move = color_mirror_move(move)
+    mirrored_bad_move = color_mirror_move(bad_move)
+    mirrored_action = move_to_action(mirrored_move, mirrored_board)
+    mirrored_bad_action = move_to_action(mirrored_bad_move, mirrored_board)
+
+    assert len(dataset) == 2
+    assert mirrored["fen"] == mirrored_board.fen()
+    assert int(mirrored["action"]) == mirrored_action
+    assert int(mirrored["bad_action"]) == mirrored_bad_action
+    assert action_to_move(int(mirrored["action"]), mirrored_board) == mirrored_move
+    assert float(mirrored["value"]) == pytest.approx(0.5)
+    assert float(mirrored["policy"][mirrored_action]) == pytest.approx(0.75)
+    assert float(mirrored["policy"][mirrored_bad_action]) == pytest.approx(0.25)
+
+
+def test_color_mirror_source_weights_duplicate_base_weights(tmp_path) -> None:
+    source_a = tmp_path / "source-a"
+    source_b = tmp_path / "source-b"
+    source_a.mkdir()
+    source_b.mkdir()
+    _write_sparse_npz(source_a / "a.npz", positions=2, include_fens=True)
+    _write_sparse_npz(source_b / "b.npz", positions=6, include_fens=True)
+
+    dataset = SelfPlayDataset([source_a, source_b], color_mirror_augmentation=True)
+    weights = dataset.source_sample_weights([0.75, 0.25])
+
+    assert len(dataset) == 16
+    assert torch.allclose(weights[:8], weights[8:])
+    assert torch.isclose(weights[:2].sum(), torch.tensor(0.75, dtype=torch.double))
+    assert torch.isclose(weights[8:10].sum(), torch.tensor(0.75, dtype=torch.double))
 
 
 def test_legal_policy_loss_masks_to_legal_actions() -> None:
@@ -229,8 +289,11 @@ def _constant_model(value: float) -> ChessNet:
     return model
 
 
-def _write_sparse_npz(path, positions: int) -> None:
+def _write_sparse_npz(path, positions: int, include_fens: bool = False) -> None:
     boards = np.zeros((positions, NUM_INPUT_PLANES, 8, 8), dtype=np.float32)
     actions = np.zeros((positions,), dtype=np.int64)
     values = np.zeros((positions,), dtype=np.float32)
-    np.savez_compressed(path, boards=boards, actions=actions, values=values)
+    payload = {"boards": boards, "actions": actions, "values": values}
+    if include_fens:
+        payload["fens"] = np.asarray([chess.Board().fen()] * positions)
+    np.savez_compressed(path, **payload)
