@@ -47,6 +47,8 @@ Settings unless noted:
 | qvalue/tailstrong blend `w=0.25` | `0.0/2` | `0/0/2` | `reports/blend_qvalue_policyhead_tailstrong-w025_stockfish_16sims.pgn` |
 | qvalue/bad-action blend `w=0.25` | `0.0/2` | `0/0/2` | `reports/blend_qvalue_policyhead_badaction-w025_stockfish_16sims.pgn` |
 | policy-head broad + root material guard | `0.0/2` | `0/0/2` | `reports/policyhead_broad_qvalue_rootmaterial250_stockfish_16sims.pgn` |
+| qvalue + value-based root selection | `0.0/2` | `0/0/2` | `reports/qvalue_value_select_stockfish_16sims.pgn` |
+| policy-head broad + value-based root selection | `0.0/2` | `0/0/2` | `reports/policyhead-broad_value_select_stockfish_16sims.pgn` |
 
 Root-material settings:
 
@@ -56,5 +58,5 @@ Root-material settings:
 ## Conclusion
 
 Rejected. The direct failure is not fixed by simple interpolation back toward
-the qvalue parent, and the shallow root material guard still loses tactically
-from both colors on the policy-head broad checkpoint.
+the qvalue parent, the shallow root material guard, or value-based root move
+selection. These probes still lose tactically from both colors.
