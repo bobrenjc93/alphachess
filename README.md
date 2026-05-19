@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T13:05:28-07:00`.
+Last updated: `2026-05-19T13:17:39-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -50,6 +50,7 @@ PGN timestamp, where the result was generated after the latest committed report.
 | `2026-05-19T12:52:53-07:00` | Latest-loss replay repair (`8689a40`, `reports/2026-05-19_leaf_loss_replay_repair.md`). | `2.0/8` vs hard-label parent | `0.0/2` | Narrow loss replay overfit/regressed. |
 | `2026-05-19T12:53:53-07:00` PGN timestamp | Root-mate-depth-5 inference checks (`reports/2026-05-19_rootmate5_and_16k_refresh.md`). | N/A | hard-label `0.0/2`; broad `0.0/2` | Deeper root mate filter alone was not enough. |
 | `2026-05-19T13:02:42-07:00` PGN timestamp | 16k Stockfish plus latest-loss policy refresh (`reports/2026-05-19_rootmate5_and_16k_refresh.md`). | `2.0/8` vs qvalue | `0.0/2` | Broader supervised refresh also regressed. |
+| `2026-05-19T13:17:29-07:00` PGN timestamp | Full-network hard-label 16k/latest-loss refresh (`reports/2026-05-19_fullhard_16k_leafloss.md`). | `2.0/8` vs qvalue | `0.0/2` | Full-network low-LR tuning also regressed. |
 
 Current practical status:
 
