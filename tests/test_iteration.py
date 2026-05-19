@@ -18,19 +18,27 @@ def test_iteration_training_inputs_mix_replay_data() -> None:
         replay_weights=[0.5, 0.1],
     )
 
-    train_data, data_weights = _build_training_inputs(["selfplay-1", "selfplay-2"], config)
+    train_data, data_weights, source_policy_weights = _build_training_inputs(
+        ["selfplay-1", "selfplay-2"],
+        config,
+    )
 
     assert train_data == ["selfplay-1", "selfplay-2", "teacher", "puzzles"]
     assert data_weights == pytest.approx([0.2, 0.2, 0.5, 0.1])
+    assert source_policy_weights is None
 
 
 def test_iteration_training_inputs_default_replay_weights() -> None:
     config = IterationConfig(replay_data=["teacher"])
 
-    train_data, data_weights = _build_training_inputs(["selfplay-1", "selfplay-2"], config)
+    train_data, data_weights, source_policy_weights = _build_training_inputs(
+        ["selfplay-1", "selfplay-2"],
+        config,
+    )
 
     assert train_data == ["selfplay-1", "selfplay-2", "teacher"]
     assert data_weights == pytest.approx([0.5, 0.5, 1.0])
+    assert source_policy_weights is None
 
 
 def test_iteration_training_inputs_validate_replay_weights() -> None:
@@ -43,10 +51,38 @@ def test_iteration_training_inputs_validate_replay_weights() -> None:
 def test_iteration_training_inputs_allow_replay_only() -> None:
     config = IterationConfig(replay_data=["teacher"], replay_weights=[1.0])
 
-    train_data, data_weights = _build_training_inputs([], config)
+    train_data, data_weights, source_policy_weights = _build_training_inputs([], config)
 
     assert train_data == ["teacher"]
     assert data_weights == pytest.approx([1.0])
+    assert source_policy_weights is None
+
+
+def test_iteration_training_inputs_build_source_policy_weights() -> None:
+    config = IterationConfig(
+        replay_data=["teacher", "puzzles"],
+        self_play_policy_weight=0.0,
+        replay_policy_weights=[1.0, 0.5],
+    )
+
+    train_data, data_weights, source_policy_weights = _build_training_inputs(
+        ["selfplay-1", "selfplay-2"],
+        config,
+    )
+
+    assert train_data == ["selfplay-1", "selfplay-2", "teacher", "puzzles"]
+    assert data_weights == pytest.approx([0.5, 0.5, 1.0, 1.0])
+    assert source_policy_weights == pytest.approx([0.0, 0.0, 1.0, 0.5])
+
+
+def test_iteration_training_inputs_validate_replay_policy_weights() -> None:
+    config = IterationConfig(
+        replay_data=["teacher", "puzzles"],
+        replay_policy_weights=[1.0],
+    )
+
+    with pytest.raises(ValueError, match="replay_policy_weights"):
+        _build_training_inputs(["selfplay"], config)
 
 
 def test_iteration_filters_empty_selfplay_dirs(tmp_path) -> None:
@@ -122,6 +158,7 @@ def test_iteration_uses_checkpoint_self_play_workers(monkeypatch, tmp_path) -> N
         material_value_weight=0.15,
         material_value_search_plies=2,
         device="cpu",
+        self_play_policy_weight=0.0,
     )
 
     league_path = run_iterations(config)
@@ -136,6 +173,7 @@ def test_iteration_uses_checkpoint_self_play_workers(monkeypatch, tmp_path) -> N
     assert calls["material_value_weight"] == pytest.approx(0.15)
     assert calls["material_value_search_plies"] == 2
     assert train_calls[0].data == [str(run_dir / "selfplay" / "iter_0001")]
+    assert train_calls[0].source_policy_weights == [0.0]
 
 
 def test_iteration_stockfish_gate_can_block_promotion(monkeypatch, tmp_path) -> None:

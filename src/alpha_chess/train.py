@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -28,6 +29,7 @@ class TrainConfig:
     bad_action_weight: float = 0.0
     bad_action_margin: float = 1.0
     data_weights: list[float] | None = None
+    source_policy_weights: list[float] | None = None
     legal_policy_loss: bool = False
     color_mirror_augmentation: bool = False
     channels: int = 128
@@ -119,6 +121,7 @@ def train(config: TrainConfig) -> Path:
                 legal_policy_loss=config.legal_policy_loss,
                 bad_action_weight=config.bad_action_weight,
                 bad_action_margin=config.bad_action_margin,
+                source_policy_weights=config.source_policy_weights,
             )
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -312,6 +315,7 @@ def _compute_batch_loss(
     legal_policy_loss: bool = False,
     bad_action_weight: float = 0.0,
     bad_action_margin: float = 1.0,
+    source_policy_weights: list[float] | None = None,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     boards = _batch_tensor(batch, "board").to(device)
     values = _batch_tensor(batch, "value").to(device)
@@ -325,8 +329,9 @@ def _compute_batch_loss(
             value_weight,
             bad_action_weight,
             bad_action_margin,
+            source_policy_weights=source_policy_weights,
         )
-    if bad_action_weight > 0 and "bad_action" in batch:
+    if source_policy_weights is not None or (bad_action_weight > 0 and "bad_action" in batch):
         return _compute_unmasked_loss(
             model,
             batch,
@@ -336,6 +341,7 @@ def _compute_batch_loss(
             value_weight,
             bad_action_weight,
             bad_action_margin,
+            source_policy_weights=source_policy_weights,
         )
     if "policy" in batch:
         return model.compute_loss(
@@ -361,6 +367,7 @@ def _compute_legal_masked_loss(
     value_weight: float,
     bad_action_weight: float = 0.0,
     bad_action_margin: float = 1.0,
+    source_policy_weights: list[float] | None = None,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     if "fen" not in batch:
         raise ValueError("legal_policy_loss requires training NPZ files with stored FENs")
@@ -375,16 +382,23 @@ def _compute_legal_masked_loss(
     if "policy" in batch:
         target_policy = _batch_tensor(batch, "policy").to(device)
         log_probs = F.log_softmax(masked_logits, dim=-1)
-        policy_loss = -(target_policy * log_probs).sum(dim=-1).mean()
+        per_example_policy_loss = -(target_policy * log_probs).sum(dim=-1)
         target_action = target_policy.argmax(dim=-1)
     else:
         target_action = _batch_tensor(batch, "action").to(device).long()
-        policy_loss = F.cross_entropy(masked_logits, target_action)
+        per_example_policy_loss = F.cross_entropy(masked_logits, target_action, reduction="none")
 
     target_is_legal = legal_mask.gather(1, target_action.unsqueeze(1)).squeeze(1)
     if not bool(target_is_legal.all().item()):
         raise ValueError("legal_policy_loss received a target action that is illegal for its FEN")
 
+    policy_weight = _source_weight_vector(
+        batch,
+        source_policy_weights,
+        device,
+        "source_policy_weights",
+    )
+    policy_loss = _weighted_mean(per_example_policy_loss, policy_weight)
     policy_acc = (masked_logits.argmax(dim=-1) == target_action).float().mean()
     value_loss = F.mse_loss(value, values)
     bad_action_loss = _bad_action_margin_loss(
@@ -414,17 +428,25 @@ def _compute_unmasked_loss(
     value_weight: float,
     bad_action_weight: float,
     bad_action_margin: float,
+    source_policy_weights: list[float] | None = None,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     policy_logits, value = model(boards)
     if "policy" in batch:
         target_policy = _batch_tensor(batch, "policy").to(device)
         log_probs = F.log_softmax(policy_logits, dim=-1)
-        policy_loss = -(target_policy * log_probs).sum(dim=-1).mean()
+        per_example_policy_loss = -(target_policy * log_probs).sum(dim=-1)
         target_action = target_policy.argmax(dim=-1)
     else:
         target_action = _batch_tensor(batch, "action").to(device).long()
-        policy_loss = F.cross_entropy(policy_logits, target_action)
+        per_example_policy_loss = F.cross_entropy(policy_logits, target_action, reduction="none")
 
+    policy_weight = _source_weight_vector(
+        batch,
+        source_policy_weights,
+        device,
+        "source_policy_weights",
+    )
+    policy_loss = _weighted_mean(per_example_policy_loss, policy_weight)
     policy_acc = (policy_logits.argmax(dim=-1) == target_action).float().mean()
     value_loss = F.mse_loss(value, values)
     bad_action_loss = _bad_action_margin_loss(
@@ -435,12 +457,14 @@ def _compute_unmasked_loss(
         margin=bad_action_margin,
     )
     loss = policy_loss + value_weight * value_loss + bad_action_weight * bad_action_loss
-    return loss, {
+    parts = {
         "policy_loss": policy_loss.detach(),
         "policy_acc": policy_acc.detach(),
         "value_loss": value_loss.detach(),
-        "bad_action_loss": bad_action_loss.detach(),
     }
+    if bad_action_weight > 0 and "bad_action" in batch:
+        parts["bad_action_loss"] = bad_action_loss.detach()
+    return loss, parts
 
 
 def _bad_action_margin_loss(
@@ -461,6 +485,36 @@ def _bad_action_margin_loss(
     target_logits = policy_logits.gather(1, target_action.unsqueeze(1)).squeeze(1)
     bad_logits = policy_logits.gather(1, bad_action.clamp_min(0).unsqueeze(1)).squeeze(1)
     return F.softplus(bad_logits[valid] - target_logits[valid] + margin).mean()
+
+
+def _source_weight_vector(
+    batch: dict[str, torch.Tensor | list[str]],
+    weights: list[float] | None,
+    device: torch.device,
+    name: str,
+) -> torch.Tensor | None:
+    if weights is None:
+        return None
+    if "source_id" not in batch:
+        raise ValueError(f"{name} requires batches with source_id")
+    if any(not math.isfinite(weight) or weight < 0 for weight in weights):
+        raise ValueError(f"{name} must be finite and non-negative")
+
+    source_ids = _batch_tensor(batch, "source_id").to(device).long()
+    if source_ids.numel() == 0:
+        return torch.empty(0, dtype=torch.float32, device=device)
+    max_source_id = int(source_ids.max().item())
+    if max_source_id >= len(weights):
+        raise ValueError(f"{name} has no entry for source id {max_source_id}")
+
+    weight_tensor = torch.as_tensor(weights, dtype=torch.float32, device=device)
+    return weight_tensor[source_ids]
+
+
+def _weighted_mean(losses: torch.Tensor, weights: torch.Tensor | None) -> torch.Tensor:
+    if weights is None:
+        return losses.mean()
+    return (losses * weights).mean()
 
 
 def _legal_action_mask_from_fens(fens: list[str], device: torch.device) -> torch.Tensor:

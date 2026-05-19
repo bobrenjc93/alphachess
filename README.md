@@ -184,6 +184,20 @@ LEGAL_POLICY_LOSS=1 \
 ITERATIONS=1 GAMES=32 scripts/submit_gpu_iteration.sh
 ```
 
+When self-play policies are too sparse but the game outcomes are still useful
+for value learning, keep self-play in the sample mix while disabling its policy
+loss:
+
+```bash
+CHECKPOINT=experiments/current-best/checkpoints/iter_0001/latest.pt \
+REPLAY_DATA="data/teacher/stockfish_multipv_elo1800_4096 data/puzzles/lines_1200_2400_100k" \
+SELF_PLAY_WEIGHT=0.10 \
+SELF_PLAY_POLICY_WEIGHT=0.0 \
+REPLAY_WEIGHTS="0.60 0.30" \
+LEGAL_POLICY_LOSS=1 \
+ITERATIONS=1 GAMES=64 scripts/submit_gpu_iteration.sh
+```
+
 Require candidates that pass the parent match to also score at least 50% in a
 direct Stockfish smoke before promotion:
 

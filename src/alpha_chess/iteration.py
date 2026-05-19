@@ -47,6 +47,8 @@ class IterationConfig:
     replay_data: list[str] | None = None
     self_play_weight: float = 1.0
     replay_weights: list[float] | None = None
+    self_play_policy_weight: float = 1.0
+    replay_policy_weights: list[float] | None = None
     promotion_score: float = 0.50
     eval_games: int = 8
     eval_simulations: int = 64
@@ -116,7 +118,10 @@ def run_iterations(config: IterationConfig) -> Path:
             )
         if written_selfplay:
             selfplay_dirs.append(str(selfplay_dir))
-        train_data, data_weights = _build_training_inputs(selfplay_dirs, config)
+        train_data, data_weights, source_policy_weights = _build_training_inputs(
+            selfplay_dirs,
+            config,
+        )
 
         candidate = train(
             TrainConfig(
@@ -130,6 +135,7 @@ def run_iterations(config: IterationConfig) -> Path:
                 bad_action_weight=config.bad_action_weight,
                 bad_action_margin=config.bad_action_margin,
                 data_weights=data_weights,
+                source_policy_weights=source_policy_weights,
                 legal_policy_loss=config.legal_policy_loss,
                 color_mirror_augmentation=config.color_mirror_augmentation,
                 channels=config.channels,
@@ -234,12 +240,13 @@ def _has_npz_data(path: Path) -> bool:
 
 def _build_training_inputs(
     selfplay_dirs: list[str], config: IterationConfig
-) -> tuple[list[str], list[float] | None]:
+) -> tuple[list[str], list[float] | None, list[float] | None]:
     """Combine accumulated self-play with fixed replay sources for training."""
 
     replay_data = list(config.replay_data or [])
     if not replay_data:
-        return list(selfplay_dirs), None
+        source_policy_weights = _build_source_policy_weights(selfplay_dirs, [], config)
+        return list(selfplay_dirs), None, source_policy_weights
 
     if not math.isfinite(config.self_play_weight) or config.self_play_weight < 0:
         raise ValueError("self_play_weight must be finite and non-negative")
@@ -261,4 +268,33 @@ def _build_training_inputs(
         if selfplay_dirs
         else []
     )
-    return train_data, selfplay_weights + replay_weights
+    source_policy_weights = _build_source_policy_weights(selfplay_dirs, replay_data, config)
+    return train_data, selfplay_weights + replay_weights, source_policy_weights
+
+
+def _build_source_policy_weights(
+    selfplay_dirs: list[str],
+    replay_data: list[str],
+    config: IterationConfig,
+) -> list[float] | None:
+    if not math.isfinite(config.self_play_policy_weight) or config.self_play_policy_weight < 0:
+        raise ValueError("self_play_policy_weight must be finite and non-negative")
+
+    if config.replay_policy_weights is None:
+        replay_policy_weights = [1.0] * len(replay_data)
+    else:
+        replay_policy_weights = list(config.replay_policy_weights)
+        if len(replay_policy_weights) != len(replay_data):
+            raise ValueError(
+                "replay_policy_weights must have one entry for each replay_data source"
+            )
+        if any(not math.isfinite(weight) or weight < 0 for weight in replay_policy_weights):
+            raise ValueError("replay_policy_weights must be finite non-negative values")
+
+    source_policy_weights = (
+        [config.self_play_policy_weight] * len(selfplay_dirs)
+        + replay_policy_weights
+    )
+    if not source_policy_weights or all(weight == 1.0 for weight in source_policy_weights):
+        return None
+    return source_policy_weights

@@ -2,6 +2,7 @@ import chess
 import numpy as np
 import pytest
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from alpha_chess.chess_env import (
@@ -207,6 +208,52 @@ def test_bad_action_margin_loss_is_reported() -> None:
     assert loss.ndim == 0
     assert "bad_action_loss" in parts
     assert float(parts["bad_action_loss"]) >= 0.0
+
+
+def test_source_policy_weights_scale_policy_loss() -> None:
+    model = ChessNet(ChessNetConfig(channels=8, blocks=1))
+    model.eval()
+    boards = torch.zeros(2, NUM_INPUT_PLANES, 8, 8)
+    actions = torch.tensor([0, 1], dtype=torch.long)
+    batch = {
+        "board": boards,
+        "action": actions,
+        "value": torch.zeros(2),
+        "source_id": torch.tensor([0, 1], dtype=torch.long),
+    }
+
+    policy_logits, _value = model(boards)
+    expected_policy_loss = F.cross_entropy(policy_logits, actions, reduction="none")[1] / 2
+    loss, parts = _compute_batch_loss(
+        model,
+        batch,
+        torch.device("cpu"),
+        value_weight=0.0,
+        source_policy_weights=[0.0, 1.0],
+    )
+
+    assert loss.item() == pytest.approx(float(expected_policy_loss.detach()))
+    assert parts["policy_loss"].item() == pytest.approx(float(expected_policy_loss.detach()))
+
+
+def test_source_policy_weights_validate_source_count() -> None:
+    model = ChessNet(ChessNetConfig(channels=8, blocks=1))
+    model.eval()
+    batch = {
+        "board": torch.zeros(1, NUM_INPUT_PLANES, 8, 8),
+        "action": torch.tensor([0], dtype=torch.long),
+        "value": torch.zeros(1),
+        "source_id": torch.tensor([1], dtype=torch.long),
+    }
+
+    with pytest.raises(ValueError, match="source_policy_weights"):
+        _compute_batch_loss(
+            model,
+            batch,
+            torch.device("cpu"),
+            value_weight=0.0,
+            source_policy_weights=[1.0],
+        )
 
 
 def test_evaluate_loss_reports_source_metrics(tmp_path) -> None:
