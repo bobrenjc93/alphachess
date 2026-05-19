@@ -102,3 +102,37 @@ Rejected. A tiny opening bad-action signal can beat the PV-recent parent in the
 internal match and preserve most targeted replay diagnostics, but it still
 regresses broad Stockfish policy accuracy and fails direct Stockfish at both 16
 and 64 simulations.
+
+## Weight 0.10 Follow-Up
+
+Run:
+
+`experiments/focus-openingbadactions-pvrecent-bw010-vw025-material015`
+
+Changed from the first probe:
+
+- `bad_action_weight=0.10`
+- same `lr=1e-6`
+- same opening bad-action source share: `0.02`
+
+Parent match:
+
+- score: `2.0/8`
+- wins/draws/losses: `0/4/4`
+
+The Stockfish gate did not run because the candidate failed the parent match.
+
+Focused validation:
+
+| Dataset | Parent Acc | Weight 0.02 Acc | Weight 0.10 Acc |
+| --- | ---: | ---: | ---: |
+| `stockfish_multipv_elo1800_4096` | `0.5864` | `0.5310` | `0.5269` |
+| `puzzles/all_1200_2400_50k` | `0.3323` | `0.3309` | `0.3312` |
+| `alpha_loss_opening_badactions_v2` | `0.2231` | `0.2281` | `0.2431` |
+
+Opening bad-action loss improved from `2.0184` to `1.8838`, but the stronger
+margin setting damaged the parent matchup and did not justify a Stockfish gate.
+
+Follow-up conclusion: also rejected. Increasing the bad-action margin pressure
+on this small opening-only set still trades away too much play strength for too
+little targeted improvement.
