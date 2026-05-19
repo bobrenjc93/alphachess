@@ -13,6 +13,11 @@ from alpha_chess.evaluator import PIECE_VALUES, Evaluator
 MATE_SCORE_CP = 100_000
 QUIET_MATERIAL_CANDIDATE_LIMIT = 8
 BOARD_SIZE = 8
+KING_SHELTER_NEAR_PAWN_CP = 80
+KING_SHELTER_FAR_PAWN_CP = 25
+KING_SHELTER_OPEN_FILE_CP = 70
+KING_SHELTER_SLIDER_FILE_CP = 45
+KING_SHELTER_MIN_NON_KING_MATERIAL_CP = 2400
 
 
 @dataclass
@@ -411,13 +416,15 @@ def _filter_root_king_safety(
             continue
         child = board.copy(stack=False)
         child.push(move)
-        score = _static_safety_full_width_score(
+        immediate_score = _static_safety_score_cp(child, perspective)
+        search_score = _static_safety_full_width_score(
             child,
             search_plies,
             perspective,
             full_width_cache,
             quiescence_cache,
         )
+        score = min(immediate_score, search_score)
         scored_actions.append((action, score))
         if score >= min_allowed:
             safe_actions.append(action)
@@ -691,7 +698,99 @@ def _king_danger_cp(board: chess.Board, color: chess.Color) -> int:
                 continue
             danger += _king_attack_weight_cp(attacker.piece_type)
 
+    danger += _king_shelter_danger_cp(board, color, king_square)
     return danger
+
+
+def _king_shelter_danger_cp(
+    board: chess.Board,
+    color: chess.Color,
+    king_square: chess.Square,
+) -> int:
+    if _non_king_material_score_cp(board) < KING_SHELTER_MIN_NON_KING_MATERIAL_CP:
+        return 0
+
+    king_file = chess.square_file(king_square)
+    king_rank = chess.square_rank(king_square)
+    home_rank = 0 if color == chess.WHITE else 7
+    if abs(king_rank - home_rank) > 1:
+        return 0
+
+    forward = 1 if color == chess.WHITE else -1
+    enemy = not color
+    danger = 0
+    for file_delta in (-1, 0, 1):
+        file_idx = king_file + file_delta
+        if not 0 <= file_idx < BOARD_SIZE:
+            continue
+
+        near_square = _square_from_file_rank(file_idx, king_rank + forward)
+        far_square = _square_from_file_rank(file_idx, king_rank + 2 * forward)
+        near_has_pawn = _has_friendly_pawn(board, near_square, color)
+        far_has_pawn = _has_friendly_pawn(board, far_square, color)
+
+        if not near_has_pawn:
+            danger += KING_SHELTER_NEAR_PAWN_CP
+            if not far_has_pawn:
+                danger += KING_SHELTER_FAR_PAWN_CP
+
+        if not _has_friendly_pawn_ahead(board, file_idx, king_rank, forward, color):
+            danger += KING_SHELTER_OPEN_FILE_CP
+            if _has_enemy_slider_on_file(board, file_idx, enemy):
+                danger += KING_SHELTER_SLIDER_FILE_CP
+
+    return danger
+
+
+def _has_friendly_pawn(
+    board: chess.Board,
+    square: chess.Square | None,
+    color: chess.Color,
+) -> bool:
+    if square is None:
+        return False
+    piece = board.piece_at(square)
+    return piece is not None and piece.color == color and piece.piece_type == chess.PAWN
+
+
+def _has_friendly_pawn_ahead(
+    board: chess.Board,
+    file_idx: int,
+    king_rank: int,
+    forward: int,
+    color: chess.Color,
+) -> bool:
+    rank = king_rank + forward
+    while 0 <= rank < BOARD_SIZE:
+        square = chess.square(file_idx, rank)
+        if _has_friendly_pawn(board, square, color):
+            return True
+        rank += forward
+    return False
+
+
+def _has_enemy_slider_on_file(
+    board: chess.Board,
+    file_idx: int,
+    enemy: chess.Color,
+) -> bool:
+    for rank in range(BOARD_SIZE):
+        piece = board.piece_at(chess.square(file_idx, rank))
+        if (
+            piece is not None
+            and piece.color == enemy
+            and piece.piece_type in {chess.ROOK, chess.QUEEN}
+        ):
+            return True
+    return False
+
+
+def _non_king_material_score_cp(board: chess.Board) -> int:
+    total = 0
+    for piece in board.piece_map().values():
+        if piece.piece_type != chess.KING:
+            total += PIECE_VALUES.get(piece.piece_type, 0)
+    return total
 
 
 def _square_from_file_rank(file_idx: int, rank_idx: int) -> chess.Square | None:

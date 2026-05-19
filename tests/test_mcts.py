@@ -302,3 +302,24 @@ def test_mcts_root_king_safety_filter_prunes_static_drop() -> None:
     result = search.run(board)
 
     assert blunder_action not in result.root.children
+
+
+def test_mcts_root_king_safety_filter_penalizes_castled_pawn_shelter() -> None:
+    board = chess.Board(
+        "2kr2r1/1pp1qppp/p1pbbn2/4p3/P3P3/3P1N2/1PPN1PPP/R1BQR1K1 w - - 3 11"
+    )
+    shelter_move = move_to_action(chess.Move.from_uci("h2h3"), board)
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=0,
+            root_king_safety_search_plies=1,
+            root_king_safety_max_loss_cp=50,
+        ),
+    )
+    result = search.run(board)
+
+    assert shelter_move not in result.root.children

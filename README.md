@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T14:30:59-07:00`.
+Last updated: `2026-05-19T14:37:25-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -68,6 +68,7 @@ latest committed report.
 | `2026-05-19T14:10:09-07:00` report timestamp | Lower-pressure hard-negative repair (`reports/2026-05-19_hard_negative_repair.md`). | `6.0/8` vs policy-head 16k parent | `0.0/2` | Lower margin pressure preserved parent strength but still failed the direct gate. |
 | `2026-05-19T14:26:11-07:00` report timestamp | Mixed hard-negative repair (`reports/2026-05-19_hard_negative_repair.md`). | `8.0/8` vs policy-head 16k parent | gate `0.0/2`; confirmation `0.0/4` | Mixing broad labels preserved top-k better and dominated the parent, but still failed direct Stockfish. |
 | `2026-05-19T14:30:59-07:00` report timestamp | Mixed hard-negative root-filter checks (`reports/2026-05-19_hard_negative_repair.md`). | N/A | root-material and root-king variants `0.0/2` | Existing tactical filters did not rescue the internally strong mixed checkpoint. |
+| `2026-05-19T14:37:25-07:00` report timestamp | King-shelter safety filter (`reports/2026-05-19_king_shelter_filter.md`). | N/A | tested variants `0.0/2` | Pawn-shelter heuristic catches one failure pattern but still did not recover direct play. |
 
 Current practical status:
 
@@ -87,6 +88,8 @@ Current practical status:
   preserved parent strength but still failed direct Stockfish.
 - Mixing hard negatives with broad labels can dominate the internal parent, but
   that internal gain still does not transfer to the direct Stockfish gate.
+- The optional king-shelter filter catches a recurring pawn-shield blunder
+  pattern, but direct losses remain broader than that heuristic.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
