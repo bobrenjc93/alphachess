@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import chess
 
@@ -17,6 +17,7 @@ class UCIConfig:
     checkpoint: str
     simulations: int = 64
     c_puct: float = 1.5
+    policy_prior_temperature: float = 1.0
     device: str = "auto"
     material_value_weight: float = 0.0
     material_value_search_plies: int = 0
@@ -41,6 +42,7 @@ def run_uci(config: UCIConfig) -> None:
     send("id author bobrenjc93")
     send("option name Simulations type spin default 64 min 1 max 100000")
     send("option name CPuct type string default 1.5")
+    send("option name PolicyPriorTemperature type string default 1.0")
     send("option name MaterialValueSearchPlies type spin default 0 min 0 max 8")
     send("option name RootMateSearchPlies type spin default 3 min 0 max 8")
     send("option name RootMaterialSearchPlies type spin default 0 min 0 max 8")
@@ -55,6 +57,7 @@ def run_uci(config: UCIConfig) -> None:
             send("id author bobrenjc93")
             send("option name Simulations type spin default 64 min 1 max 100000")
             send("option name CPuct type string default 1.5")
+            send("option name PolicyPriorTemperature type string default 1.0")
             send("option name MaterialValueSearchPlies type spin default 0 min 0 max 8")
             send("option name RootMateSearchPlies type spin default 3 min 0 max 8")
             send("option name RootMaterialSearchPlies type spin default 0 min 0 max 8")
@@ -83,6 +86,7 @@ def _choose_move(board: chess.Board, evaluator, config: UCIConfig) -> chess.Move
         MCTSConfig(
             simulations=config.simulations,
             c_puct=config.c_puct,
+            policy_prior_temperature=config.policy_prior_temperature,
             root_mate_search_plies=config.root_mate_search_plies,
             root_material_search_plies=config.root_material_search_plies,
             root_material_max_loss_cp=config.root_material_max_loss_cp,
@@ -127,92 +131,37 @@ def _parse_setoption(line: str, config: UCIConfig) -> UCIConfig:
     value = " ".join(tokens[value_index + 1 :])
     if name == "simulations":
         try:
-            return UCIConfig(
-                checkpoint=config.checkpoint,
-                simulations=max(1, int(value)),
-                c_puct=config.c_puct,
-                device=config.device,
-                material_value_weight=config.material_value_weight,
-                material_value_search_plies=config.material_value_search_plies,
-                root_mate_search_plies=config.root_mate_search_plies,
-                root_material_search_plies=config.root_material_search_plies,
-                root_material_max_loss_cp=config.root_material_max_loss_cp,
-            )
+            return replace(config, simulations=max(1, int(value)))
         except ValueError:
             return config
     if name == "cpuct":
         try:
-            return UCIConfig(
-                checkpoint=config.checkpoint,
-                simulations=config.simulations,
-                c_puct=max(0.0, float(value)),
-                device=config.device,
-                material_value_weight=config.material_value_weight,
-                material_value_search_plies=config.material_value_search_plies,
-                root_mate_search_plies=config.root_mate_search_plies,
-                root_material_search_plies=config.root_material_search_plies,
-                root_material_max_loss_cp=config.root_material_max_loss_cp,
-            )
+            return replace(config, c_puct=max(0.0, float(value)))
+        except ValueError:
+            return config
+    if name == "policypriortemperature":
+        try:
+            return replace(config, policy_prior_temperature=max(1e-6, float(value)))
         except ValueError:
             return config
     if name == "materialvaluesearchplies":
         try:
-            return UCIConfig(
-                checkpoint=config.checkpoint,
-                simulations=config.simulations,
-                c_puct=config.c_puct,
-                device=config.device,
-                material_value_weight=config.material_value_weight,
-                material_value_search_plies=max(0, int(value)),
-                root_mate_search_plies=config.root_mate_search_plies,
-                root_material_search_plies=config.root_material_search_plies,
-                root_material_max_loss_cp=config.root_material_max_loss_cp,
-            )
+            return replace(config, material_value_search_plies=max(0, int(value)))
         except ValueError:
             return config
     if name == "rootmatesearchplies":
         try:
-            return UCIConfig(
-                checkpoint=config.checkpoint,
-                simulations=config.simulations,
-                c_puct=config.c_puct,
-                device=config.device,
-                material_value_weight=config.material_value_weight,
-                material_value_search_plies=config.material_value_search_plies,
-                root_mate_search_plies=max(0, int(value)),
-                root_material_search_plies=config.root_material_search_plies,
-                root_material_max_loss_cp=config.root_material_max_loss_cp,
-            )
+            return replace(config, root_mate_search_plies=max(0, int(value)))
         except ValueError:
             return config
     if name == "rootmaterialsearchplies":
         try:
-            return UCIConfig(
-                checkpoint=config.checkpoint,
-                simulations=config.simulations,
-                c_puct=config.c_puct,
-                device=config.device,
-                material_value_weight=config.material_value_weight,
-                material_value_search_plies=config.material_value_search_plies,
-                root_mate_search_plies=config.root_mate_search_plies,
-                root_material_search_plies=max(0, int(value)),
-                root_material_max_loss_cp=config.root_material_max_loss_cp,
-            )
+            return replace(config, root_material_search_plies=max(0, int(value)))
         except ValueError:
             return config
     if name == "rootmaterialmaxlosscp":
         try:
-            return UCIConfig(
-                checkpoint=config.checkpoint,
-                simulations=config.simulations,
-                c_puct=config.c_puct,
-                device=config.device,
-                material_value_weight=config.material_value_weight,
-                material_value_search_plies=config.material_value_search_plies,
-                root_mate_search_plies=config.root_mate_search_plies,
-                root_material_search_plies=config.root_material_search_plies,
-                root_material_max_loss_cp=max(0, int(value)),
-            )
+            return replace(config, root_material_max_loss_cp=max(0, int(value)))
         except ValueError:
             return config
     return config

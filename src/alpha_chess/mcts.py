@@ -18,12 +18,20 @@ QUIET_MATERIAL_CANDIDATE_LIMIT = 8
 class MCTSConfig:
     simulations: int = 64
     c_puct: float = 1.5
+    policy_prior_temperature: float = 1.0
     dirichlet_alpha: float = 0.3
     dirichlet_fraction: float = 0.25
     add_root_noise: bool = False
     root_mate_search_plies: int = 3
     root_material_search_plies: int = 0
     root_material_max_loss_cp: int = 250
+
+    def __post_init__(self) -> None:
+        if (
+            not np.isfinite(self.policy_prior_temperature)
+            or self.policy_prior_temperature <= 0
+        ):
+            raise ValueError("policy_prior_temperature must be finite and positive")
 
 
 @dataclass
@@ -44,6 +52,7 @@ class Node:
         self,
         board: chess.Board,
         policy: np.ndarray,
+        policy_prior_temperature: float = 1.0,
         tactical_filter_plies: int = 0,
         material_filter_plies: int = 0,
         material_max_loss_cp: int = 250,
@@ -65,6 +74,9 @@ class Node:
             return
 
         priors = np.asarray(policy[actions], dtype=np.float64)
+        priors = np.maximum(priors, 0.0)
+        if policy_prior_temperature != 1.0:
+            priors = np.power(priors, 1.0 / policy_prior_temperature)
         total = float(priors.sum())
         if total <= 0 or not np.isfinite(total):
             priors = np.full(len(actions), 1.0 / len(actions), dtype=np.float64)
@@ -135,6 +147,7 @@ class AlphaZeroMCTS:
             root.expand(
                 board,
                 policy,
+                policy_prior_temperature=self.config.policy_prior_temperature,
                 tactical_filter_plies=self.config.root_mate_search_plies,
                 material_filter_plies=self.config.root_material_search_plies,
                 material_max_loss_cp=self.config.root_material_max_loss_cp,
@@ -160,7 +173,11 @@ class AlphaZeroMCTS:
             leaf_value = terminal_value(scratch)
             if leaf_value is None:
                 policy, leaf_value = self.evaluator(scratch)
-                node.expand(scratch, policy)
+                node.expand(
+                    scratch,
+                    policy,
+                    policy_prior_temperature=self.config.policy_prior_temperature,
+                )
 
             self._backpropagate(search_path, float(leaf_value))
 

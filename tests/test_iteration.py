@@ -116,6 +116,7 @@ def test_iteration_uses_checkpoint_self_play_workers(monkeypatch, tmp_path) -> N
         games=2,
         self_play_workers=2,
         simulations=3,
+        policy_prior_temperature=2.0,
         material_value_weight=0.15,
         material_value_search_plies=2,
         device="cpu",
@@ -128,6 +129,7 @@ def test_iteration_uses_checkpoint_self_play_workers(monkeypatch, tmp_path) -> N
     assert calls["self_play_config"].games == 2
     assert calls["self_play_config"].workers == 2
     assert calls["self_play_config"].simulations == 3
+    assert calls["self_play_config"].policy_prior_temperature == pytest.approx(2.0)
     assert calls["device"] == "cpu"
     assert calls["material_value_weight"] == pytest.approx(0.15)
     assert calls["material_value_search_plies"] == 2

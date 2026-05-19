@@ -32,6 +32,14 @@ def test_parse_c_puct_option() -> None:
     assert config.c_puct == 0.75
 
 
+def test_parse_policy_prior_temperature_option() -> None:
+    config = _parse_setoption(
+        "setoption name PolicyPriorTemperature value 2.5",
+        UCIConfig(checkpoint="model.pt"),
+    )
+    assert config.policy_prior_temperature == 2.5
+
+
 def test_parse_root_material_options() -> None:
     config = _parse_setoption(
         "setoption name MaterialValueSearchPlies value 2",

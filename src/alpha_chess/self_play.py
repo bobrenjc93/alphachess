@@ -21,6 +21,7 @@ class SelfPlayConfig:
     games: int = 1
     simulations: int = 64
     c_puct: float = 1.5
+    policy_prior_temperature: float = 1.0
     max_plies: int = 512
     temperature_moves: int = 20
     root_mate_search_plies: int = 3
@@ -44,6 +45,7 @@ def play_game(evaluator: Evaluator, config: SelfPlayConfig, game_seed: int) -> d
         MCTSConfig(
             simulations=config.simulations,
             c_puct=config.c_puct,
+            policy_prior_temperature=config.policy_prior_temperature,
             add_root_noise=True,
             root_mate_search_plies=config.root_mate_search_plies,
             root_material_search_plies=config.root_material_search_plies,

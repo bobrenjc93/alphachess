@@ -26,6 +26,7 @@ class IterationConfig:
     self_play_workers: int = 1
     simulations: int = 64
     c_puct: float = 1.5
+    policy_prior_temperature: float = 1.0
     max_plies: int = 512
     temperature_moves: int = 20
     epochs: int = 2
@@ -69,6 +70,7 @@ def run_iterations(config: IterationConfig) -> Path:
             games=config.games,
             simulations=config.simulations,
             c_puct=config.c_puct,
+            policy_prior_temperature=config.policy_prior_temperature,
             max_plies=config.max_plies,
             temperature_moves=config.temperature_moves,
             root_mate_search_plies=config.root_mate_search_plies,
@@ -129,6 +131,7 @@ def run_iterations(config: IterationConfig) -> Path:
             "games": config.eval_games,
             "simulations": config.eval_simulations,
             "c_puct": config.c_puct,
+            "policy_prior_temperature": config.policy_prior_temperature,
             "opponent_checkpoint": best_checkpoint,
             "device": config.device,
             "material_value_weight": config.material_value_weight,

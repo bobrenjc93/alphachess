@@ -10,6 +10,7 @@ GAMES="${GAMES:-64}"
 SELF_PLAY_WORKERS="${SELF_PLAY_WORKERS:-1}"
 SIMULATIONS="${SIMULATIONS:-64}"
 C_PUCT="${C_PUCT:-1.5}"
+POLICY_PRIOR_TEMPERATURE="${POLICY_PRIOR_TEMPERATURE:-1.0}"
 MAX_PLIES="${MAX_PLIES:-512}"
 EPOCHS="${EPOCHS:-4}"
 BATCH_SIZE="${BATCH_SIZE:-128}"
@@ -112,6 +113,7 @@ gpu-dev submit \
       --self-play-workers $SELF_PLAY_WORKERS \
       --simulations $SIMULATIONS \
       --c-puct $C_PUCT \
+      --policy-prior-temperature $POLICY_PRIOR_TEMPERATURE \
       --max-plies $MAX_PLIES \
       --eval-games $EVAL_GAMES \
       --eval-simulations $EVAL_SIMULATIONS \

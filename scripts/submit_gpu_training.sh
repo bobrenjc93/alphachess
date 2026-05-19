@@ -6,6 +6,7 @@ GPUS="${GPUS:-1}"
 HOURS="${HOURS:-4}"
 GAMES="${GAMES:-64}"
 SIMULATIONS="${SIMULATIONS:-64}"
+POLICY_PRIOR_TEMPERATURE="${POLICY_PRIOR_TEMPERATURE:-1.0}"
 EPOCHS="${EPOCHS:-4}"
 BATCH_SIZE="${BATCH_SIZE:-128}"
 CHANNELS="${CHANNELS:-128}"
@@ -25,6 +26,7 @@ gpu-dev submit \
     uv run alpha-chess self-play \
       --games $GAMES \
       --simulations $SIMULATIONS \
+      --policy-prior-temperature $POLICY_PRIOR_TEMPERATURE \
       --out data/selfplay/$RUN_NAME
     uv run alpha-chess train \
       --data data/selfplay/$RUN_NAME \
@@ -36,5 +38,6 @@ gpu-dev submit \
     uv run alpha-chess eval \
       --checkpoint checkpoints/$RUN_NAME/latest.pt \
       --games 4 \
-      --simulations $SIMULATIONS
+      --simulations $SIMULATIONS \
+      --policy-prior-temperature $POLICY_PRIOR_TEMPERATURE
   "

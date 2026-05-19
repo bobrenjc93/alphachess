@@ -1,8 +1,21 @@
 import chess
+import numpy as np
 
-from alpha_chess.chess_env import action_to_move, move_to_action
+from alpha_chess.chess_env import ACTION_SIZE, action_to_move, move_to_action
 from alpha_chess.evaluator import UniformEvaluator
 from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig
+
+
+class SparsePolicyEvaluator:
+    def __init__(self, weights: dict[str, float]) -> None:
+        self.weights = weights
+
+    def __call__(self, board: chess.Board) -> tuple[np.ndarray, float]:
+        policy = np.zeros(ACTION_SIZE, dtype=np.float32)
+        for move_uci, weight in self.weights.items():
+            action = move_to_action(chess.Move.from_uci(move_uci), board)
+            policy[action] = weight
+        return policy, 0.0
 
 
 def test_mcts_returns_legal_policy() -> None:
@@ -23,6 +36,43 @@ def test_mcts_handles_terminal_board() -> None:
     search = AlphaZeroMCTS(UniformEvaluator(), MCTSConfig(simulations=4))
     result = search.run(board)
     assert result.visits.sum() == 0
+
+
+def test_mcts_policy_prior_temperature_flattens_priors() -> None:
+    board = chess.Board()
+    evaluator = SparsePolicyEvaluator({"e2e4": 0.99, "d2d4": 0.01})
+
+    default_search = AlphaZeroMCTS(
+        evaluator,
+        MCTSConfig(simulations=0, root_mate_search_plies=0),
+    )
+    flat_search = AlphaZeroMCTS(
+        evaluator,
+        MCTSConfig(
+            simulations=0,
+            policy_prior_temperature=2.0,
+            root_mate_search_plies=0,
+        ),
+    )
+
+    default_result = default_search.run(board)
+    flat_result = flat_search.run(board)
+    e4_action = move_to_action(chess.Move.from_uci("e2e4"), board)
+    d4_action = move_to_action(chess.Move.from_uci("d2d4"), board)
+
+    assert default_result.root.children[d4_action].prior < 0.02
+    assert flat_result.root.children[d4_action].prior > 0.08
+    assert flat_result.root.children[e4_action].prior > flat_result.root.children[d4_action].prior
+
+
+def test_mcts_rejects_invalid_policy_prior_temperature() -> None:
+    for temperature in (0.0, -1.0, float("nan")):
+        try:
+            MCTSConfig(policy_prior_temperature=temperature)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid policy prior temperature was accepted")
 
 
 def test_mcts_root_prioritizes_mate_in_one() -> None:

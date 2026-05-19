@@ -21,6 +21,7 @@ class EvalConfig:
     games: int = 2
     simulations: int = 64
     c_puct: float = 1.5
+    policy_prior_temperature: float = 1.0
     opponent: str = "uniform"
     opponent_checkpoint: str | None = None
     engine_path: str = "stockfish"
@@ -71,6 +72,7 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
         games=config.games,
         simulations=config.simulations,
         c_puct=config.c_puct,
+        policy_prior_temperature=config.policy_prior_temperature,
         root_mate_search_plies=config.root_mate_search_plies,
         root_material_search_plies=config.root_material_search_plies,
         root_material_max_loss_cp=config.root_material_max_loss_cp,
@@ -95,6 +97,7 @@ def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[s
                 model_color=model_color,
                 simulations=config.simulations,
                 c_puct=config.c_puct,
+                policy_prior_temperature=config.policy_prior_temperature,
                 root_mate_search_plies=config.root_mate_search_plies,
                 root_material_search_plies=config.root_material_search_plies,
                 root_material_max_loss_cp=config.root_material_max_loss_cp,
@@ -122,6 +125,7 @@ def evaluate_match(
     games: int,
     simulations: int,
     c_puct: float,
+    policy_prior_temperature: float,
     root_mate_search_plies: int,
     root_material_search_plies: int,
     root_material_max_loss_cp: int,
@@ -142,6 +146,7 @@ def evaluate_match(
             model_color,
             simulations=simulations,
             c_puct=c_puct,
+            policy_prior_temperature=policy_prior_temperature,
             root_mate_search_plies=root_mate_search_plies,
             root_material_search_plies=root_material_search_plies,
             root_material_max_loss_cp=root_material_max_loss_cp,
@@ -169,6 +174,7 @@ def play_eval_game(
     model_color: chess.Color,
     simulations: int,
     c_puct: float,
+    policy_prior_temperature: float,
     root_mate_search_plies: int,
     root_material_search_plies: int,
     root_material_max_loss_cp: int,
@@ -179,6 +185,7 @@ def play_eval_game(
     mcts_config = MCTSConfig(
         simulations=simulations,
         c_puct=c_puct,
+        policy_prior_temperature=policy_prior_temperature,
         root_mate_search_plies=root_mate_search_plies,
         root_material_search_plies=root_material_search_plies,
         root_material_max_loss_cp=root_material_max_loss_cp,
@@ -210,6 +217,7 @@ def play_eval_game_against_engine(
     model_color: chess.Color,
     simulations: int,
     c_puct: float,
+    policy_prior_temperature: float,
     root_mate_search_plies: int,
     root_material_search_plies: int,
     root_material_max_loss_cp: int,
@@ -223,6 +231,7 @@ def play_eval_game_against_engine(
         MCTSConfig(
             simulations=simulations,
             c_puct=c_puct,
+            policy_prior_temperature=policy_prior_temperature,
             root_mate_search_plies=root_mate_search_plies,
             root_material_search_plies=root_material_search_plies,
             root_material_max_loss_cp=root_material_max_loss_cp,
