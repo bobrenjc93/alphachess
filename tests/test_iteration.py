@@ -159,6 +159,8 @@ def test_iteration_uses_checkpoint_self_play_workers(monkeypatch, tmp_path) -> N
         material_value_search_plies=2,
         leaf_material_value_weight=0.4,
         leaf_material_search_plies=1,
+        root_king_safety_search_plies=1,
+        root_king_safety_max_loss_cp=300,
         tree_reuse=False,
         device="cpu",
         self_play_policy_weight=0.0,
@@ -178,6 +180,8 @@ def test_iteration_uses_checkpoint_self_play_workers(monkeypatch, tmp_path) -> N
     assert calls["self_play_config"].tree_reuse is False
     assert calls["self_play_config"].leaf_material_value_weight == pytest.approx(0.4)
     assert calls["self_play_config"].leaf_material_search_plies == 1
+    assert calls["self_play_config"].root_king_safety_search_plies == 1
+    assert calls["self_play_config"].root_king_safety_max_loss_cp == 300
     assert calls["device"] == "cpu"
     assert calls["material_value_weight"] == pytest.approx(0.15)
     assert calls["material_value_search_plies"] == 2
@@ -218,6 +222,8 @@ def test_iteration_stockfish_gate_can_block_promotion(monkeypatch, tmp_path) -> 
         if len(eval_calls) == 1:
             assert config["leaf_material_value_weight"] == pytest.approx(0.25)
             assert config["leaf_material_search_plies"] == 1
+            assert config["root_king_safety_search_plies"] == 1
+            assert config["root_king_safety_max_loss_cp"] == 300
             return {"score_rate": 1.0}
         assert config["opponent"] == "stockfish"
         assert config["engine_path"] == "tools/stockfish/bin/stockfish"
@@ -225,6 +231,8 @@ def test_iteration_stockfish_gate_can_block_promotion(monkeypatch, tmp_path) -> 
         assert config["simulations"] == 16
         assert config["leaf_material_value_weight"] == pytest.approx(0.25)
         assert config["leaf_material_search_plies"] == 1
+        assert config["root_king_safety_search_plies"] == 1
+        assert config["root_king_safety_max_loss_cp"] == 300
         assert config["pgn_out"].endswith("eval/iter_0001_stockfish_gate.pgn")
         return {"score_rate": 0.0}
 
@@ -247,6 +255,8 @@ def test_iteration_stockfish_gate_can_block_promotion(monkeypatch, tmp_path) -> 
             material_value_search_plies=2,
             leaf_material_value_weight=0.25,
             leaf_material_search_plies=1,
+            root_king_safety_search_plies=1,
+            root_king_safety_max_loss_cp=300,
             stockfish_gate_games=1,
             stockfish_gate_simulations=16,
             stockfish_gate_min_score=0.5,

@@ -65,6 +65,14 @@ def test_parse_root_material_options() -> None:
         "setoption name RootMaterialMaxLossCp value 250",
         config,
     )
+    config = _parse_setoption(
+        "setoption name RootKingSafetySearchPlies value 1",
+        config,
+    )
+    config = _parse_setoption(
+        "setoption name RootKingSafetyMaxLossCp value 300",
+        config,
+    )
 
     assert config.material_value_search_plies == 2
     assert config.leaf_material_value_weight == 0.75
@@ -72,3 +80,5 @@ def test_parse_root_material_options() -> None:
     assert config.root_mate_search_plies == 5
     assert config.root_material_search_plies == 2
     assert config.root_material_max_loss_cp == 250
+    assert config.root_king_safety_search_plies == 1
+    assert config.root_king_safety_max_loss_cp == 300

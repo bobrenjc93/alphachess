@@ -283,3 +283,22 @@ def test_mcts_root_material_filter_keeps_best_moves_when_all_moves_lose_material
 
     assert result.root.children
     assert blunder_action not in result.root.children
+
+
+def test_mcts_root_king_safety_filter_prunes_static_drop() -> None:
+    board = chess.Board("3r2k1/8/8/8/8/8/3N4/3Q2K1 w - - 0 1")
+    blunder_action = move_to_action(chess.Move.from_uci("d2f3"), board)
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=0,
+            root_king_safety_search_plies=1,
+            root_king_safety_max_loss_cp=350,
+        ),
+    )
+    result = search.run(board)
+
+    assert blunder_action not in result.root.children

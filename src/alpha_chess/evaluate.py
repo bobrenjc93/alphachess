@@ -38,6 +38,8 @@ class EvalConfig:
     root_mate_search_plies: int = 3
     root_material_search_plies: int = 0
     root_material_max_loss_cp: int = 250
+    root_king_safety_search_plies: int = 0
+    root_king_safety_max_loss_cp: int = 250
     seed: int = 0
     max_plies: int = 512
     pgn_out: str | None = None
@@ -86,6 +88,8 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
         root_mate_search_plies=config.root_mate_search_plies,
         root_material_search_plies=config.root_material_search_plies,
         root_material_max_loss_cp=config.root_material_max_loss_cp,
+        root_king_safety_search_plies=config.root_king_safety_search_plies,
+        root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
         leaf_material_value_weight=config.leaf_material_value_weight,
         leaf_material_search_plies=config.leaf_material_search_plies,
         seed=config.seed,
@@ -137,6 +141,8 @@ def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[s
                 root_mate_search_plies=config.root_mate_search_plies,
                 root_material_search_plies=config.root_material_search_plies,
                 root_material_max_loss_cp=config.root_material_max_loss_cp,
+                root_king_safety_search_plies=config.root_king_safety_search_plies,
+                root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
                 leaf_material_value_weight=config.leaf_material_value_weight,
                 leaf_material_search_plies=config.leaf_material_search_plies,
                 max_plies=config.max_plies,
@@ -174,6 +180,8 @@ def evaluate_match(
     tree_reuse: bool = True,
     leaf_material_value_weight: float = 0.0,
     leaf_material_search_plies: int = 0,
+    root_king_safety_search_plies: int = 0,
+    root_king_safety_max_loss_cp: int = 250,
 ) -> dict[str, float]:
     game_seeds = _game_seeds(seed, games)
     scores: list[float] = []
@@ -192,6 +200,8 @@ def evaluate_match(
             root_mate_search_plies=root_mate_search_plies,
             root_material_search_plies=root_material_search_plies,
             root_material_max_loss_cp=root_material_max_loss_cp,
+            root_king_safety_search_plies=root_king_safety_search_plies,
+            root_king_safety_max_loss_cp=root_king_safety_max_loss_cp,
             leaf_material_value_weight=leaf_material_value_weight,
             leaf_material_search_plies=leaf_material_search_plies,
             max_plies=max_plies,
@@ -244,6 +254,8 @@ def _evaluate_match_game_task(
         root_mate_search_plies=config.root_mate_search_plies,
         root_material_search_plies=config.root_material_search_plies,
         root_material_max_loss_cp=config.root_material_max_loss_cp,
+        root_king_safety_search_plies=config.root_king_safety_search_plies,
+        root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
         leaf_material_value_weight=config.leaf_material_value_weight,
         leaf_material_search_plies=config.leaf_material_search_plies,
         max_plies=config.max_plies,
@@ -285,6 +297,8 @@ def _evaluate_engine_game_task(
             root_mate_search_plies=config.root_mate_search_plies,
             root_material_search_plies=config.root_material_search_plies,
             root_material_max_loss_cp=config.root_material_max_loss_cp,
+            root_king_safety_search_plies=config.root_king_safety_search_plies,
+            root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
             leaf_material_value_weight=config.leaf_material_value_weight,
             leaf_material_search_plies=config.leaf_material_search_plies,
             max_plies=config.max_plies,
@@ -323,6 +337,8 @@ def play_eval_game(
     tree_reuse: bool = True,
     leaf_material_value_weight: float = 0.0,
     leaf_material_search_plies: int = 0,
+    root_king_safety_search_plies: int = 0,
+    root_king_safety_max_loss_cp: int = 250,
 ) -> tuple[float, chess.Board]:
     board = chess.Board()
     mcts_config = MCTSConfig(
@@ -332,6 +348,8 @@ def play_eval_game(
         root_mate_search_plies=root_mate_search_plies,
         root_material_search_plies=root_material_search_plies,
         root_material_max_loss_cp=root_material_max_loss_cp,
+        root_king_safety_search_plies=root_king_safety_search_plies,
+        root_king_safety_max_loss_cp=root_king_safety_max_loss_cp,
         leaf_material_value_weight=leaf_material_value_weight,
         leaf_material_search_plies=leaf_material_search_plies,
     )
@@ -384,6 +402,8 @@ def play_eval_game_against_engine(
     tree_reuse: bool = True,
     leaf_material_value_weight: float = 0.0,
     leaf_material_search_plies: int = 0,
+    root_king_safety_search_plies: int = 0,
+    root_king_safety_max_loss_cp: int = 250,
 ) -> tuple[float, chess.Board]:
     board = chess.Board()
     model_mcts = AlphaZeroMCTS(
@@ -395,6 +415,8 @@ def play_eval_game_against_engine(
             root_mate_search_plies=root_mate_search_plies,
             root_material_search_plies=root_material_search_plies,
             root_material_max_loss_cp=root_material_max_loss_cp,
+            root_king_safety_search_plies=root_king_safety_search_plies,
+            root_king_safety_max_loss_cp=root_king_safety_max_loss_cp,
             leaf_material_value_weight=leaf_material_value_weight,
             leaf_material_search_plies=leaf_material_search_plies,
         ),

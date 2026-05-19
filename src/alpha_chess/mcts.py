@@ -12,6 +12,7 @@ from alpha_chess.evaluator import PIECE_VALUES, Evaluator
 
 MATE_SCORE_CP = 100_000
 QUIET_MATERIAL_CANDIDATE_LIMIT = 8
+BOARD_SIZE = 8
 
 
 @dataclass
@@ -25,6 +26,8 @@ class MCTSConfig:
     root_mate_search_plies: int = 3
     root_material_search_plies: int = 0
     root_material_max_loss_cp: int = 250
+    root_king_safety_search_plies: int = 0
+    root_king_safety_max_loss_cp: int = 250
     leaf_material_value_weight: float = 0.0
     leaf_material_search_plies: int = 0
 
@@ -64,6 +67,8 @@ class Node:
         tactical_filter_plies: int = 0,
         material_filter_plies: int = 0,
         material_max_loss_cp: int = 250,
+        king_safety_filter_plies: int = 0,
+        king_safety_max_loss_cp: int = 250,
     ) -> None:
         actions = legal_actions(board)
         forced_mate_found = False
@@ -77,6 +82,13 @@ class Node:
                 actions,
                 material_filter_plies,
                 material_max_loss_cp,
+            )
+        if king_safety_filter_plies > 0 and not forced_mate_found:
+            actions = _filter_root_king_safety(
+                board,
+                actions,
+                king_safety_filter_plies,
+                king_safety_max_loss_cp,
             )
         if not actions:
             return
@@ -193,6 +205,8 @@ class AlphaZeroMCTS:
                     tactical_filter_plies=self.config.root_mate_search_plies,
                     material_filter_plies=self.config.root_material_search_plies,
                     material_max_loss_cp=self.config.root_material_max_loss_cp,
+                    king_safety_filter_plies=self.config.root_king_safety_search_plies,
+                    king_safety_max_loss_cp=self.config.root_king_safety_max_loss_cp,
                 )
             else:
                 self._filter_root_children(board, root)
@@ -249,6 +263,13 @@ class AlphaZeroMCTS:
                 actions,
                 self.config.root_material_search_plies,
                 self.config.root_material_max_loss_cp,
+            )
+        if self.config.root_king_safety_search_plies > 0 and not forced_mate_found:
+            actions = _filter_root_king_safety(
+                board,
+                actions,
+                self.config.root_king_safety_search_plies,
+                self.config.root_king_safety_max_loss_cp,
             )
         root.children = {
             action: root.children[action] for action in actions if action in root.children
@@ -365,6 +386,52 @@ def _filter_root_material(
     return fallback_actions if fallback_actions else [scored_actions[0][0]]
 
 
+def _filter_root_king_safety(
+    board: chess.Board,
+    actions: list[int],
+    search_plies: int,
+    max_loss_cp: int,
+) -> list[int]:
+    search_plies = max(0, search_plies)
+    max_loss_cp = max(0, max_loss_cp)
+    if search_plies <= 0:
+        return actions
+
+    perspective = board.turn
+    baseline = _static_safety_score_cp(board, perspective)
+    min_allowed = baseline - max_loss_cp
+    full_width_cache: dict[tuple[str, int, bool], int] = {}
+    quiescence_cache: dict[tuple[str, int, bool], int] = {}
+    safe_actions: list[int] = []
+    scored_actions: list[tuple[int, int]] = []
+
+    for action in actions:
+        move = action_to_move(action, board)
+        if move is None:
+            continue
+        child = board.copy(stack=False)
+        child.push(move)
+        score = _static_safety_full_width_score(
+            child,
+            search_plies,
+            perspective,
+            full_width_cache,
+            quiescence_cache,
+        )
+        scored_actions.append((action, score))
+        if score >= min_allowed:
+            safe_actions.append(action)
+
+    if safe_actions:
+        return safe_actions
+    if not scored_actions:
+        return actions
+
+    best_score = max(score for _, score in scored_actions)
+    fallback_actions = [action for action, score in scored_actions if score == best_score]
+    return fallback_actions if fallback_actions else [scored_actions[0][0]]
+
+
 def _material_search_value(board: chess.Board, search_plies: int) -> float:
     perspective = board.turn
     if search_plies <= 0:
@@ -378,6 +445,60 @@ def _material_search_value(board: chess.Board, search_plies: int) -> float:
             {},
         )
     return float(np.tanh(score / 1200.0))
+
+
+def _static_safety_full_width_score(
+    board: chess.Board,
+    plies: int,
+    perspective: chess.Color,
+    cache: dict[tuple[str, int, bool], int],
+    quiescence_cache: dict[tuple[str, int, bool], int],
+) -> int:
+    key = (board.fen(), plies, perspective)
+    if key in cache:
+        return cache[key]
+
+    if plies <= 0 or board.is_game_over(claim_draw=True):
+        material = _material_quiescence_score(board, 1, perspective, quiescence_cache)
+        score = material + _king_safety_score_cp(board, perspective)
+        cache[key] = score
+        return score
+
+    moves = _material_candidate_moves(board)
+
+    if board.turn == perspective:
+        best = -MATE_SCORE_CP
+        for move in moves:
+            child = board.copy(stack=False)
+            child.push(move)
+            best = max(
+                best,
+                _static_safety_full_width_score(
+                    child,
+                    plies - 1,
+                    perspective,
+                    cache,
+                    quiescence_cache,
+                ),
+            )
+    else:
+        best = MATE_SCORE_CP
+        for move in moves:
+            child = board.copy(stack=False)
+            child.push(move)
+            best = min(
+                best,
+                _static_safety_full_width_score(
+                    child,
+                    plies - 1,
+                    perspective,
+                    cache,
+                    quiescence_cache,
+                ),
+            )
+
+    cache[key] = best
+    return best
 
 
 def _material_full_width_score(
@@ -531,6 +652,66 @@ def _material_score_cp(board: chess.Board, perspective: chess.Color) -> int:
         value = PIECE_VALUES.get(piece.piece_type, 0)
         score += value if piece.color == perspective else -value
     return score
+
+
+def _static_safety_score_cp(board: chess.Board, perspective: chess.Color) -> int:
+    return _material_score_cp(board, perspective) + _king_safety_score_cp(board, perspective)
+
+
+def _king_safety_score_cp(board: chess.Board, perspective: chess.Color) -> int:
+    return _king_danger_cp(board, not perspective) - _king_danger_cp(board, perspective)
+
+
+def _king_danger_cp(board: chess.Board, color: chess.Color) -> int:
+    king_square = board.king(color)
+    if king_square is None:
+        return MATE_SCORE_CP
+
+    danger = 0
+    if board.turn == color and board.is_check():
+        danger += 500
+
+    enemy = not color
+    king_file = chess.square_file(king_square)
+    king_rank = chess.square_rank(king_square)
+    ring: list[chess.Square] = [king_square]
+    for file_delta in (-1, 0, 1):
+        for rank_delta in (-1, 0, 1):
+            if file_delta == 0 and rank_delta == 0:
+                continue
+            square = _square_from_file_rank(king_file + file_delta, king_rank + rank_delta)
+            if square is not None:
+                ring.append(square)
+
+    for square in ring:
+        attackers = board.attackers(enemy, square)
+        for attacker_square in attackers:
+            attacker = board.piece_at(attacker_square)
+            if attacker is None:
+                continue
+            danger += _king_attack_weight_cp(attacker.piece_type)
+
+    return danger
+
+
+def _square_from_file_rank(file_idx: int, rank_idx: int) -> chess.Square | None:
+    if 0 <= file_idx < BOARD_SIZE and 0 <= rank_idx < BOARD_SIZE:
+        return chess.square(file_idx, rank_idx)
+    return None
+
+
+def _king_attack_weight_cp(piece_type: chess.PieceType) -> int:
+    if piece_type == chess.PAWN:
+        return 25
+    if piece_type in {chess.KNIGHT, chess.BISHOP}:
+        return 40
+    if piece_type == chess.ROOK:
+        return 55
+    if piece_type == chess.QUEEN:
+        return 85
+    if piece_type == chess.KING:
+        return 15
+    return 0
 
 
 def _side_to_move_can_force_mate(

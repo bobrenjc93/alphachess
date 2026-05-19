@@ -41,6 +41,8 @@ def main(argv: list[str] | None = None) -> None:
     self_play.add_argument("--root-mate-search-plies", type=int, default=3)
     self_play.add_argument("--root-material-search-plies", type=int, default=0)
     self_play.add_argument("--root-material-max-loss-cp", type=int, default=250)
+    self_play.add_argument("--root-king-safety-search-plies", type=int, default=0)
+    self_play.add_argument("--root-king-safety-max-loss-cp", type=int, default=250)
     self_play.add_argument("--seed", type=int, default=0)
 
     train_parser = subparsers.add_parser("train", help="train a policy/value checkpoint")
@@ -107,6 +109,8 @@ def main(argv: list[str] | None = None) -> None:
     eval_parser.add_argument("--root-mate-search-plies", type=int, default=3)
     eval_parser.add_argument("--root-material-search-plies", type=int, default=0)
     eval_parser.add_argument("--root-material-max-loss-cp", type=int, default=250)
+    eval_parser.add_argument("--root-king-safety-search-plies", type=int, default=0)
+    eval_parser.add_argument("--root-king-safety-max-loss-cp", type=int, default=250)
     eval_parser.add_argument("--seed", type=int, default=0)
     eval_parser.add_argument("--max-plies", type=int, default=512)
     eval_parser.add_argument("--pgn-out")
@@ -192,6 +196,8 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--root-mate-search-plies", type=int, default=3)
     iterate_parser.add_argument("--root-material-search-plies", type=int, default=0)
     iterate_parser.add_argument("--root-material-max-loss-cp", type=int, default=250)
+    iterate_parser.add_argument("--root-king-safety-search-plies", type=int, default=0)
+    iterate_parser.add_argument("--root-king-safety-max-loss-cp", type=int, default=250)
     iterate_parser.add_argument("--replay-data", nargs="+")
     iterate_parser.add_argument("--self-play-weight", type=float, default=1.0)
     iterate_parser.add_argument("--replay-weights", type=float, nargs="+")
@@ -223,6 +229,8 @@ def main(argv: list[str] | None = None) -> None:
     uci_parser.add_argument("--root-mate-search-plies", type=int, default=3)
     uci_parser.add_argument("--root-material-search-plies", type=int, default=0)
     uci_parser.add_argument("--root-material-max-loss-cp", type=int, default=250)
+    uci_parser.add_argument("--root-king-safety-search-plies", type=int, default=0)
+    uci_parser.add_argument("--root-king-safety-max-loss-cp", type=int, default=250)
 
     args = parser.parse_args(argv)
 
@@ -238,6 +246,8 @@ def main(argv: list[str] | None = None) -> None:
             root_mate_search_plies=args.root_mate_search_plies,
             root_material_search_plies=args.root_material_search_plies,
             root_material_max_loss_cp=args.root_material_max_loss_cp,
+            root_king_safety_search_plies=args.root_king_safety_search_plies,
+            root_king_safety_max_loss_cp=args.root_king_safety_max_loss_cp,
             leaf_material_value_weight=args.leaf_material_value_weight,
             leaf_material_search_plies=args.leaf_material_search_plies,
             seed=args.seed,
