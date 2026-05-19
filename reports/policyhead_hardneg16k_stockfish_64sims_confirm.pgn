@@ -1,0 +1,44 @@
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "1"]
+[White "AlphaChess"]
+[Black "tools/stockfish/bin/stockfish"]
+[Result "0-1"]
+[AlphaChessScore "0.0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. Bxc6 dxc6 6. d3 Bd6 7. O-O Qe7 8. Nbd2 Be6 9. a4 O-O-O 10. Re1 Nd7 11. d4 exd4 12. Nxd4 Bxh2+ 13. Kxh2 Qd6+ 14. Kg1 Qxd4 15. c3 Qf6 16. Nf3 Ne5 17. Qxd8+ Rxd8 18. Nxe5 Qxe5 19. Ra3 c5 20. Bf4 Qxf4 21. f3 Qg3 22. Rea1 Rd2 23. b4 Qxg2# 0-1
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "2"]
+[White "tools/stockfish/bin/stockfish"]
+[Black "AlphaChess"]
+[Result "1-0"]
+[AlphaChessScore "0.0"]
+
+1. e4 c5 2. Nf3 Nc6 3. Bb5 e6 4. Bxc6 bxc6 5. d3 d5 6. b3 c4 7. dxc4 dxe4 8. Qxd8+ Kxd8 9. Ng5 Ke8 10. Nxe4 f5 11. Nec3 Bb4 12. Bb2 a5 13. Nd2 Bxc3 14. Bxc3 Ne7 15. O-O-O a4 16. Nf3 axb3 17. axb3 Ra2 18. Rd6 Ra1+ 19. Bxa1 Ng6 20. Rhd1 Ne7 21. Rd8+ Kf7 22. Rxh8 Ng6 23. Rxc8 Ne7 24. Rd7 g5 25. Ne5+ Kf6 26. Rf8+ Kg7 27. Rf7+ Kh6 28. g4 f4 29. Rdxe7 c5 30. Rxh7# 1-0
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "3"]
+[White "AlphaChess"]
+[Black "tools/stockfish/bin/stockfish"]
+[Result "0-1"]
+[AlphaChessScore "0.0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. Bxc6 dxc6 6. d3 Bd6 7. O-O Qe7 8. Nbd2 Be6 9. a4 Nd7 10. g3 g5 11. c3 h5 12. d4 h4 13. dxe5 Bxe5 14. Nxe5 Nxe5 15. Nf3 Bg4 16. Nxe5 Bxd1 17. Rxd1 Qxe5 18. f4 Qxe4 19. Rd4 Qe1+ 20. Kg2 h3+ 21. Kf3 g4+ 22. Kxg4 Qe2+ 23. Kg5 Qh5+ 24. Kf6 Qg6+ 25. Ke5 Qe6# 0-1
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "4"]
+[White "tools/stockfish/bin/stockfish"]
+[Black "AlphaChess"]
+[Result "1-0"]
+[AlphaChessScore "0.0"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5 6. Ndb5 Bb4 7. a3 Be7 8. Nd6+ Bxd6 9. Qxd6 Qe7 10. Qxe7+ Nxe7 11. Bg5 Ng6 12. Nb5 Nxe4 13. Nc7+ Kf8 14. Be3 d5 15. f3 Nd6 16. Nxa8 Nf5 17. Bxa7 Nd4 18. Bxd4 exd4 19. Nc7 b5 20. O-O-O Bb7 21. Re1 Ne7 22. Nxb5 Bc6 23. Nxd4 Bd7 24. Nb3 Nc6 25. Bb5 Nd4 26. Bxd7 Nxb3+ 27. cxb3 g6 28. Re8+ Kg7 29. Rxh8 Kxh8 30. Kc2 Kg7 31. Kd3 Kf6 32. Re1 h5 33. Kd4 Kg5 34. Kxd5 Kf4 35. Re4+ Kg5 36. Kd6 Kf6 37. Ra4 Kg5 38. Kc7 Kf6 39. Rb4 Ke7 40. a4 Kf6 41. a5 Ke7 42. a6 Kf6 43. a7 Ke7 44. a8=Q f5 45. Qe8+ Kf6 46. Qf8+ Ke5 47. Qd6# 1-0
+
