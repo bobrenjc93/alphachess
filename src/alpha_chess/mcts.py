@@ -286,7 +286,7 @@ def _filter_root_material(
 ) -> list[int]:
     material_search_plies = max(0, material_search_plies)
     max_loss_cp = max(0, max_loss_cp)
-    if material_search_plies <= 0 or max_loss_cp <= 0:
+    if material_search_plies <= 0:
         return actions
 
     perspective = board.turn

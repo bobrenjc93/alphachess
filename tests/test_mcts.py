@@ -156,6 +156,24 @@ def test_mcts_root_prunes_large_material_blunder() -> None:
     assert blunder_action not in result.root.children
 
 
+def test_mcts_root_material_zero_max_loss_is_strict() -> None:
+    board = chess.Board("3r2k1/8/8/8/8/8/3N4/3Q2K1 w - - 0 1")
+    blunder_action = move_to_action(chess.Move.from_uci("d2f3"), board)
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=1,
+            root_material_max_loss_cp=0,
+        ),
+    )
+    result = search.run(board)
+
+    assert blunder_action not in result.root.children
+
+
 def test_mcts_root_material_filter_can_be_disabled() -> None:
     board = chess.Board("3r2k1/8/8/8/8/8/3N4/3Q2K1 w - - 0 1")
     blunder_action = move_to_action(chess.Move.from_uci("d2f3"), board)
