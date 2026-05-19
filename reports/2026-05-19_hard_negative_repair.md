@@ -196,3 +196,52 @@ also failed:
 
 The existing tactical root filters did not convert the mixed hard-negative
 checkpoint's internal gain into direct Stockfish strength.
+
+## Soft Broad-Policy Follow-Up
+
+Timestamp: `2026-05-19T14:51:35-07:00`
+
+Run:
+
+```text
+experiments/policyhead-hardneg16k-mixsoft-bw005-v1
+```
+
+This repeated the mixed broad-label run but left `prefer_action_labels=false`,
+so `data/teacher/stockfish_multipv_elo1800_16384` contributed its soft MultiPV
+policy target instead of a single hard action. The mined hard-negative and
+latest-loss sources still supplied action labels and `bad_actions`.
+
+Config highlights:
+
+- GPU: A100 reservation `f6c4bd2f`
+- `epochs=2`
+- `lr=0.000002`
+- `bad_action_weight=0.05`
+- `policy_head_only=true`
+- replay weights: `0.45 0.10 0.45`
+
+Parent match:
+
+```text
+score=6.0/8
+wins=4
+draws=4
+losses=0
+```
+
+Stockfish gate:
+
+```text
+score=0.0/2
+pgn=reports/policyhead_hardneg16k_mixsoft_bw005_stockfish_gate.pgn
+```
+
+Validation on the mined replay:
+
+| Checkpoint | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| soft broad-policy repair | `0.3925` | `0.6541` | `0.7670` | `2.8512` |
+
+Keeping the broad Stockfish policy soft did not materially improve the hard
+target top-k metrics or the direct Stockfish gate.
