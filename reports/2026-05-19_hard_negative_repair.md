@@ -132,3 +132,51 @@ top-k accuracy relative to the base and failed the direct Stockfish gate. The
 next hard-negative attempt should mix in an explicit unpenalized broad-policy
 source or use a smaller subset of the mined negatives instead of applying the
 margin to every top-1 error.
+
+## Mixed Broad-Label Follow-Up
+
+Timestamp: `2026-05-19T14:26:11-07:00`
+
+Run:
+
+```text
+experiments/policyhead-hardneg16k-mix-bw005-v1
+```
+
+Config changes from the lower-pressure run:
+
+- GPU: A100 reservation `3c9cb7ff`
+- `lr=0.000002`
+- replay data:
+  - `data/teacher/stockfish_multipv_elo1800_16384`, weight `0.45`
+  - `data/teacher/alpha_loss_leafmcts_v1`, weight `0.10`
+  - `data/teacher/policyhead16k_hardneg_v1`, weight `0.45`
+
+Parent match:
+
+```text
+score=8.0/8
+wins=8
+draws=0
+losses=0
+```
+
+Stockfish checks:
+
+```text
+gate score=0.0/2
+gate pgn=reports/policyhead_hardneg16k_mix_bw005_stockfish_gate.pgn
+confirmation score=0.0/4
+confirmation pgn=reports/policyhead_hardneg16k_mix_bw005_stockfish_confirm.pgn
+```
+
+Validation on the mined replay:
+
+| Checkpoint | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| mixed broad-label repair | `0.3937` | `0.6544` | `0.7677` | `2.8593` |
+
+This was the strongest hard-negative parent match so far and preserved top-k
+slightly better than the single-source hard-negative repairs. It still failed
+both direct Stockfish checks, so internal policy/search gains remain a poor
+proxy for direct strength.
