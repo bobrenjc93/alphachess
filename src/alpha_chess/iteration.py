@@ -19,6 +19,7 @@ class IterationConfig:
     iterations: int = 1
     checkpoint: str | None = None
     games: int = 16
+    self_play_workers: int = 1
     simulations: int = 64
     max_plies: int = 512
     temperature_moves: int = 20
@@ -79,6 +80,7 @@ def run_iterations(config: IterationConfig) -> Path:
                 root_material_search_plies=config.root_material_search_plies,
                 root_material_max_loss_cp=config.root_material_max_loss_cp,
                 seed=iter_seed,
+                workers=config.self_play_workers,
             ),
         )
         if written_selfplay:

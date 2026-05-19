@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
@@ -23,6 +24,7 @@ class SelfPlayConfig:
     root_material_search_plies: int = 0
     root_material_max_loss_cp: int = 250
     seed: int = 0
+    workers: int = 1
 
 
 def play_game(evaluator: Evaluator, config: SelfPlayConfig, game_seed: int) -> dict[str, np.ndarray]:
@@ -89,12 +91,32 @@ def generate_self_play(
 ) -> list[Path]:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    written: list[Path] = []
     start = time()
-    for game_idx in range(config.games):
-        game = play_game(evaluator, config, config.seed + game_idx)
-        stamp = int(start)
-        path = out / f"game_{stamp}_{game_idx:06d}.npz"
-        np.savez_compressed(path, **game)
-        written.append(path)
-    return written
+    stamp = int(start)
+    workers = max(1, int(config.workers))
+    if workers == 1 or config.games <= 1:
+        written: list[Path] = []
+        for game_idx in range(config.games):
+            written.append(_play_and_write_game(evaluator, config, out, stamp, game_idx))
+        return written
+
+    with ThreadPoolExecutor(max_workers=min(workers, config.games)) as executor:
+        return list(
+            executor.map(
+                lambda game_idx: _play_and_write_game(evaluator, config, out, stamp, game_idx),
+                range(config.games),
+            )
+        )
+
+
+def _play_and_write_game(
+    evaluator: Evaluator,
+    config: SelfPlayConfig,
+    out: Path,
+    stamp: int,
+    game_idx: int,
+) -> Path:
+    game = play_game(evaluator, config, config.seed + game_idx)
+    path = out / f"game_{stamp}_{game_idx:06d}.npz"
+    np.savez_compressed(path, **game)
+    return path

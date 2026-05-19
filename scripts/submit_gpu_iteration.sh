@@ -7,6 +7,7 @@ HOURS="${HOURS:-8}"
 ITERATIONS="${ITERATIONS:-4}"
 CHECKPOINT="${CHECKPOINT:-}"
 GAMES="${GAMES:-64}"
+SELF_PLAY_WORKERS="${SELF_PLAY_WORKERS:-1}"
 SIMULATIONS="${SIMULATIONS:-64}"
 MAX_PLIES="${MAX_PLIES:-512}"
 EPOCHS="${EPOCHS:-4}"
@@ -106,6 +107,7 @@ gpu-dev submit \
       --iterations $ITERATIONS \
       $CHECKPOINT_ARG \
       --games $GAMES \
+      --self-play-workers $SELF_PLAY_WORKERS \
       --simulations $SIMULATIONS \
       --max-plies $MAX_PLIES \
       --eval-games $EVAL_GAMES \
