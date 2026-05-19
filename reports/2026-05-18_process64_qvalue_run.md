@@ -78,6 +78,16 @@ Both losses were tactical king-safety failures. The first ended after
 `18. Rxc8 Raxc8 19. Qxc8 Rxc8`, and the second allowed the forcing sequence
 after `9...Qe7 10. Qxc5`.
 
+Additional inference-only tactical guards did not change the result:
+
+```text
+root material guard, max_loss_cp=150: 0.0/2
+PGN=reports/focus_process64_qvalue_rootguard150_vs_stockfish_16sims.pgn
+
+material_value_weight=0.25, material_value_search_plies=4, root guard 150: 0.0/2
+PGN=reports/focus_process64_qvalue_deepq_rootguard150_vs_stockfish_16sims.pgn
+```
+
 ## Conclusion
 
 Process workers fixed the self-play scaling bottleneck, but the larger
@@ -85,4 +95,5 @@ process64 run did not improve head-to-head strength. It slightly improved fixed
 Stockfish and puzzle-line diagnostics over qvalue while keeping poisoned
 captures high, but it failed promotion and still scored zero in direct
 Stockfish play. The current blocker is move quality/tactical robustness, not
-worker throughput.
+worker throughput, and inference-only root/deeper-material guards are not
+enough.
