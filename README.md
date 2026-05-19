@@ -96,6 +96,23 @@ uv run alpha-chess stockfish-teacher \
   --min-value-delta 0.20
 ```
 
+For loss-PGN repair data, include Stockfish PV continuations and the actual
+game-line states Alpha entered after the sampled mistake:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn reports/failed_eval_games_a.pgn reports/failed_eval_games_b.pgn \
+  --out data/teacher/alpha_loss_lines \
+  --engine-path tools/stockfish/bin/stockfish \
+  --player-name AlphaChess \
+  --position-stride 1 \
+  --min-value-delta 0.08 \
+  --multipv 4 \
+  --policy-temperature-cp 200 \
+  --pv-plies 4 \
+  --game-line-plies 2
+```
+
 Import Lichess puzzle CSV tactics:
 
 ```bash
@@ -138,6 +155,18 @@ SELF_PLAY_WEIGHT=0.45 \
 PROMOTION_SCORE=0.55 \
 MATERIAL_VALUE_WEIGHT=0.15 \
 LEGAL_POLICY_LOSS=1 \
+ITERATIONS=1 GAMES=32 scripts/submit_gpu_iteration.sh
+```
+
+Require candidates that pass the parent match to also score at least 50% in a
+direct Stockfish smoke before promotion:
+
+```bash
+CHECKPOINT=experiments/current-best/checkpoints/iter_0001/latest.pt \
+STOCKFISH_GATE_GAMES=2 \
+STOCKFISH_GATE_SIMULATIONS=16 \
+STOCKFISH_GATE_MIN_SCORE=0.50 \
+STOCKFISH_GATE_ENGINE_PATH=tools/stockfish/bin/stockfish \
 ITERATIONS=1 GAMES=32 scripts/submit_gpu_iteration.sh
 ```
 
