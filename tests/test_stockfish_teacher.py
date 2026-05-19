@@ -1,14 +1,19 @@
+from types import SimpleNamespace
+
 import chess
 import chess.engine
 import chess.pgn
+import numpy as np
 
 from alpha_chess.chess_env import move_to_action
 from alpha_chess.stockfish_teacher import (
+    StockfishTeacherConfig,
     _matches_player_to_move,
     _policy_from_multipv,
     _resolve_pgn_paths,
     _score_to_value,
     _value_drop_after_move,
+    generate_stockfish_teacher,
 )
 
 
@@ -62,3 +67,65 @@ def test_policy_from_multipv_builds_soft_legal_distribution() -> None:
     d4_action = move_to_action(d4, board)
     assert abs(float(policy.sum()) - 1.0) < 1e-6
     assert policy[e4_action] > policy[d4_action] > 0
+
+
+def test_stockfish_teacher_can_include_pv_line(monkeypatch, tmp_path) -> None:
+    pgn_path = tmp_path / "game.pgn"
+    pgn_path.write_text(
+        "\n".join(
+            [
+                '[Event "?"]',
+                '[White "AlphaChess"]',
+                '[Black "Stockfish"]',
+                '[Result "*"]',
+                "",
+                "1. e4 e5 2. Nf3 Nc6 *",
+                "",
+            ]
+        )
+    )
+
+    class FakeEngine:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def analyse(self, board, _limit, multipv=None):
+            move = self._best_move(board)
+            info = {
+                "pv": [move],
+                "score": chess.engine.PovScore(chess.engine.Cp(0), board.turn),
+            }
+            return [info] if multipv and multipv > 1 else info
+
+        def play(self, board, _limit):
+            return SimpleNamespace(move=self._best_move(board))
+
+        def _best_move(self, board):
+            for uci in ("e2e4", "e7e5", "g1f3", "b8c6"):
+                move = chess.Move.from_uci(uci)
+                if move in board.legal_moves:
+                    return move
+            return next(iter(board.legal_moves))
+
+    monkeypatch.setattr(chess.engine.SimpleEngine, "popen_uci", lambda _path: FakeEngine())
+
+    paths = generate_stockfish_teacher(
+        StockfishTeacherConfig(
+            pgn=str(pgn_path),
+            out=str(tmp_path / "teacher"),
+            engine_path="fake-stockfish",
+            max_positions=3,
+            player_name="AlphaChess",
+            position_stride=99,
+            pv_plies=2,
+        )
+    )
+
+    data = np.load(paths[0])
+
+    assert data["moves"].tolist() == ["e2e4", "e7e5", "g1f3"]
+    assert data["boards"].shape[0] == 3
+    assert "pv_plies=2" in (tmp_path / "teacher" / "teacher_summary.txt").read_text()

@@ -30,6 +30,7 @@ class StockfishTeacherConfig:
     multipv: int = 1
     policy_temperature_cp: float = 200.0
     position_stride: int = 4
+    pv_plies: int = 0
     chunk_size: int = 1024
 
 
@@ -51,10 +52,98 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     games_used = 0
     positions = 0
 
+    def flush_chunk(source: str) -> None:
+        nonlocal boards, actions, policies, values, value_deltas, fens, best_moves
+        if not boards:
+            return
+        written.append(
+            _write_teacher_chunk(
+                out_dir,
+                len(written),
+                boards,
+                actions,
+                values,
+                value_deltas,
+                fens,
+                best_moves,
+                source=source,
+                policies=policies if policies else None,
+            )
+        )
+        boards, actions, policies, values = [], [], [], []
+        value_deltas, fens, best_moves = [], [], []
+
+    def append_teacher_sample(
+        source: str,
+        sample_board: chess.Board,
+        infos: list[dict],
+        best_move: chess.Move,
+        value: float,
+        value_delta: float,
+    ) -> None:
+        nonlocal positions
+        boards.append(encode_board(sample_board))
+        actions.append(move_to_action(best_move, sample_board))
+        if config.multipv > 1:
+            policies.append(
+                _policy_from_multipv(
+                    sample_board,
+                    infos,
+                    config.policy_temperature_cp,
+                    fallback_move=best_move,
+                )
+            )
+        values.append(value)
+        value_deltas.append(value_delta)
+        fens.append(sample_board.fen())
+        best_moves.append(best_move.uci())
+        positions += 1
+        if len(boards) >= config.chunk_size:
+            flush_chunk(source)
+
+    def append_pv_line_samples(
+        source: str,
+        root_board: chess.Board,
+        root_infos: list[dict],
+    ) -> int:
+        added = 0
+        line_board = root_board.copy(stack=False)
+        pv = _best_pv_from_infos(root_infos)
+        if not pv:
+            return added
+        next_move = pv[0]
+
+        while added < max(0, config.pv_plies) and positions < config.max_positions:
+            if next_move not in line_board.legal_moves:
+                break
+            line_board.push(next_move)
+            if line_board.is_game_over(claim_draw=True):
+                break
+
+            infos = _analyse_position(engine, line_board, limit, config.multipv)
+            best_move = _best_move_from_infos(infos)
+            if best_move is None:
+                play = engine.play(line_board, limit)
+                best_move = play.move
+            if best_move not in line_board.legal_moves:
+                break
+
+            score = infos[0].get("score") if infos else None
+            value = _score_to_value(score, line_board.turn)
+            append_teacher_sample(source, line_board, infos, best_move, value, 0.0)
+            added += 1
+
+            pv = _best_pv_from_infos(infos)
+            if not pv:
+                break
+            next_move = pv[0]
+        return added
+
     with chess.engine.SimpleEngine.popen_uci(config.engine_path) as engine:
         for pgn_path in pgn_paths:
+            source = str(pgn_path)
             filter_config = PGNImportConfig(
-                pgn=str(pgn_path),
+                pgn=source,
                 out=config.out,
                 max_games=config.max_games,
                 min_elo=config.min_elo,
@@ -106,61 +195,22 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                     if value_delta < config.min_value_delta:
                                         board.push(move)
                                         continue
-                                boards.append(encode_board(board))
-                                actions.append(move_to_action(best_move, board))
-                                if config.multipv > 1:
-                                    policies.append(
-                                        _policy_from_multipv(
-                                            board,
-                                            infos,
-                                            config.policy_temperature_cp,
-                                            fallback_move=best_move,
-                                        )
-                                    )
-                                values.append(value)
-                                value_deltas.append(value_delta)
-                                fens.append(board.fen())
-                                best_moves.append(best_move.uci())
-                                positions += 1
+                                append_teacher_sample(
+                                    source,
+                                    board,
+                                    infos,
+                                    best_move,
+                                    value,
+                                    value_delta,
+                                )
+                                if positions < config.max_positions:
+                                    append_pv_line_samples(source, board, infos)
                                 used_this_game = True
-
-                                if len(boards) >= config.chunk_size:
-                                    path = _write_teacher_chunk(
-                                        out_dir,
-                                        len(written),
-                                        boards,
-                                        actions,
-                                        values,
-                                        value_deltas,
-                                        fens,
-                                        best_moves,
-                                        source=str(pgn_path),
-                                        policies=policies if policies else None,
-                                    )
-                                    written.append(path)
-                                    boards, actions, policies, values = [], [], [], []
-                                    value_deltas, fens, best_moves = [], [], []
                         board.push(move)
                     if used_this_game:
                         games_used += 1
 
-            if boards:
-                written.append(
-                    _write_teacher_chunk(
-                        out_dir,
-                        len(written),
-                        boards,
-                        actions,
-                        values,
-                        value_deltas,
-                        fens,
-                        best_moves,
-                        source=str(pgn_path),
-                        policies=policies if policies else None,
-                    )
-                )
-                boards, actions, policies, values = [], [], [], []
-                value_deltas, fens, best_moves = [], [], []
+            flush_chunk(source)
             if positions >= config.max_positions:
                 break
 
@@ -181,6 +231,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"player_name={config.player_name}",
                 f"multipv={config.multipv}",
                 f"policy_temperature_cp={config.policy_temperature_cp}",
+                f"pv_plies={config.pv_plies}",
                 f"config={asdict(config)}",
             ]
         )
@@ -214,6 +265,14 @@ def _best_move_from_infos(infos: list[dict]) -> chess.Move | None:
         if pv:
             return pv[0]
     return None
+
+
+def _best_pv_from_infos(infos: list[dict]) -> list[chess.Move]:
+    for info in infos:
+        pv = info.get("pv")
+        if pv:
+            return list(pv)
+    return []
 
 
 def _score_to_value(score: chess.engine.PovScore | None, turn: chess.Color) -> float:
