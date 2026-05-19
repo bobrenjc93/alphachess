@@ -118,3 +118,12 @@ Additional inference-only check:
 - PGN: `reports/gated_selfplay32_qvalue_iter2_rootmate5_stockfish_16sims.pgn`
 
 Deepening the existing root mate filter did not recover the direct-play gate.
+
+Material-value inference sweep:
+
+| Material weight | Search plies | Sims | Score | PGN |
+| ---: | ---: | ---: | ---: | --- |
+| `0.35` | 2 | 16 | `0.0/2` | `reports/gated_selfplay32_qvalue_iter2_material035_stockfish_16sims.pgn` |
+| `0.50` | 2 | 16 | `0.0/2` | `reports/gated_selfplay32_qvalue_iter2_material050_stockfish_16sims.pgn` |
+
+Increasing the tactical material/value blend also did not recover the direct-play gate.
