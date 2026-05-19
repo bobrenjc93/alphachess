@@ -113,6 +113,8 @@ def main(argv: list[str] | None = None) -> None:
     teacher_parser.add_argument("--multipv", type=int, default=1)
     teacher_parser.add_argument("--policy-temperature-cp", type=float, default=200.0)
     teacher_parser.add_argument("--position-stride", type=int, default=4)
+    teacher_parser.add_argument("--min-ply", type=int, default=0)
+    teacher_parser.add_argument("--max-ply", type=int)
     teacher_parser.add_argument("--pv-plies", type=int, default=0)
     teacher_parser.add_argument("--chunk-size", type=int, default=1024)
 

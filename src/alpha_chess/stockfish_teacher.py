@@ -30,6 +30,8 @@ class StockfishTeacherConfig:
     multipv: int = 1
     policy_temperature_cp: float = 200.0
     position_stride: int = 4
+    min_ply: int = 0
+    max_ply: int | None = None
     pv_plies: int = 0
     chunk_size: int = 1024
 
@@ -169,6 +171,9 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                             break
                         sample_position = ply % max(1, config.position_stride) == 0
                         sample_position = sample_position and not board.is_game_over()
+                        sample_position = sample_position and ply >= max(0, config.min_ply)
+                        if config.max_ply is not None:
+                            sample_position = sample_position and ply <= config.max_ply
                         if config.player_name is not None:
                             sample_position = sample_position and _matches_player_to_move(
                                 game, board, config.player_name
@@ -231,6 +236,8 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"player_name={config.player_name}",
                 f"multipv={config.multipv}",
                 f"policy_temperature_cp={config.policy_temperature_cp}",
+                f"min_ply={config.min_ply}",
+                f"max_ply={config.max_ply}",
                 f"pv_plies={config.pv_plies}",
                 f"config={asdict(config)}",
             ]

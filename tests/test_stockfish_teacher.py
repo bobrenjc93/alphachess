@@ -129,3 +129,60 @@ def test_stockfish_teacher_can_include_pv_line(monkeypatch, tmp_path) -> None:
     assert data["moves"].tolist() == ["e2e4", "e7e5", "g1f3"]
     assert data["boards"].shape[0] == 3
     assert "pv_plies=2" in (tmp_path / "teacher" / "teacher_summary.txt").read_text()
+
+
+def test_stockfish_teacher_respects_ply_window(monkeypatch, tmp_path) -> None:
+    pgn_path = tmp_path / "game.pgn"
+    pgn_path.write_text(
+        "\n".join(
+            [
+                '[Event "?"]',
+                '[White "AlphaChess"]',
+                '[Black "Stockfish"]',
+                '[Result "*"]',
+                "",
+                "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *",
+                "",
+            ]
+        )
+    )
+
+    class FakeEngine:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def analyse(self, board, _limit, multipv=None):
+            move = next(iter(board.legal_moves))
+            info = {
+                "pv": [move],
+                "score": chess.engine.PovScore(chess.engine.Cp(0), board.turn),
+            }
+            return [info] if multipv and multipv > 1 else info
+
+        def play(self, board, _limit):
+            return SimpleNamespace(move=next(iter(board.legal_moves)))
+
+    monkeypatch.setattr(chess.engine.SimpleEngine, "popen_uci", lambda _path: FakeEngine())
+
+    paths = generate_stockfish_teacher(
+        StockfishTeacherConfig(
+            pgn=str(pgn_path),
+            out=str(tmp_path / "teacher-window"),
+            engine_path="fake-stockfish",
+            max_positions=10,
+            position_stride=1,
+            min_ply=2,
+            max_ply=3,
+        )
+    )
+
+    data = np.load(paths[0])
+
+    assert data["fens"].shape[0] == 2
+    assert all(chess.Board(str(fen)).fullmove_number == 2 for fen in data["fens"])
+    summary = (tmp_path / "teacher-window" / "teacher_summary.txt").read_text()
+    assert "min_ply=2" in summary
+    assert "max_ply=3" in summary
