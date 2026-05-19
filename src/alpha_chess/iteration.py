@@ -9,7 +9,11 @@ from pathlib import Path
 
 from alpha_chess.evaluate import evaluate_checkpoint
 from alpha_chess.evaluator import UniformEvaluator, load_evaluator
-from alpha_chess.self_play import SelfPlayConfig, generate_self_play
+from alpha_chess.self_play import (
+    SelfPlayConfig,
+    generate_self_play,
+    generate_self_play_from_checkpoint,
+)
 from alpha_chess.train import TrainConfig, train
 
 
@@ -61,32 +65,43 @@ def run_iterations(config: IterationConfig) -> Path:
         selfplay_dir = run_dir / "selfplay" / f"iter_{iteration:04d}"
         candidate_dir = run_dir / "checkpoints" / f"iter_{iteration:04d}"
 
-        evaluator = (
-            load_evaluator(
+        self_play_config = SelfPlayConfig(
+            games=config.games,
+            simulations=config.simulations,
+            c_puct=config.c_puct,
+            max_plies=config.max_plies,
+            temperature_moves=config.temperature_moves,
+            root_mate_search_plies=config.root_mate_search_plies,
+            root_material_search_plies=config.root_material_search_plies,
+            root_material_max_loss_cp=config.root_material_max_loss_cp,
+            seed=iter_seed,
+            workers=config.self_play_workers,
+        )
+        if config.self_play_workers > 1:
+            written_selfplay = generate_self_play_from_checkpoint(
                 best_checkpoint,
+                selfplay_dir,
+                self_play_config,
                 device=config.device,
                 material_value_weight=config.material_value_weight,
                 material_value_search_plies=config.material_value_search_plies,
             )
-            if best_checkpoint
-            else UniformEvaluator()
-        )
-        written_selfplay = generate_self_play(
-            evaluator,
-            selfplay_dir,
-            SelfPlayConfig(
-                games=config.games,
-                simulations=config.simulations,
-                c_puct=config.c_puct,
-                max_plies=config.max_plies,
-                temperature_moves=config.temperature_moves,
-                root_mate_search_plies=config.root_mate_search_plies,
-                root_material_search_plies=config.root_material_search_plies,
-                root_material_max_loss_cp=config.root_material_max_loss_cp,
-                seed=iter_seed,
-                workers=config.self_play_workers,
-            ),
-        )
+        else:
+            evaluator = (
+                load_evaluator(
+                    best_checkpoint,
+                    device=config.device,
+                    material_value_weight=config.material_value_weight,
+                    material_value_search_plies=config.material_value_search_plies,
+                )
+                if best_checkpoint
+                else UniformEvaluator()
+            )
+            written_selfplay = generate_self_play(
+                evaluator,
+                selfplay_dir,
+                self_play_config,
+            )
         if written_selfplay:
             selfplay_dirs.append(str(selfplay_dir))
         train_data, data_weights = _build_training_inputs(selfplay_dirs, config)

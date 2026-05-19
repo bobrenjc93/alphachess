@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
@@ -11,7 +12,7 @@ import chess
 import numpy as np
 
 from alpha_chess.chess_env import action_to_move, encode_board, result_value_for_color
-from alpha_chess.evaluator import Evaluator
+from alpha_chess.evaluator import Evaluator, UniformEvaluator, load_evaluator
 from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig
 
 
@@ -113,6 +114,61 @@ def generate_self_play(
         )
 
 
+def generate_self_play_from_checkpoint(
+    checkpoint: str | None,
+    out_dir: str | Path,
+    config: SelfPlayConfig,
+    device: str = "auto",
+    material_value_weight: float = 0.0,
+    material_value_search_plies: int = 0,
+) -> list[Path]:
+    """Generate self-play with process workers that load their own evaluator."""
+
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    stamp = int(time())
+    workers = max(1, int(config.workers))
+    if workers == 1 or config.games <= 1:
+        evaluator = (
+            load_evaluator(
+                checkpoint,
+                device=device,
+                material_value_weight=material_value_weight,
+                material_value_search_plies=material_value_search_plies,
+            )
+            if checkpoint
+            else UniformEvaluator()
+        )
+        return [
+            _play_and_write_game(evaluator, config, out, stamp, game_idx)
+            for game_idx in range(config.games)
+        ]
+
+    indices = list(range(config.games))
+    chunks = [indices[offset::workers] for offset in range(min(workers, config.games))]
+    tasks = [
+        (
+            checkpoint,
+            str(out),
+            config,
+            stamp,
+            chunk,
+            device,
+            material_value_weight,
+            material_value_search_plies,
+        )
+        for chunk in chunks
+        if chunk
+    ]
+    with ProcessPoolExecutor(
+        max_workers=len(tasks),
+        mp_context=mp.get_context("spawn"),
+    ) as executor:
+        chunk_paths = executor.map(_play_and_write_checkpoint_chunk, tasks)
+    paths = [path for chunk in chunk_paths for path in chunk]
+    return sorted(paths)
+
+
 def _play_and_write_game(
     evaluator: Evaluator,
     config: SelfPlayConfig,
@@ -124,3 +180,33 @@ def _play_and_write_game(
     path = out / f"game_{stamp}_{game_idx:06d}.npz"
     np.savez_compressed(path, **game)
     return path
+
+
+def _play_and_write_checkpoint_chunk(
+    task: tuple[str | None, str, SelfPlayConfig, int, list[int], str, float, int],
+) -> list[Path]:
+    (
+        checkpoint,
+        out_dir,
+        config,
+        stamp,
+        game_indices,
+        device,
+        material_value_weight,
+        material_value_search_plies,
+    ) = task
+    evaluator = (
+        load_evaluator(
+            checkpoint,
+            device=device,
+            material_value_weight=material_value_weight,
+            material_value_search_plies=material_value_search_plies,
+        )
+        if checkpoint
+        else UniformEvaluator()
+    )
+    out = Path(out_dir)
+    return [
+        _play_and_write_game(evaluator, config, out, stamp, game_idx)
+        for game_idx in game_indices
+    ]

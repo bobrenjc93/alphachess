@@ -8,11 +8,10 @@ from dataclasses import asdict
 from rich import print
 
 from alpha_chess.evaluate import EvalConfig, evaluate_checkpoint
-from alpha_chess.evaluator import UniformEvaluator, load_evaluator
 from alpha_chess.iteration import IterationConfig, run_iterations
 from alpha_chess.pgn_import import PGNImportConfig, import_pgn
 from alpha_chess.puzzle_import import PuzzleImportConfig, import_puzzles
-from alpha_chess.self_play import SelfPlayConfig, generate_self_play
+from alpha_chess.self_play import SelfPlayConfig, generate_self_play_from_checkpoint
 from alpha_chess.stockfish_teacher import StockfishTeacherConfig, generate_stockfish_teacher
 from alpha_chess.train import TrainConfig, ValidateConfig, train, validate
 from alpha_chess.uci import UCIConfig, run_uci
@@ -174,16 +173,6 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     if args.command == "self-play":
-        evaluator = (
-            load_evaluator(
-                args.checkpoint,
-                device=args.device,
-                material_value_weight=args.material_value_weight,
-                material_value_search_plies=args.material_value_search_plies,
-            )
-            if args.checkpoint
-            else UniformEvaluator()
-        )
         config = SelfPlayConfig(
             games=args.games,
             simulations=args.simulations,
@@ -196,7 +185,14 @@ def main(argv: list[str] | None = None) -> None:
             seed=args.seed,
             workers=args.workers,
         )
-        paths = generate_self_play(evaluator, args.out, config)
+        paths = generate_self_play_from_checkpoint(
+            args.checkpoint,
+            args.out,
+            config,
+            device=args.device,
+            material_value_weight=args.material_value_weight,
+            material_value_search_plies=args.material_value_search_plies,
+        )
         print({"written": [str(path) for path in paths], "config": asdict(config)})
     elif args.command == "train":
         kwargs = vars(args).copy()
