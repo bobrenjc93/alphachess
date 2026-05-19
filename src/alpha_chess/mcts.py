@@ -108,9 +108,15 @@ class SearchResult:
         policy = np.zeros_like(counts, dtype=np.float32)
         total_visits = float(counts.sum())
         if total_visits <= 0:
+            if temperature <= 0:
+                action = self._deterministic_action()
+                if action is not None:
+                    policy[action] = 1.0
             return policy
         if temperature <= 0:
-            policy[int(np.argmax(counts))] = 1.0
+            action = self._deterministic_action()
+            if action is not None:
+                policy[action] = 1.0
             return policy
         adjusted = np.power(counts, 1.0 / temperature)
         total = float(adjusted.sum())
@@ -124,11 +130,27 @@ class SearchResult:
         if len(nonzero) == 0:
             return None
         if temperature <= 0:
-            return int(nonzero[np.argmax(policy[nonzero])])
+            return self._deterministic_action()
         return int(rng.choice(np.arange(ACTION_SIZE), p=policy))
 
     def child_for_action(self, action: int) -> Node | None:
         return self.root.children.get(action)
+
+    def _deterministic_action(self) -> int | None:
+        if not self.root.children:
+            return None
+        max_visits = max(
+            (int(self.visits[action]) for action in self.root.children),
+            default=0,
+        )
+        candidates = [
+            action
+            for action in self.root.children
+            if int(self.visits[action]) == max_visits
+        ]
+        if not candidates:
+            return None
+        return max(candidates, key=lambda action: (self.root.children[action].prior, -action))
 
 
 def advance_root(root: Node | None, action: int) -> Node | None:

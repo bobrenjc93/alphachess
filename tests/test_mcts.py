@@ -3,7 +3,7 @@ import numpy as np
 
 from alpha_chess.chess_env import ACTION_SIZE, action_to_move, legal_actions, move_to_action
 from alpha_chess.evaluator import UniformEvaluator
-from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig, Node, advance_root
+from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig, Node, SearchResult, advance_root
 
 
 class SparsePolicyEvaluator:
@@ -103,6 +103,34 @@ def test_mcts_policy_prior_temperature_flattens_priors() -> None:
     assert default_result.root.children[d4_action].prior < 0.02
     assert flat_result.root.children[d4_action].prior > 0.08
     assert flat_result.root.children[e4_action].prior > flat_result.root.children[d4_action].prior
+
+
+def test_search_result_breaks_visit_ties_by_prior() -> None:
+    board = chess.Board()
+    e4_action = move_to_action(chess.Move.from_uci("e2e4"), board)
+    d4_action = move_to_action(chess.Move.from_uci("d2d4"), board)
+    root = Node(prior=1.0)
+    root.children = {
+        e4_action: Node(prior=0.1),
+        d4_action: Node(prior=0.9),
+    }
+    visits = np.zeros(ACTION_SIZE, dtype=np.float32)
+    result = SearchResult(root=root, visits=visits, root_value=0.0)
+
+    assert result.select_action(temperature=0.0, rng=np.random.default_rng(0)) == d4_action
+    assert result.policy(temperature=0.0)[d4_action] == 1.0
+
+    visits[e4_action] = 3
+    visits[d4_action] = 3
+    result = SearchResult(root=root, visits=visits, root_value=0.0)
+
+    assert result.select_action(temperature=0.0, rng=np.random.default_rng(0)) == d4_action
+    assert result.policy(temperature=0.0)[d4_action] == 1.0
+
+    visits[e4_action] = 4
+    result = SearchResult(root=root, visits=visits, root_value=0.0)
+
+    assert result.select_action(temperature=0.0, rng=np.random.default_rng(0)) == e4_action
 
 
 def test_mcts_rejects_invalid_policy_prior_temperature() -> None:
