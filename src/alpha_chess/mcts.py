@@ -305,7 +305,11 @@ def _material_quiescence_score(
 
 
 def _material_tactical_moves(board: chess.Board) -> list[chess.Move]:
-    moves = [move for move in board.legal_moves if board.is_capture(move) or move.promotion]
+    moves = [
+        move
+        for move in board.legal_moves
+        if board.is_capture(move) or move.promotion or board.gives_check(move)
+    ]
     moves.sort(key=lambda move: _move_material_priority(board, move), reverse=True)
     return moves
 
@@ -313,9 +317,10 @@ def _material_tactical_moves(board: chess.Board) -> list[chess.Move]:
 def _move_material_priority(board: chess.Board, move: chess.Move) -> int:
     captured_value = _captured_piece_value(board, move)
     promotion_value = PIECE_VALUES.get(move.promotion, 0) if move.promotion else 0
+    check_bonus = 10_000 if board.gives_check(move) else 0
     moving_piece = board.piece_at(move.from_square)
     moving_value = PIECE_VALUES.get(moving_piece.piece_type, 0) if moving_piece else 0
-    return captured_value + promotion_value - moving_value
+    return check_bonus + captured_value + promotion_value - moving_value
 
 
 def _captured_piece_value(board: chess.Board, move: chess.Move) -> int:

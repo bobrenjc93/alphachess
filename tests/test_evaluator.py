@@ -18,3 +18,11 @@ def test_material_value_search_sees_forced_recapture() -> None:
     board.push(chess.Move.from_uci("b2a1"))
 
     assert material_value(board, search_plies=1) > material_value(board)
+
+
+def test_material_value_search_sees_quiet_mate_check() -> None:
+    board = chess.Board("rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq g3 0 2")
+    mate = chess.Move.from_uci("d8h4")
+
+    assert board.san(mate).endswith("#")
+    assert material_value(board, search_plies=1) > 0.99
