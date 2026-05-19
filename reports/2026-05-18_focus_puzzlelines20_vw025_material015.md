@@ -102,6 +102,17 @@ losses=1
 pgn=reports/focus_puzzlelines20_vw025_material015_s64_vs_stockfish.pgn
 ```
 
+Stockfish smoke at 128 simulations, material weight `0.15`:
+
+```text
+games=1
+score=0.0
+wins=0
+draws=0
+losses=1
+pgn=reports/focus_puzzlelines20_vw025_material015_s128_vs_stockfish.pgn
+```
+
 ## Conclusion
 
 The Stockfish-rebalanced puzzle-line run is a strong internal promotion and
