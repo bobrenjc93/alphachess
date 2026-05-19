@@ -65,6 +65,18 @@ Higher-search direct smoke:
 - score: `0.0/1`
 - PGN: `reports/policyhead_broad_qvalue_stockfish_64sims.pgn`
 
+Additional 16-simulation inference sweep:
+
+| Setting | Games | Score | PGN |
+| --- | ---: | ---: | --- |
+| `c_puct=0.8` | 2 | `0.0/2` | `reports/policyhead_broad_qvalue_cpuct08_stockfish_16sims.pgn` |
+| `c_puct=2.5` | 2 | `0.0/2` | `reports/policyhead_broad_qvalue_cpuct25_stockfish_16sims.pgn` |
+| `policy_prior_temperature=2.0` | 2 | `0.0/2` | `reports/policyhead_broad_qvalue_priorT2_stockfish_16sims.pgn` |
+| `material_value_weight=0.30` | 2 | `0.0/2` | `reports/policyhead_broad_qvalue_material030_stockfish_16sims.pgn` |
+
+The single Stockfish draw from the original gate did not reproduce under these
+small inference changes.
+
 ## Fixed validation
 
 Candidate-only validation used CPU, batch size 512, legal policy loss, and
