@@ -27,6 +27,7 @@ class IterationConfig:
     channels: int = 128
     blocks: int = 6
     lr: float = 1e-3
+    value_weight: float = 1.0
     legal_policy_loss: bool = False
     material_value_weight: float = 0.0
     root_material_search_plies: int = 0
@@ -90,6 +91,7 @@ def run_iterations(config: IterationConfig) -> Path:
                 epochs=config.epochs,
                 batch_size=config.batch_size,
                 lr=config.lr,
+                value_weight=config.value_weight,
                 data_weights=data_weights,
                 legal_policy_loss=config.legal_policy_loss,
                 channels=config.channels,

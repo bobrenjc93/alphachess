@@ -14,6 +14,7 @@ BATCH_SIZE="${BATCH_SIZE:-128}"
 CHANNELS="${CHANNELS:-128}"
 BLOCKS="${BLOCKS:-6}"
 LR="${LR:-0.001}"
+VALUE_WEIGHT="${VALUE_WEIGHT:-1.0}"
 LEGAL_POLICY_LOSS="${LEGAL_POLICY_LOSS:-0}"
 MATERIAL_VALUE_WEIGHT="${MATERIAL_VALUE_WEIGHT:-0.0}"
 ROOT_MATERIAL_SEARCH_PLIES="${ROOT_MATERIAL_SEARCH_PLIES:-0}"
@@ -114,6 +115,7 @@ gpu-dev submit \
       --channels $CHANNELS \
       --blocks $BLOCKS \
       --lr $LR \
+      --value-weight $VALUE_WEIGHT \
       --material-value-weight $MATERIAL_VALUE_WEIGHT \
       --root-material-search-plies $ROOT_MATERIAL_SEARCH_PLIES \
       --root-material-max-loss-cp $ROOT_MATERIAL_MAX_LOSS_CP \

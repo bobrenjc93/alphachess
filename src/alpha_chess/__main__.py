@@ -135,6 +135,7 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--channels", type=int, default=128)
     iterate_parser.add_argument("--blocks", type=int, default=6)
     iterate_parser.add_argument("--lr", type=float, default=1e-3)
+    iterate_parser.add_argument("--value-weight", type=float, default=1.0)
     iterate_parser.add_argument("--legal-policy-loss", action="store_true")
     iterate_parser.add_argument("--material-value-weight", type=float, default=0.0)
     iterate_parser.add_argument("--root-material-search-plies", type=int, default=0)
