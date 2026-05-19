@@ -99,3 +99,22 @@ def test_mcts_root_prunes_queen_for_rook_trap_from_stockfish_game() -> None:
     result = search.run(board)
 
     assert blunder_action not in result.root.children
+
+
+def test_mcts_root_material_filter_keeps_best_moves_when_all_moves_lose_material() -> None:
+    board = chess.Board("r1bqk2r/1pNp1ppp/p1n1pn2/8/1b2PB2/2N5/PPP2PPP/R2QKB1R b KQkq - 1 8")
+    blunder_action = move_to_action(chess.Move.from_uci("d8c7"), board)
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=1,
+            root_material_max_loss_cp=150,
+        ),
+    )
+    result = search.run(board)
+
+    assert result.root.children
+    assert blunder_action not in result.root.children

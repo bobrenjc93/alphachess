@@ -239,6 +239,7 @@ def _filter_root_material(
     min_allowed = baseline - max_loss_cp
     cache: dict[tuple[str, int, bool], int] = {}
     safe_actions: list[int] = []
+    scored_actions: list[tuple[int, int]] = []
 
     for action in actions:
         move = action_to_move(action, board)
@@ -252,10 +253,18 @@ def _filter_root_material(
             perspective,
             cache,
         )
+        scored_actions.append((action, score))
         if score >= min_allowed:
             safe_actions.append(action)
 
-    return safe_actions if safe_actions else actions
+    if safe_actions:
+        return safe_actions
+    if not scored_actions:
+        return actions
+
+    best_score = max(score for _, score in scored_actions)
+    fallback_actions = [action for action, score in scored_actions if score == best_score]
+    return fallback_actions if fallback_actions else [scored_actions[0][0]]
 
 
 def _material_quiescence_score(
