@@ -53,9 +53,10 @@ Results:
 | ---: | ---: | ---: | --- | --- |
 | 16 | 2 | `0.0/2` | `0/0/2` | `reports/tree_reuse_pvrecent_stockfish_16sims.pgn` |
 | 64 | 1 | `0.0/1` | `0/0/1` | `reports/tree_reuse_pvrecent_stockfish_64sims.pgn` |
+| 256 | 1 | `0.0/1` | `0/0/1` | `reports/tree_reuse_pvrecent_stockfish_256sims.pgn` |
 
 ## Conclusion
 
 Kept as a search implementation improvement, but rejected as a direct-play fix.
 Tree reuse does not recover the PV-recent checkpoint's Stockfish gate; the games
-still fail through tactical and positional collapse.
+still fail through tactical and positional collapse even at 256 simulations.
