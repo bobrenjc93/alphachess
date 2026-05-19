@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T13:57:45-07:00`.
+Last updated: `2026-05-19T14:10:09-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -58,6 +58,7 @@ latest committed report.
 | `2026-05-19T13:36:12-07:00` report timestamp | Higher-exploration policy probe (`reports/2026-05-19_policy_exploration_probe.md`). | N/A | all tested variants `0.0/2` | Softer priors and larger `c_puct` did not recover direct play. |
 | `2026-05-19T13:37:44-07:00` report timestamp | Policy-only direct probe (`reports/2026-05-19_policy_only_probe.md`). | N/A | both tested variants `0.0/2` | Search is not merely overriding a safe policy; policy-only play still blunders. |
 | `2026-05-19T13:57:45-07:00` report timestamp | Hard-negative policy repair (`reports/2026-05-19_hard_negative_repair.md`). | `2.0/8` vs policy-head 16k parent | first smoke `0.5/2`; confirmation `0.0/4` | Mined top-wrong moves reduced bad-action loss but hurt top-k and did not confirm direct strength. |
+| `2026-05-19T14:10:09-07:00` report timestamp | Lower-pressure hard-negative repair (`reports/2026-05-19_hard_negative_repair.md`). | `6.0/8` vs policy-head 16k parent | `0.0/2` | Lower margin pressure preserved parent strength but still failed the direct gate. |
 
 Current practical status:
 
@@ -73,7 +74,8 @@ Current practical status:
 - Policy-only direct play also loses tactically, so the policy head still needs
   stronger direct-play reliability before MCTS can amplify it.
 - Hard-negative mining can produce direct draws, but the first weight tried
-  over-penalized wrong top moves and regressed the parent match.
+  over-penalized wrong top moves and regressed the parent match; lower pressure
+  preserved parent strength but still failed direct Stockfish.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 

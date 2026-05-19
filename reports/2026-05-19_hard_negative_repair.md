@@ -84,3 +84,51 @@ The first smoke reproduced a direct Stockfish draw, but the larger confirmation
 did not hold. Hard-negative mining is promising as a diagnostic/training tool,
 but the current weight/regime over-penalizes wrong top moves and reduces broad
 policy accuracy.
+
+## Lower-Pressure Follow-Up
+
+Timestamp: `2026-05-19T14:10:09-07:00`
+
+Run:
+
+```text
+experiments/policyhead-hardneg16k-bw005-v1
+```
+
+Config changes from the first hard-negative run:
+
+- GPU: A100 reservation `5c1bc136`
+- `epochs=2`
+- `lr=0.000003`
+- `bad_action_weight=0.05`
+
+Parent match:
+
+```text
+score=6.0/8
+wins=4
+draws=4
+losses=0
+```
+
+Stockfish gate:
+
+```text
+score=0.0/2
+wins=0
+draws=0
+losses=2
+pgn=reports/policyhead_hardneg16k_bw005_stockfish_gate.pgn
+```
+
+Validation on the mined replay:
+
+| Checkpoint | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| lower-pressure repair | `0.3923` | `0.6533` | `0.7674` | `2.8639` |
+
+The lower-pressure setting preserved internal parent strength but still reduced
+top-k accuracy relative to the base and failed the direct Stockfish gate. The
+next hard-negative attempt should mix in an explicit unpenalized broad-policy
+source or use a smaller subset of the mined negatives instead of applying the
+margin to every top-1 error.
