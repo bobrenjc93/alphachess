@@ -23,6 +23,7 @@ class PuzzleImportConfig:
     theme: str | None = None
     chunk_size: int = 4096
     value: float = 1.0
+    include_solution_line: bool = False
 
 
 def import_puzzles(config: PuzzleImportConfig) -> list[Path]:
@@ -42,11 +43,12 @@ def import_puzzles(config: PuzzleImportConfig) -> list[Path]:
     rows_seen = 0
     rows_imported = 0
     rows_skipped = 0
+    positions = 0
 
     with _open_pgn_text(puzzle_path) as handle:
         reader = csv.DictReader(handle)
         for row in reader:
-            if config.max_positions is not None and rows_imported >= config.max_positions:
+            if config.max_positions is not None and positions >= config.max_positions:
                 break
             rows_seen += 1
             if not _passes_puzzle_filters(row, config):
@@ -64,34 +66,55 @@ def import_puzzles(config: PuzzleImportConfig) -> list[Path]:
                 rows_skipped += 1
                 continue
 
-            boards.append(encode_board(board))
-            actions.append(move_to_action(first_move, board))
-            values.append(config.value)
-            fens.append(board.fen())
-            moves.append(first_move.uci())
-            solutions.append(row.get("Moves", ""))
-            ratings.append(_safe_int(row.get("Rating")) or 0)
-            themes.append(row.get("Themes", ""))
+            winning_color = board.turn
+            imported_from_row = 0
+            moves_to_import = solution_moves if config.include_solution_line else solution_moves[:1]
+            for move_text in moves_to_import:
+                if config.max_positions is not None and positions >= config.max_positions:
+                    break
+                try:
+                    move = chess.Move.from_uci(move_text)
+                except ValueError:
+                    break
+                if move not in board.legal_moves:
+                    break
+
+                boards.append(encode_board(board))
+                actions.append(move_to_action(move, board))
+                values.append(config.value if board.turn == winning_color else -config.value)
+                fens.append(board.fen())
+                moves.append(move.uci())
+                solutions.append(row.get("Moves", ""))
+                ratings.append(_safe_int(row.get("Rating")) or 0)
+                themes.append(row.get("Themes", ""))
+                imported_from_row += 1
+                positions += 1
+                board.push(move)
+
+                if len(boards) >= config.chunk_size:
+                    written.append(
+                        _write_puzzle_chunk(
+                            out_dir,
+                            len(written),
+                            boards,
+                            actions,
+                            values,
+                            fens,
+                            moves,
+                            solutions,
+                            ratings,
+                            themes,
+                            source=str(puzzle_path),
+                        )
+                    )
+                    boards, actions, values, fens = [], [], [], []
+                    moves, solutions, ratings, themes = [], [], [], []
+
+            if imported_from_row == 0:
+                rows_skipped += 1
+                continue
             rows_imported += 1
 
-            if len(boards) >= config.chunk_size:
-                written.append(
-                    _write_puzzle_chunk(
-                        out_dir,
-                        len(written),
-                        boards,
-                        actions,
-                        values,
-                        fens,
-                        moves,
-                        solutions,
-                        ratings,
-                        themes,
-                        source=str(puzzle_path),
-                    )
-                )
-                boards, actions, values, fens = [], [], [], []
-                moves, solutions, ratings, themes = [], [], [], []
 
     if boards:
         written.append(
@@ -120,6 +143,7 @@ def import_puzzles(config: PuzzleImportConfig) -> list[Path]:
                 f"rows_seen={rows_seen}",
                 f"rows_imported={rows_imported}",
                 f"rows_skipped={rows_skipped}",
+                f"positions={positions}",
                 f"files={len(written)}",
                 f"config={asdict(config)}",
             ]

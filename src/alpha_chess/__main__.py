@@ -120,6 +120,7 @@ def main(argv: list[str] | None = None) -> None:
     puzzle_parser.add_argument("--theme")
     puzzle_parser.add_argument("--chunk-size", type=int, default=4096)
     puzzle_parser.add_argument("--value", type=float, default=1.0)
+    puzzle_parser.add_argument("--include-solution-line", action="store_true")
 
     iterate_parser = subparsers.add_parser("iterate", help="run self-play/train/eval iterations")
     iterate_parser.add_argument("--run-dir", default="experiments/local")
