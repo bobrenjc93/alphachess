@@ -245,3 +245,47 @@ Validation on the mined replay:
 
 Keeping the broad Stockfish policy soft did not materially improve the hard
 target top-k metrics or the direct Stockfish gate.
+
+## Direct Loss-Blunder Replay Follow-Up
+
+Timestamp: `2026-05-19T15:34:00-07:00`
+
+The latest soft broad-policy direct losses included high-confidence policy
+top-1 blunders, so this follow-up generated a focused bad-action replay from
+recent hard-negative policy-head Stockfish loss PGNs:
+
+```text
+data/teacher/policyhead_hardneg_lossblunders_v1
+```
+
+Teacher generation:
+
+- sources: 9 recent `policyhead_hardneg16k*` Stockfish-loss PGNs
+- games seen/used: `22`
+- positions: `100`
+- bad-action positions: `100`
+- value-delta range: `0.0830` to `0.4903`; mean `0.1577`
+- Stockfish: `engine_time=0.05`, `multipv=8`, `policy_temperature_cp=180`
+
+Two policy-head-only repair runs started from
+`experiments/policyhead-hardneg16k-mixsoft-bw005-v1/checkpoints/iter_0001/latest.pt`:
+
+| Run | GPU | Replay mix | Parent/internal score | Direct Stockfish score | PGN |
+| --- | --- | --- | ---: | ---: | --- |
+| `experiments/policyhead-hardneg-lossblunder-mixsoft-v1` | A100 `7bd32576` | broad 16k `0.55`, mined hardneg `0.25`, direct-loss blunders `0.20`; `epochs=3`, `lr=0.0000015`, `bad_action_weight=0.10` | `4.0/8` vs soft-mix parent | `0.0/2` | `reports/policyhead_hardneg_lossblunder_mixsoft_stockfish_gate.pgn` |
+| `experiments/policyhead-lossblunder-directmix-v1` | A100 `9f1a32c9` | broad 16k `0.65`, direct-loss blunders `0.35`; `epochs=4`, `lr=0.000002`, `bad_action_weight=0.20`; forced gate with `promotion_score=0.0` | `8.0/8` vs soft-mix parent | `0.0/2` | `reports/policyhead_lossblunder_directmix_stockfish_gate.pgn` |
+
+Validation on `data/teacher/policyhead_hardneg_lossblunders_v1`:
+
+| Checkpoint | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| soft broad-policy parent | `0.1200` | `0.3000` | `0.4600` | `2.8098` |
+| balanced loss-blunder repair | `0.1200` | `0.3500` | `0.5000` | `2.7250` |
+| direct-loss-only mix repair | `0.1200` | `0.3500` | `0.5000` | `2.6989` |
+
+The targeted replay moved top-3/top-5 and margin loss slightly, and the more
+aggressive direct-loss mix dominated the soft-mix parent internally. It still
+left target top-1 unchanged and failed the direct Stockfish gate. This suggests
+the current policy-head-only repair is not strong enough to rewrite the
+high-confidence direct-play blunders without a broader or more structural
+signal.
