@@ -116,9 +116,54 @@ Bad-action diagnostic loss improved from `2.2330` to `1.5768`, but the weight
 was far too disruptive: broad Stockfish policy accuracy collapsed and the
 candidate lost every parent game.
 
+## Lower-Weight Follow-Up
+
+Run:
+
+`experiments/focus-badactionslow-pvrecent-bw005-vw025-material015`
+
+Changed from the first probe:
+
+- `lr=2e-6`
+- `bad_action_weight=0.05`
+- bad-action replay share lowered from `0.14` to `0.04`
+- broad Stockfish replay raised from `0.52` to `0.58`
+
+Parent match:
+
+- score: `4.0/8`
+- wins/draws/losses: `4/0/4`
+
+Stockfish gate:
+
+- 16 simulations, 2 games
+- score: `0.0/2`
+- PGN: `reports/focus_badactionslow_pvrecent_bw005_stockfish_gate_16sims.pgn`
+
+Higher-search smoke:
+
+- 64 simulations, 1 game
+- score: `0.0/1`
+- PGN: `reports/focus_badactionslow_pvrecent_bw005_s64_vs_stockfish.pgn`
+
+Fixed validation:
+
+| Dataset | Parent Acc | Candidate Acc |
+| --- | ---: | ---: |
+| `stockfish_multipv_elo1800_4096` | `0.5864` | `0.5217` |
+| `puzzles/all_1200_2400_50k` | `0.3323` | `0.3309` |
+| `alpha_loss_reports_v2` | `0.6393` | `0.5902` |
+| `puzzles/lines_1200_2400_100k` | `0.4539` | `0.4527` |
+| `alpha_poisoned_captures_v2` | `0.7143` | `0.6786` |
+| `alpha_loss_pvlines_recent_v1` | `0.2604` | `0.2682` |
+| `alpha_loss_gamelines_all_v2` | `0.2827` | `0.2827` |
+| `alpha_loss_badactions_all_v1` | `0.2167` | `0.2181` |
+
+Bad-action diagnostic loss moved only slightly, from `2.2330` to `2.0660`, while
+broad Stockfish policy accuracy still fell by more than six points.
+
 ## Conclusion
 
-Keep the bad-action supervision machinery, but reject this first weighting. The
-next test should use a much lower bad-action weight and lower replay share, or a
-shorter schedule that treats bad-action loss as a small regularizer rather than
-a primary repair signal.
+Keep the bad-action supervision machinery, but reject both initial weightings.
+Even as a small regularizer, this signal trades away too much broad policy
+strength and does not improve the direct Stockfish gate.
