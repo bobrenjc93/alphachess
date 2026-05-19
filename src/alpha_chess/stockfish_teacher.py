@@ -33,6 +33,7 @@ class StockfishTeacherConfig:
     min_ply: int = 0
     max_ply: int | None = None
     pv_plies: int = 0
+    game_line_plies: int = 0
     chunk_size: int = 1024
 
 
@@ -141,6 +142,36 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
             next_move = pv[0]
         return added
 
+    def append_game_line_samples(
+        source: str,
+        root_board: chess.Board,
+        continuation: list[chess.Move],
+    ) -> int:
+        added = 0
+        line_board = root_board.copy(stack=False)
+        for next_move in continuation:
+            if added >= max(0, config.game_line_plies) or positions >= config.max_positions:
+                break
+            if next_move not in line_board.legal_moves:
+                break
+            line_board.push(next_move)
+            if line_board.is_game_over(claim_draw=True):
+                break
+
+            infos = _analyse_position(engine, line_board, limit, config.multipv)
+            best_move = _best_move_from_infos(infos)
+            if best_move is None:
+                play = engine.play(line_board, limit)
+                best_move = play.move
+            if best_move not in line_board.legal_moves:
+                break
+
+            score = infos[0].get("score") if infos else None
+            value = _score_to_value(score, line_board.turn)
+            append_teacher_sample(source, line_board, infos, best_move, value, 0.0)
+            added += 1
+        return added
+
     with chess.engine.SimpleEngine.popen_uci(config.engine_path) as engine:
         for pgn_path in pgn_paths:
             source = str(pgn_path)
@@ -163,8 +194,9 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                         continue
 
                     board = game.board()
+                    mainline_moves = list(game.mainline_moves())
                     used_this_game = False
-                    for ply, move in enumerate(game.mainline_moves()):
+                    for ply, move in enumerate(mainline_moves):
                         if positions >= config.max_positions:
                             break
                         if move not in board.legal_moves:
@@ -210,6 +242,12 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                 )
                                 if positions < config.max_positions:
                                     append_pv_line_samples(source, board, infos)
+                                if positions < config.max_positions:
+                                    append_game_line_samples(
+                                        source,
+                                        board,
+                                        mainline_moves[ply:],
+                                    )
                                 used_this_game = True
                         board.push(move)
                     if used_this_game:
@@ -239,6 +277,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"min_ply={config.min_ply}",
                 f"max_ply={config.max_ply}",
                 f"pv_plies={config.pv_plies}",
+                f"game_line_plies={config.game_line_plies}",
                 f"config={asdict(config)}",
             ]
         )

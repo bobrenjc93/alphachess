@@ -131,6 +131,67 @@ def test_stockfish_teacher_can_include_pv_line(monkeypatch, tmp_path) -> None:
     assert "pv_plies=2" in (tmp_path / "teacher" / "teacher_summary.txt").read_text()
 
 
+def test_stockfish_teacher_can_include_game_line(monkeypatch, tmp_path) -> None:
+    pgn_path = tmp_path / "game.pgn"
+    pgn_path.write_text(
+        "\n".join(
+            [
+                '[Event "?"]',
+                '[White "AlphaChess"]',
+                '[Black "Stockfish"]',
+                '[Result "*"]',
+                "",
+                "1. e4 d5 2. exd5 *",
+                "",
+            ]
+        )
+    )
+
+    class FakeEngine:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def analyse(self, board, _limit, multipv=None):
+            move = next(iter(board.legal_moves))
+            info = {
+                "pv": [move],
+                "score": chess.engine.PovScore(chess.engine.Cp(0), board.turn),
+            }
+            return [info] if multipv and multipv > 1 else info
+
+        def play(self, board, _limit):
+            return SimpleNamespace(move=next(iter(board.legal_moves)))
+
+    monkeypatch.setattr(chess.engine.SimpleEngine, "popen_uci", lambda _path: FakeEngine())
+
+    paths = generate_stockfish_teacher(
+        StockfishTeacherConfig(
+            pgn=str(pgn_path),
+            out=str(tmp_path / "teacher-game-line"),
+            engine_path="fake-stockfish",
+            max_positions=3,
+            position_stride=99,
+            game_line_plies=2,
+        )
+    )
+
+    data = np.load(paths[0])
+    boards = [chess.Board(str(fen)) for fen in data["fens"]]
+
+    assert data["fens"].shape[0] == 3
+    assert boards[0].ply() == 0
+    assert boards[1].ply() == 1
+    assert boards[1].piece_at(chess.E4) == chess.Piece(chess.PAWN, chess.WHITE)
+    assert boards[2].ply() == 2
+    assert boards[2].piece_at(chess.D5) == chess.Piece(chess.PAWN, chess.BLACK)
+    assert "game_line_plies=2" in (
+        tmp_path / "teacher-game-line" / "teacher_summary.txt"
+    ).read_text()
+
+
 def test_stockfish_teacher_respects_ply_window(monkeypatch, tmp_path) -> None:
     pgn_path = tmp_path / "game.pgn"
     pgn_path.write_text(
