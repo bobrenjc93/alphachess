@@ -9,6 +9,7 @@ from rich import print
 
 from alpha_chess.evaluate import EvalConfig, evaluate_checkpoint
 from alpha_chess.iteration import IterationConfig, run_iterations
+from alpha_chess.model import blend_checkpoints
 from alpha_chess.pgn_import import PGNImportConfig, import_pgn
 from alpha_chess.puzzle_import import PuzzleImportConfig, import_puzzles
 from alpha_chess.self_play import SelfPlayConfig, generate_self_play_from_checkpoint
@@ -64,6 +65,14 @@ def main(argv: list[str] | None = None) -> None:
     validate_parser.add_argument("--value-weight", type=float, default=1.0)
     validate_parser.add_argument("--legal-policy-loss", action="store_true")
     validate_parser.add_argument("--device", default="auto")
+
+    blend_parser = subparsers.add_parser(
+        "blend-checkpoints", help="linearly interpolate two checkpoints"
+    )
+    blend_parser.add_argument("--checkpoint-a", required=True)
+    blend_parser.add_argument("--checkpoint-b", required=True)
+    blend_parser.add_argument("--weight-b", type=float, required=True)
+    blend_parser.add_argument("--out", required=True)
 
     eval_parser = subparsers.add_parser("eval", help="evaluate a checkpoint")
     eval_parser.add_argument("--checkpoint", required=True)
@@ -220,6 +229,14 @@ def main(argv: list[str] | None = None) -> None:
         kwargs.pop("command", None)
         config = ValidateConfig(**kwargs)
         print({"metrics": validate(config), "config": asdict(config)})
+    elif args.command == "blend-checkpoints":
+        output = blend_checkpoints(
+            args.checkpoint_a,
+            args.checkpoint_b,
+            args.out,
+            args.weight_b,
+        )
+        print({"checkpoint": str(output)})
     elif args.command == "eval":
         kwargs = vars(args).copy()
         kwargs.pop("command", None)

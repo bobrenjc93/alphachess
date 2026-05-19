@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from alpha_chess.chess_env import ACTION_SIZE, NUM_INPUT_PLANES, encode_board, move_to_action
 from alpha_chess.dataset import SelfPlayDataset, collate_samples
-from alpha_chess.model import ChessNet, ChessNetConfig, save_checkpoint
+from alpha_chess.model import ChessNet, ChessNetConfig, blend_checkpoints, save_checkpoint
 from alpha_chess.train import (
     ValidateConfig,
     _compute_batch_loss,
@@ -166,6 +166,36 @@ def test_validate_checkpoint_reports_metrics(tmp_path) -> None:
     assert metrics["val_examples"] == 8.0
     assert metrics["val_source_0_examples"] == 3.0
     assert metrics["val_source_1_examples"] == 5.0
+
+
+def test_blend_checkpoints_interpolates_floating_weights(tmp_path) -> None:
+    checkpoint_a = tmp_path / "a.pt"
+    checkpoint_b = tmp_path / "b.pt"
+    output = tmp_path / "blend.pt"
+
+    model_a = _constant_model(0.0)
+    model_b = _constant_model(2.0)
+    save_checkpoint(checkpoint_a, model_a)
+    save_checkpoint(checkpoint_b, model_b)
+
+    blend_checkpoints(checkpoint_a, checkpoint_b, output, weight_b=0.25)
+
+    payload = torch.load(output, map_location="cpu")
+    state = payload["model_state"]
+    floating_key = next(key for key, value in state.items() if torch.is_floating_point(value))
+
+    assert torch.allclose(state[floating_key], torch.full_like(state[floating_key], 0.5))
+    assert payload["metrics"]["blend_weight_b"] == pytest.approx(0.25)
+
+
+def _constant_model(value: float) -> ChessNet:
+    model = ChessNet(ChessNetConfig(channels=8, blocks=1))
+    state = model.state_dict()
+    for key, tensor in state.items():
+        if torch.is_floating_point(tensor):
+            state[key] = torch.full_like(tensor, value)
+    model.load_state_dict(state)
+    return model
 
 
 def _write_sparse_npz(path, positions: int) -> None:

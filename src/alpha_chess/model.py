@@ -150,3 +150,54 @@ def load_checkpoint(path: str | Path, map_location: str | torch.device = "cpu") 
     model = ChessNet(config)
     model.load_state_dict(payload["model_state"])
     return model
+
+
+def blend_checkpoints(
+    checkpoint_a: str | Path,
+    checkpoint_b: str | Path,
+    out: str | Path,
+    weight_b: float,
+) -> Path:
+    """Linearly interpolate two checkpoints with the same architecture."""
+
+    if not 0.0 <= weight_b <= 1.0:
+        raise ValueError("weight_b must be between 0 and 1")
+
+    payload_a = torch.load(checkpoint_a, map_location="cpu")
+    payload_b = torch.load(checkpoint_b, map_location="cpu")
+    config_a = payload_a.get("config", {})
+    config_b = payload_b.get("config", {})
+    if config_a != config_b:
+        raise ValueError("Cannot blend checkpoints with different model configs")
+
+    state_a = payload_a["model_state"]
+    state_b = payload_b["model_state"]
+    if state_a.keys() != state_b.keys():
+        raise ValueError("Cannot blend checkpoints with different state dict keys")
+
+    blended_state = {}
+    for key, tensor_a in state_a.items():
+        tensor_b = state_b[key]
+        if tensor_a.shape != tensor_b.shape:
+            raise ValueError(f"Checkpoint tensor shape mismatch for {key}")
+        if torch.is_floating_point(tensor_a):
+            blended_state[key] = tensor_a * (1.0 - weight_b) + tensor_b * weight_b
+        else:
+            blended_state[key] = tensor_a.clone()
+
+    output = Path(out)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "model_state": blended_state,
+            "config": config_a,
+            "step": 0,
+            "metrics": {
+                "blend_checkpoint_a": str(checkpoint_a),
+                "blend_checkpoint_b": str(checkpoint_b),
+                "blend_weight_b": float(weight_b),
+            },
+        },
+        output,
+    )
+    return output
