@@ -32,6 +32,7 @@ class TrainConfig:
     source_policy_weights: list[float] | None = None
     legal_policy_loss: bool = False
     color_mirror_augmentation: bool = False
+    prefer_action_labels: bool = False
     policy_head_only: bool = False
     channels: int = 128
     blocks: int = 6
@@ -48,6 +49,7 @@ class ValidateConfig:
     bad_action_weight: float = 0.0
     bad_action_margin: float = 1.0
     legal_policy_loss: bool = False
+    prefer_action_labels: bool = False
     device: str = "auto"
 
 
@@ -64,6 +66,7 @@ def train(config: TrainConfig) -> Path:
         config.data,
         in_memory=True,
         color_mirror_augmentation=config.color_mirror_augmentation,
+        prefer_action_labels=config.prefer_action_labels,
     )
 
     val_size = max(1, int(0.1 * len(dataset))) if len(dataset) > 10 else 0
@@ -189,7 +192,11 @@ def _set_train_mode(model: ChessNet, policy_head_only: bool) -> None:
 @torch.no_grad()
 def validate(config: ValidateConfig) -> dict[str, float]:
     device = resolve_device(config.device)
-    dataset = SelfPlayDataset(config.data, in_memory=True)
+    dataset = SelfPlayDataset(
+        config.data,
+        in_memory=True,
+        prefer_action_labels=config.prefer_action_labels,
+    )
     loader = DataLoader(
         dataset,
         batch_size=config.batch_size,

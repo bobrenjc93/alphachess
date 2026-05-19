@@ -29,6 +29,7 @@ class SelfPlayDataset(Dataset):
         data_dir: str | Path | list[str | Path],
         in_memory: bool = False,
         color_mirror_augmentation: bool = False,
+        prefer_action_labels: bool = False,
     ) -> None:
         if isinstance(data_dir, (str, Path)):
             data_dirs = [Path(data_dir)]
@@ -36,6 +37,7 @@ class SelfPlayDataset(Dataset):
             data_dirs = [Path(path) for path in data_dir]
 
         self.color_mirror_augmentation = bool(color_mirror_augmentation)
+        self.prefer_action_labels = bool(prefer_action_labels)
         self.files: list[Path] = []
         self.source_names = [str(path) for path in data_dirs]
         self.file_source_ids: list[int] = []
@@ -155,7 +157,10 @@ class SelfPlayDataset(Dataset):
             "value": torch.tensor(float(data["values"][local_index]), dtype=torch.float32),
             "source_id": torch.tensor(self.file_source_ids[file_index], dtype=torch.long),
         }
-        if "policies" in data:
+        use_policy = "policies" in data and not (
+            self.prefer_action_labels and "actions" in data
+        )
+        if use_policy:
             policy = data["policies"][local_index]
             if mirrored_board is not None and board is not None:
                 policy = color_mirror_policy(policy, board)

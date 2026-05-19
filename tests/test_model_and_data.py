@@ -141,6 +141,40 @@ def test_dataset_color_mirror_augmentation_maps_labels(tmp_path) -> None:
     assert float(mirrored["policy"][mirrored_bad_action]) == pytest.approx(0.25)
 
 
+def test_dataset_can_prefer_actions_over_dense_policy(tmp_path) -> None:
+    board = chess.Board()
+    best_move = chess.Move.from_uci("e2e4")
+    soft_move = chess.Move.from_uci("d2d4")
+    best_action = move_to_action(best_move, board)
+    soft_action = move_to_action(soft_move, board)
+    policy = np.zeros(ACTION_SIZE, dtype=np.float32)
+    policy[soft_action] = 1.0
+    np.savez_compressed(
+        tmp_path / "teacher.npz",
+        boards=np.asarray([encode_board(board)], dtype=np.float32),
+        policies=np.asarray([policy], dtype=np.float32),
+        actions=np.asarray([best_action], dtype=np.int64),
+        values=np.asarray([0.0], dtype=np.float32),
+        fens=np.asarray([board.fen()]),
+    )
+
+    default_sample = SelfPlayDataset(tmp_path, in_memory=True)[0]
+    preferred_sample = SelfPlayDataset(
+        tmp_path,
+        in_memory=True,
+        prefer_action_labels=True,
+    )[0]
+    preferred_batch = collate_samples([preferred_sample])
+
+    assert "policy" in default_sample
+    assert int(default_sample["action"]) == best_action
+    assert int(default_sample["policy"].argmax()) == soft_action
+    assert "policy" not in preferred_sample
+    assert int(preferred_sample["action"]) == best_action
+    assert "action" in preferred_batch
+    assert int(preferred_batch["action"][0]) == best_action
+
+
 def test_color_mirror_source_weights_duplicate_base_weights(tmp_path) -> None:
     source_a = tmp_path / "source-a"
     source_b = tmp_path / "source-b"

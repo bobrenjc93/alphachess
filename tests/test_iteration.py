@@ -160,6 +160,7 @@ def test_iteration_uses_checkpoint_self_play_workers(monkeypatch, tmp_path) -> N
         tree_reuse=False,
         device="cpu",
         self_play_policy_weight=0.0,
+        prefer_action_labels=True,
         policy_head_only=True,
     )
 
@@ -177,6 +178,7 @@ def test_iteration_uses_checkpoint_self_play_workers(monkeypatch, tmp_path) -> N
     assert calls["material_value_search_plies"] == 2
     assert train_calls[0].data == [str(run_dir / "selfplay" / "iter_0001")]
     assert train_calls[0].source_policy_weights == [0.0]
+    assert train_calls[0].prefer_action_labels is True
     assert train_calls[0].policy_head_only is True
 
 

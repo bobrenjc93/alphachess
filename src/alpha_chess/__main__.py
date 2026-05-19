@@ -56,6 +56,7 @@ def main(argv: list[str] | None = None) -> None:
     train_parser.add_argument("--source-policy-weights", type=float, nargs="+")
     train_parser.add_argument("--legal-policy-loss", action="store_true")
     train_parser.add_argument("--color-mirror-augmentation", action="store_true")
+    train_parser.add_argument("--prefer-action-labels", action="store_true")
     train_parser.add_argument("--policy-head-only", action="store_true")
     train_parser.add_argument("--channels", type=int, default=128)
     train_parser.add_argument("--blocks", type=int, default=6)
@@ -72,6 +73,7 @@ def main(argv: list[str] | None = None) -> None:
     validate_parser.add_argument("--bad-action-weight", type=float, default=0.0)
     validate_parser.add_argument("--bad-action-margin", type=float, default=1.0)
     validate_parser.add_argument("--legal-policy-loss", action="store_true")
+    validate_parser.add_argument("--prefer-action-labels", action="store_true")
     validate_parser.add_argument("--device", default="auto")
 
     blend_parser = subparsers.add_parser(
@@ -175,6 +177,7 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--bad-action-margin", type=float, default=1.0)
     iterate_parser.add_argument("--legal-policy-loss", action="store_true")
     iterate_parser.add_argument("--color-mirror-augmentation", action="store_true")
+    iterate_parser.add_argument("--prefer-action-labels", action="store_true")
     iterate_parser.add_argument("--policy-head-only", action="store_true")
     iterate_parser.add_argument("--material-value-weight", type=float, default=0.0)
     iterate_parser.add_argument("--material-value-search-plies", type=int, default=0)
