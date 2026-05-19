@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T13:29:36-07:00`.
+Last updated: `2026-05-19T13:33:22-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -31,7 +31,8 @@ uses the closest honest equivalent:
   has no finite point estimate.
 
 Timestamps are real `git log --date=iso-strict` commit times unless marked as a
-PGN file mtime, where the result was generated after the latest committed report.
+PGN file mtime or report timestamp, where the result was generated after the
+latest committed report.
 
 | Timestamp | Milestone | Parent/internal score | Direct Stockfish score | Strength read |
 | --- | --- | ---: | ---: | --- |
@@ -53,6 +54,7 @@ PGN file mtime, where the result was generated after the latest committed report
 | `2026-05-19T13:17:29-07:00` PGN file mtime | Full-network hard-label 16k/latest-loss refresh (`reports/2026-05-19_fullhard_16k_leafloss.md`). | `2.0/8` vs qvalue | `0.0/2` | Full-network low-LR tuning also regressed. |
 | `2026-05-19T13:26:47-07:00` | Root king-safety MCTS filter (`cef62fb`, `reports/2026-05-19_root_king_safety_filter.md`). | N/A | all tested variants `0.0/2` | Shallow static king-safety pruning did not recover the gate. |
 | `2026-05-19T13:29:14-07:00` PGN file mtime | Policy-head broad 256-simulation follow-up (`reports/policyhead_broad_qvalue_stockfish_256sims.pgn`). | N/A | `0.0/2` | Deeper search did not reproduce the earlier Stockfish draw. |
+| `2026-05-19T13:33:22-07:00` report timestamp | Policy top-k validation diagnostics (`reports/2026-05-19_policy_topk_diagnostics.md`). | N/A | N/A | Loss positions have target in top-5 about 68% of the time, so failures are partly ranking/search calibration. |
 
 Current practical status:
 
@@ -61,6 +63,9 @@ Current practical status:
   256-sim probes, or inference-sweep probes.
 - Best working parent for future experiments: the qvalue puzzle-line checkpoint
   at `experiments/focus-qvalue-puzzlelines20-vw025-material015/checkpoints/iter_0001/latest.pt`.
+- Latest diagnostics show the Stockfish target is often in the policy top-5 on
+  failure positions, but not top-1; improving search-time selection and value
+  calibration is more urgent than simply adding another small teacher replay.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 

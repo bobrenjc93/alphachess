@@ -331,6 +331,8 @@ def _new_eval_totals() -> dict[str, float]:
         "loss": 0.0,
         "policy_loss": 0.0,
         "policy_acc": 0.0,
+        "policy_top3_acc": 0.0,
+        "policy_top5_acc": 0.0,
         "value_loss": 0.0,
         "bad_action_loss": 0.0,
     }
@@ -346,6 +348,10 @@ def _add_eval_totals(
     totals["loss"] += float(loss.item()) * examples
     totals["policy_loss"] += float(parts["policy_loss"].item()) * examples
     totals["policy_acc"] += float(parts["policy_acc"].item()) * examples
+    if "policy_top3_acc" in parts:
+        totals["policy_top3_acc"] += float(parts["policy_top3_acc"].item()) * examples
+    if "policy_top5_acc" in parts:
+        totals["policy_top5_acc"] += float(parts["policy_top5_acc"].item()) * examples
     totals["value_loss"] += float(parts["value_loss"].item()) * examples
     if "bad_action_loss" in parts:
         totals["bad_action_loss"] += float(parts["bad_action_loss"].item()) * examples
@@ -359,6 +365,8 @@ def _finalize_eval_totals(prefix: str, totals: dict[str, float]) -> dict[str, fl
         f"{prefix}_loss": totals["loss"] / examples,
         f"{prefix}_policy_loss": totals["policy_loss"] / examples,
         f"{prefix}_policy_acc": totals["policy_acc"] / examples,
+        f"{prefix}_policy_top3_acc": totals["policy_top3_acc"] / examples,
+        f"{prefix}_policy_top5_acc": totals["policy_top5_acc"] / examples,
         f"{prefix}_value_loss": totals["value_loss"] / examples,
         f"{prefix}_bad_action_loss": totals["bad_action_loss"] / examples,
         f"{prefix}_examples": examples,
@@ -389,30 +397,16 @@ def _compute_batch_loss(
             bad_action_margin,
             source_policy_weights=source_policy_weights,
         )
-    if source_policy_weights is not None or (bad_action_weight > 0 and "bad_action" in batch):
-        return _compute_unmasked_loss(
-            model,
-            batch,
-            boards,
-            values,
-            device,
-            value_weight,
-            bad_action_weight,
-            bad_action_margin,
-            source_policy_weights=source_policy_weights,
-        )
-    if "policy" in batch:
-        return model.compute_loss(
-            boards,
-            _batch_tensor(batch, "policy").to(device),
-            values,
-            value_weight,
-        )
-    return model.compute_loss_from_actions(
+    return _compute_unmasked_loss(
+        model,
+        batch,
         boards,
-        _batch_tensor(batch, "action").to(device),
         values,
+        device,
         value_weight,
+        bad_action_weight,
+        bad_action_margin,
+        source_policy_weights=source_policy_weights,
     )
 
 
@@ -472,6 +466,7 @@ def _compute_legal_masked_loss(
         "policy_acc": policy_acc.detach(),
         "value_loss": value_loss.detach(),
     }
+    parts.update(_policy_topk_metrics(masked_logits, target_action))
     if bad_action_weight > 0 and "bad_action" in batch:
         parts["bad_action_loss"] = bad_action_loss.detach()
     return loss, parts
@@ -520,9 +515,24 @@ def _compute_unmasked_loss(
         "policy_acc": policy_acc.detach(),
         "value_loss": value_loss.detach(),
     }
+    parts.update(_policy_topk_metrics(policy_logits, target_action))
     if bad_action_weight > 0 and "bad_action" in batch:
         parts["bad_action_loss"] = bad_action_loss.detach()
     return loss, parts
+
+
+def _policy_topk_metrics(
+    policy_logits: torch.Tensor,
+    target_action: torch.Tensor,
+) -> dict[str, torch.Tensor]:
+    width = int(policy_logits.shape[1])
+    metrics: dict[str, torch.Tensor] = {}
+    for k in (3, 5):
+        effective_k = min(k, width)
+        topk = torch.topk(policy_logits, k=effective_k, dim=-1).indices
+        hit = (topk == target_action.long().unsqueeze(1)).any(dim=1).float().mean()
+        metrics[f"policy_top{k}_acc"] = hit.detach()
+    return metrics
 
 
 def _bad_action_margin_loss(

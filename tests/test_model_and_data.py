@@ -217,6 +217,8 @@ def test_legal_policy_loss_masks_to_legal_actions() -> None:
     assert bool(mask[0, action])
     assert loss.ndim == 0
     assert "policy_acc" in parts
+    assert "policy_top3_acc" in parts
+    assert "policy_top5_acc" in parts
 
 
 def test_bad_action_margin_loss_is_reported() -> None:
@@ -315,7 +317,11 @@ def test_evaluate_loss_reports_source_metrics(tmp_path) -> None:
     assert metrics["val_source_0_examples"] == 3.0
     assert metrics["val_source_1_examples"] == 5.0
     assert "val_source_0_policy_acc" in metrics
+    assert "val_source_0_policy_top3_acc" in metrics
+    assert "val_source_0_policy_top5_acc" in metrics
     assert "val_source_1_policy_acc" in metrics
+    assert "val_source_1_policy_top3_acc" in metrics
+    assert "val_source_1_policy_top5_acc" in metrics
 
 
 def test_validate_checkpoint_reports_metrics(tmp_path) -> None:
@@ -340,6 +346,8 @@ def test_validate_checkpoint_reports_metrics(tmp_path) -> None:
     assert metrics["val_examples"] == 8.0
     assert metrics["val_source_0_examples"] == 3.0
     assert metrics["val_source_1_examples"] == 5.0
+    assert "val_policy_top3_acc" in metrics
+    assert "val_policy_top5_acc" in metrics
 
 
 def test_train_policy_head_only_freezes_body_and_value_head(tmp_path) -> None:
