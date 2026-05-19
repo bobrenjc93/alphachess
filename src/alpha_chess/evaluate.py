@@ -24,6 +24,7 @@ class EvalConfig:
     simulations: int = 64
     c_puct: float = 1.5
     policy_prior_temperature: float = 1.0
+    tree_reuse: bool = True
     opponent: str = "uniform"
     opponent_checkpoint: str | None = None
     engine_path: str = "stockfish"
@@ -79,6 +80,7 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
         simulations=config.simulations,
         c_puct=config.c_puct,
         policy_prior_temperature=config.policy_prior_temperature,
+        tree_reuse=config.tree_reuse,
         root_mate_search_plies=config.root_mate_search_plies,
         root_material_search_plies=config.root_material_search_plies,
         root_material_max_loss_cp=config.root_material_max_loss_cp,
@@ -127,6 +129,7 @@ def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[s
                 simulations=config.simulations,
                 c_puct=config.c_puct,
                 policy_prior_temperature=config.policy_prior_temperature,
+                tree_reuse=config.tree_reuse,
                 root_mate_search_plies=config.root_mate_search_plies,
                 root_material_search_plies=config.root_material_search_plies,
                 root_material_max_loss_cp=config.root_material_max_loss_cp,
@@ -162,6 +165,7 @@ def evaluate_match(
     max_plies: int,
     pgn_out: str | None = None,
     opponent_name: str = "opponent",
+    tree_reuse: bool = True,
 ) -> dict[str, float]:
     game_seeds = _game_seeds(seed, games)
     scores: list[float] = []
@@ -176,6 +180,7 @@ def evaluate_match(
             simulations=simulations,
             c_puct=c_puct,
             policy_prior_temperature=policy_prior_temperature,
+            tree_reuse=tree_reuse,
             root_mate_search_plies=root_mate_search_plies,
             root_material_search_plies=root_material_search_plies,
             root_material_max_loss_cp=root_material_max_loss_cp,
@@ -225,6 +230,7 @@ def _evaluate_match_game_task(
         simulations=config.simulations,
         c_puct=config.c_puct,
         policy_prior_temperature=config.policy_prior_temperature,
+        tree_reuse=config.tree_reuse,
         root_mate_search_plies=config.root_mate_search_plies,
         root_material_search_plies=config.root_material_search_plies,
         root_material_max_loss_cp=config.root_material_max_loss_cp,
@@ -263,6 +269,7 @@ def _evaluate_engine_game_task(
             simulations=config.simulations,
             c_puct=config.c_puct,
             policy_prior_temperature=config.policy_prior_temperature,
+            tree_reuse=config.tree_reuse,
             root_mate_search_plies=config.root_mate_search_plies,
             root_material_search_plies=config.root_material_search_plies,
             root_material_max_loss_cp=config.root_material_max_loss_cp,
@@ -299,6 +306,7 @@ def play_eval_game(
     root_material_max_loss_cp: int,
     max_plies: int,
     rng: np.random.Generator,
+    tree_reuse: bool = True,
 ) -> tuple[float, chess.Board]:
     board = chess.Board()
     mcts_config = MCTSConfig(
@@ -329,8 +337,12 @@ def play_eval_game(
         move = action_to_move(action, board)
         if move is None:
             raise RuntimeError(f"Evaluator selected illegal action {action} in {board.fen()}")
-        model_root = advance_root(model_root, action)
-        opponent_root = advance_root(opponent_root, action)
+        if tree_reuse:
+            model_root = advance_root(model_root, action)
+            opponent_root = advance_root(opponent_root, action)
+        else:
+            model_root = None
+            opponent_root = None
         board.push(move)
 
     value = result_value_for_color(board, model_color)
@@ -351,6 +363,7 @@ def play_eval_game_against_engine(
     max_plies: int,
     limit: chess.engine.Limit,
     rng: np.random.Generator,
+    tree_reuse: bool = True,
 ) -> tuple[float, chess.Board]:
     board = chess.Board()
     model_mcts = AlphaZeroMCTS(
@@ -382,7 +395,7 @@ def play_eval_game_against_engine(
         else:
             move = engine.play(board, limit).move
             action = move_to_action(move, board)
-        model_root = advance_root(model_root, action)
+        model_root = advance_root(model_root, action) if tree_reuse else None
         board.push(move)
 
     value = result_value_for_color(board, model_color)

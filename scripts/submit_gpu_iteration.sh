@@ -11,6 +11,7 @@ SELF_PLAY_WORKERS="${SELF_PLAY_WORKERS:-1}"
 SIMULATIONS="${SIMULATIONS:-64}"
 C_PUCT="${C_PUCT:-1.5}"
 POLICY_PRIOR_TEMPERATURE="${POLICY_PRIOR_TEMPERATURE:-1.0}"
+TREE_REUSE="${TREE_REUSE:-1}"
 MAX_PLIES="${MAX_PLIES:-512}"
 EPOCHS="${EPOCHS:-4}"
 BATCH_SIZE="${BATCH_SIZE:-128}"
@@ -118,6 +119,10 @@ REPLAY_POLICY_WEIGHTS_ARG=""
 if [[ -n "$REPLAY_POLICY_WEIGHTS" ]]; then
   REPLAY_POLICY_WEIGHTS_ARG="--replay-policy-weights $REPLAY_POLICY_WEIGHTS"
 fi
+NO_TREE_REUSE_ARG=""
+if [[ "$TREE_REUSE" == "0" || "$TREE_REUSE" == "false" ]]; then
+  NO_TREE_REUSE_ARG="--no-tree-reuse"
+fi
 STOCKFISH_GATE_SIMULATIONS_ARG=""
 if [[ -n "$STOCKFISH_GATE_SIMULATIONS" ]]; then
   STOCKFISH_GATE_SIMULATIONS_ARG="--stockfish-gate-simulations $STOCKFISH_GATE_SIMULATIONS"
@@ -147,6 +152,7 @@ gpu-dev submit \
       --simulations $SIMULATIONS \
       --c-puct $C_PUCT \
       --policy-prior-temperature $POLICY_PRIOR_TEMPERATURE \
+      $NO_TREE_REUSE_ARG \
       --max-plies $MAX_PLIES \
       --eval-games $EVAL_GAMES \
       --eval-simulations $EVAL_SIMULATIONS \

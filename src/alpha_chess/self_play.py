@@ -22,6 +22,7 @@ class SelfPlayConfig:
     simulations: int = 64
     c_puct: float = 1.5
     policy_prior_temperature: float = 1.0
+    tree_reuse: bool = True
     max_plies: int = 512
     temperature_moves: int = 20
     root_mate_search_plies: int = 3
@@ -73,7 +74,7 @@ def play_game(evaluator: Evaluator, config: SelfPlayConfig, game_seed: int) -> d
         turns.append(board.turn)
         fens.append(board.fen())
         moves.append(move.uci())
-        root = advance_root(result.root, action)
+        root = advance_root(result.root, action) if config.tree_reuse else None
         board.push(move)
 
     white_value = result_value_for_color(board, chess.WHITE)

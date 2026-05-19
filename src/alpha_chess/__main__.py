@@ -33,6 +33,7 @@ def main(argv: list[str] | None = None) -> None:
     self_play.add_argument("--simulations", type=int, default=64)
     self_play.add_argument("--c-puct", type=float, default=1.5)
     self_play.add_argument("--policy-prior-temperature", type=float, default=1.0)
+    self_play.add_argument("--no-tree-reuse", dest="tree_reuse", action="store_false")
     self_play.add_argument("--max-plies", type=int, default=512)
     self_play.add_argument("--temperature-moves", type=int, default=20)
     self_play.add_argument("--root-mate-search-plies", type=int, default=3)
@@ -87,6 +88,7 @@ def main(argv: list[str] | None = None) -> None:
     eval_parser.add_argument("--simulations", type=int, default=64)
     eval_parser.add_argument("--c-puct", type=float, default=1.5)
     eval_parser.add_argument("--policy-prior-temperature", type=float, default=1.0)
+    eval_parser.add_argument("--no-tree-reuse", dest="tree_reuse", action="store_false")
     eval_parser.add_argument("--opponent", default="uniform")
     eval_parser.add_argument("--opponent-checkpoint")
     eval_parser.add_argument("--engine-path", default="stockfish")
@@ -160,6 +162,7 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--simulations", type=int, default=64)
     iterate_parser.add_argument("--c-puct", type=float, default=1.5)
     iterate_parser.add_argument("--policy-prior-temperature", type=float, default=1.0)
+    iterate_parser.add_argument("--no-tree-reuse", dest="tree_reuse", action="store_false")
     iterate_parser.add_argument("--max-plies", type=int, default=512)
     iterate_parser.add_argument("--temperature-moves", type=int, default=20)
     iterate_parser.add_argument("--epochs", type=int, default=2)
@@ -216,6 +219,7 @@ def main(argv: list[str] | None = None) -> None:
             simulations=args.simulations,
             c_puct=args.c_puct,
             policy_prior_temperature=args.policy_prior_temperature,
+            tree_reuse=args.tree_reuse,
             max_plies=args.max_plies,
             temperature_moves=args.temperature_moves,
             root_mate_search_plies=args.root_mate_search_plies,

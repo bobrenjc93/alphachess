@@ -27,6 +27,7 @@ class IterationConfig:
     simulations: int = 64
     c_puct: float = 1.5
     policy_prior_temperature: float = 1.0
+    tree_reuse: bool = True
     max_plies: int = 512
     temperature_moves: int = 20
     epochs: int = 2
@@ -84,6 +85,7 @@ def run_iterations(config: IterationConfig) -> Path:
             simulations=config.simulations,
             c_puct=config.c_puct,
             policy_prior_temperature=config.policy_prior_temperature,
+            tree_reuse=config.tree_reuse,
             max_plies=config.max_plies,
             temperature_moves=config.temperature_moves,
             root_mate_search_plies=config.root_mate_search_plies,
@@ -153,6 +155,7 @@ def run_iterations(config: IterationConfig) -> Path:
             "simulations": config.eval_simulations,
             "c_puct": config.c_puct,
             "policy_prior_temperature": config.policy_prior_temperature,
+            "tree_reuse": config.tree_reuse,
             "opponent_checkpoint": best_checkpoint,
             "device": config.device,
             "material_value_weight": config.material_value_weight,
@@ -175,6 +178,7 @@ def run_iterations(config: IterationConfig) -> Path:
                 "simulations": config.stockfish_gate_simulations or config.eval_simulations,
                 "c_puct": config.c_puct,
                 "policy_prior_temperature": config.policy_prior_temperature,
+                "tree_reuse": config.tree_reuse,
                 "opponent": "stockfish",
                 "engine_path": config.stockfish_gate_engine_path,
                 "engine_time": config.stockfish_gate_engine_time,

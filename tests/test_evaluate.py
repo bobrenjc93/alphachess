@@ -1,7 +1,15 @@
 import chess
+import numpy as np
 import torch
 
-from alpha_chess.evaluate import EvalConfig, EvalGameRecord, evaluate_checkpoint, write_eval_pgns
+from alpha_chess.evaluate import (
+    EvalConfig,
+    EvalGameRecord,
+    evaluate_checkpoint,
+    play_eval_game,
+    write_eval_pgns,
+)
+from alpha_chess.evaluator import UniformEvaluator
 from alpha_chess.model import ChessNet, ChessNetConfig, save_checkpoint
 
 
@@ -45,3 +53,27 @@ def test_parallel_evaluation_matches_serial(tmp_path) -> None:
     parallel = evaluate_checkpoint(EvalConfig(**{**base_config.__dict__, "workers": 2}))
 
     assert parallel == serial
+
+
+def test_eval_game_can_disable_tree_reuse(monkeypatch) -> None:
+    def fail_advance_root(*_args, **_kwargs):
+        raise AssertionError("advance_root should not run when tree reuse is disabled")
+
+    monkeypatch.setattr("alpha_chess.evaluate.advance_root", fail_advance_root)
+
+    _score, board = play_eval_game(
+        UniformEvaluator(),
+        UniformEvaluator(),
+        chess.WHITE,
+        simulations=1,
+        c_puct=1.5,
+        policy_prior_temperature=1.0,
+        tree_reuse=False,
+        root_mate_search_plies=0,
+        root_material_search_plies=0,
+        root_material_max_loss_cp=250,
+        max_plies=2,
+        rng=np.random.default_rng(3),
+    )
+
+    assert len(board.move_stack) > 0
