@@ -180,3 +180,19 @@ This was the strongest hard-negative parent match so far and preserved top-k
 slightly better than the single-source hard-negative repairs. It still failed
 both direct Stockfish checks, so internal policy/search gains remain a poor
 proxy for direct strength.
+
+### Mixed Checkpoint Root-Filter Checks
+
+Timestamp: `2026-05-19T14:30:59-07:00`
+
+Follow-up direct checks on
+`experiments/policyhead-hardneg16k-mix-bw005-v1/checkpoints/iter_0001/latest.pt`
+also failed:
+
+| Variant | Direct Stockfish score | PGN |
+| --- | ---: | --- |
+| `root_material_search_plies=3`, `root_material_max_loss_cp=100` | `0.0/2` | `reports/policyhead_hardneg16k_mix_rootmaterial100_stockfish.pgn` |
+| `root_king_safety_search_plies=2`, `root_king_safety_max_loss_cp=100` | `0.0/2` | `reports/policyhead_hardneg16k_mix_rootking100_stockfish.pgn` |
+
+The existing tactical root filters did not convert the mixed hard-negative
+checkpoint's internal gain into direct Stockfish strength.

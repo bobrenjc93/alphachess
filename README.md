@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T14:26:11-07:00`.
+Last updated: `2026-05-19T14:30:59-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -67,6 +67,7 @@ latest committed report.
 | `2026-05-19T13:57:45-07:00` report timestamp | Hard-negative policy repair (`reports/2026-05-19_hard_negative_repair.md`). | `2.0/8` vs policy-head 16k parent | first smoke `0.5/2`; confirmation `0.0/4` | Mined top-wrong moves reduced bad-action loss but hurt top-k and did not confirm direct strength. |
 | `2026-05-19T14:10:09-07:00` report timestamp | Lower-pressure hard-negative repair (`reports/2026-05-19_hard_negative_repair.md`). | `6.0/8` vs policy-head 16k parent | `0.0/2` | Lower margin pressure preserved parent strength but still failed the direct gate. |
 | `2026-05-19T14:26:11-07:00` report timestamp | Mixed hard-negative repair (`reports/2026-05-19_hard_negative_repair.md`). | `8.0/8` vs policy-head 16k parent | gate `0.0/2`; confirmation `0.0/4` | Mixing broad labels preserved top-k better and dominated the parent, but still failed direct Stockfish. |
+| `2026-05-19T14:30:59-07:00` report timestamp | Mixed hard-negative root-filter checks (`reports/2026-05-19_hard_negative_repair.md`). | N/A | root-material and root-king variants `0.0/2` | Existing tactical filters did not rescue the internally strong mixed checkpoint. |
 
 Current practical status:
 

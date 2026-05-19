@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="360" viewBox="0 0 900 360" role="img" aria-labelledby="title desc">
   <title id="title">AlphaChess Capability Progress</title>
-  <desc id="desc">Line chart of best 4-game-or-larger direct Stockfish smoke-gate score rate over real timestamps. Data points: 2026-05-18T09:14:04-07:00 0 percent; 2026-05-18T13:18:35-07:00 0 percent; 2026-05-18T18:22:01-07:00 0 percent; 2026-05-19T03:39:01-07:00 0 percent; 2026-05-19T10:31:47-07:00 12.5 percent; 2026-05-19T14:26:11-07:00 12.5 percent. The 50 percent line marks the Stockfish promotion gate.</desc>
+  <desc id="desc">Line chart of best 4-game-or-larger direct Stockfish smoke-gate score rate over real timestamps. Data points: 2026-05-18T09:14:04-07:00 0 percent; 2026-05-18T13:18:35-07:00 0 percent; 2026-05-18T18:22:01-07:00 0 percent; 2026-05-19T03:39:01-07:00 0 percent; 2026-05-19T10:31:47-07:00 12.5 percent; 2026-05-19T14:30:59-07:00 12.5 percent. The 50 percent line marks the Stockfish promotion gate.</desc>
   <rect width="900" height="360" fill="#fbfbf8"/>
   <text x="90" y="32" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#202124">AlphaChess capability progress</text>
   <text x="90" y="54" font-family="Arial, sans-serif" font-size="12" fill="#5f6368">Best 4-game-or-larger direct Stockfish smoke-gate score rate. Not calibrated Elo.</text>
@@ -26,7 +26,7 @@
     <text x="328" y="316" text-anchor="middle">05-18 18:22</text>
     <text x="570" y="316" text-anchor="middle">05-19 03:39</text>
     <text x="748" y="316" text-anchor="middle">05-19 10:31</text>
-    <text x="850" y="316" text-anchor="middle">05-19 14:26</text>
+    <text x="850" y="316" text-anchor="middle">05-19 14:30</text>
   </g>
 
   <path d="M 90 290 L 570 290 L 748 290 L 748 260.625 L 850 260.625" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
