@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T15:34:00-07:00`.
+Last updated: `2026-05-19T15:48:50-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -71,6 +71,7 @@ latest committed report.
 | `2026-05-19T14:37:25-07:00` report timestamp | King-shelter safety filter (`reports/2026-05-19_king_shelter_filter.md`). | N/A | tested variants `0.0/2` | Pawn-shelter heuristic catches one failure pattern but still did not recover direct play. |
 | `2026-05-19T14:51:35-07:00` report timestamp | Soft broad-policy hard-negative mix (`reports/2026-05-19_hard_negative_repair.md`). | `6.0/8` vs policy-head 16k parent | `0.0/2` | Keeping broad MultiPV labels soft did not materially improve hard-target top-k or direct play. |
 | `2026-05-19T15:34:00-07:00` report timestamp | Direct loss-blunder replay repairs (`reports/2026-05-19_hard_negative_repair.md`). | balanced repair `4.0/8`; direct-loss mix `8.0/8` vs soft-mix parent | both `0.0/2` | A 100-position direct-loss replay improved top-3/top-5 and bad-action loss slightly, but target top-1 stayed `0.12` and direct play still failed. |
+| `2026-05-19T15:48:50-07:00` report timestamp | Full-network loss-blunder repair (`reports/2026-05-19_hard_negative_repair.md`). | `4.0/8` vs direct-loss mix parent | `0.0/2` | Unfreezing the trunk reduced targeted bad-action loss and nudged target top-1 to `0.13`, but broad teacher accuracy regressed and direct play still failed. |
 
 Current practical status:
 
@@ -98,6 +99,9 @@ Current practical status:
 - Direct-loss blunder replay can also dominate the internal parent, but the
   high-confidence blunders need a stronger signal than a small policy-head-only
   fine-tune.
+- Low-LR full-network fine-tuning moved the targeted margin loss more than
+  policy-head-only tuning, but it regressed broad teacher accuracy and still
+  failed Stockfish.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 

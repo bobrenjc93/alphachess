@@ -274,6 +274,7 @@ Two policy-head-only repair runs started from
 | --- | --- | --- | ---: | ---: | --- |
 | `experiments/policyhead-hardneg-lossblunder-mixsoft-v1` | A100 `7bd32576` | broad 16k `0.55`, mined hardneg `0.25`, direct-loss blunders `0.20`; `epochs=3`, `lr=0.0000015`, `bad_action_weight=0.10` | `4.0/8` vs soft-mix parent | `0.0/2` | `reports/policyhead_hardneg_lossblunder_mixsoft_stockfish_gate.pgn` |
 | `experiments/policyhead-lossblunder-directmix-v1` | A100 `9f1a32c9` | broad 16k `0.65`, direct-loss blunders `0.35`; `epochs=4`, `lr=0.000002`, `bad_action_weight=0.20`; forced gate with `promotion_score=0.0` | `8.0/8` vs soft-mix parent | `0.0/2` | `reports/policyhead_lossblunder_directmix_stockfish_gate.pgn` |
+| `experiments/fullnet-lossblunder-directmix-v1` | A100 `8ecd9699` | full-network follow-up from the direct-loss mix; broad 16k `0.65`, direct-loss blunders `0.35`; `epochs=3`, `lr=0.00000075`, `value_weight=0.05`, `bad_action_weight=0.20`; forced gate with `promotion_score=0.0` | `4.0/8` vs direct-loss mix parent | `0.0/2` | `reports/fullnet_lossblunder_directmix_stockfish_gate.pgn` |
 
 Validation on `data/teacher/policyhead_hardneg_lossblunders_v1`:
 
@@ -282,10 +283,12 @@ Validation on `data/teacher/policyhead_hardneg_lossblunders_v1`:
 | soft broad-policy parent | `0.1200` | `0.3000` | `0.4600` | `2.8098` |
 | balanced loss-blunder repair | `0.1200` | `0.3500` | `0.5000` | `2.7250` |
 | direct-loss-only mix repair | `0.1200` | `0.3500` | `0.5000` | `2.6989` |
+| full-network direct-loss repair | `0.1300` | `0.3300` | `0.5000` | `2.4785` |
 
 The targeted replay moved top-3/top-5 and margin loss slightly, and the more
-aggressive direct-loss mix dominated the soft-mix parent internally. It still
-left target top-1 unchanged and failed the direct Stockfish gate. This suggests
-the current policy-head-only repair is not strong enough to rewrite the
-high-confidence direct-play blunders without a broader or more structural
-signal.
+aggressive direct-loss mix dominated the soft-mix parent internally. Unfreezing
+the trunk with a very low learning rate reduced bad-action loss further and
+nudged target top-1 to `0.1300`, but it also regressed broad 16k Stockfish
+teacher accuracy to `0.3762` top-1 / `0.6453` top-3 / `0.7579` top-5 and still
+failed the direct Stockfish gate. The current direct-loss replay is too narrow
+or too weak to repair high-confidence direct-play blunders by fine-tuning alone.
