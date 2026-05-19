@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import pytest
 
@@ -134,3 +136,72 @@ def test_iteration_uses_checkpoint_self_play_workers(monkeypatch, tmp_path) -> N
     assert calls["material_value_weight"] == pytest.approx(0.15)
     assert calls["material_value_search_plies"] == 2
     assert train_calls[0].data == [str(run_dir / "selfplay" / "iter_0001")]
+
+
+def test_iteration_stockfish_gate_can_block_promotion(monkeypatch, tmp_path) -> None:
+    eval_calls = []
+
+    def fake_generate_from_checkpoint(
+        _checkpoint,
+        out_dir,
+        _self_play_config,
+        *,
+        device,
+        material_value_weight,
+        material_value_search_plies,
+    ):
+        assert device == "cpu"
+        assert material_value_weight == pytest.approx(0.15)
+        assert material_value_search_plies == 2
+        out_path = out_dir / "game.npz"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(out_path, boards=np.zeros((0, 1)), values=np.zeros((0,)))
+        return [out_path]
+
+    def fake_train(_train_config):
+        candidate = tmp_path / "candidate.pt"
+        candidate.write_bytes(b"checkpoint")
+        return candidate
+
+    def fake_evaluate(config):
+        eval_calls.append(config)
+        if len(eval_calls) == 1:
+            return {"score_rate": 1.0}
+        assert config["opponent"] == "stockfish"
+        assert config["engine_path"] == "tools/stockfish/bin/stockfish"
+        assert config["games"] == 1
+        assert config["simulations"] == 16
+        return {"score_rate": 0.0}
+
+    monkeypatch.setattr(
+        "alpha_chess.iteration.generate_self_play_from_checkpoint",
+        fake_generate_from_checkpoint,
+    )
+    monkeypatch.setattr("alpha_chess.iteration.train", fake_train)
+    monkeypatch.setattr("alpha_chess.iteration.evaluate_checkpoint_from_dict", fake_evaluate)
+
+    run_dir = tmp_path / "run"
+    league_path = run_iterations(
+        IterationConfig(
+            run_dir=str(run_dir),
+            iterations=1,
+            checkpoint="parent.pt",
+            games=1,
+            self_play_workers=2,
+            material_value_weight=0.15,
+            material_value_search_plies=2,
+            stockfish_gate_games=1,
+            stockfish_gate_simulations=16,
+            stockfish_gate_min_score=0.5,
+            stockfish_gate_engine_path="tools/stockfish/bin/stockfish",
+            device="cpu",
+        )
+    )
+
+    league = json.loads(league_path.read_text())
+
+    assert league["best_checkpoint"] == "parent.pt"
+    assert league["history"][0]["promoted"] is False
+    assert league["history"][0]["metrics"]["score_rate"] == pytest.approx(1.0)
+    assert league["history"][0]["stockfish_gate_metrics"]["score_rate"] == pytest.approx(0.0)
+    assert len(eval_calls) == 2

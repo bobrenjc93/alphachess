@@ -47,6 +47,12 @@ class IterationConfig:
     promotion_score: float = 0.50
     eval_games: int = 8
     eval_simulations: int = 64
+    stockfish_gate_games: int = 0
+    stockfish_gate_simulations: int | None = None
+    stockfish_gate_min_score: float = 0.50
+    stockfish_gate_engine_path: str = "stockfish"
+    stockfish_gate_engine_time: float = 0.05
+    stockfish_gate_engine_depth: int | None = None
     seed: int = 0
     device: str = "auto"
 
@@ -144,6 +150,30 @@ def run_iterations(config: IterationConfig) -> Path:
         }
         metrics = evaluate_checkpoint_from_dict(eval_config)
         promoted = best_checkpoint is None or metrics["score_rate"] >= config.promotion_score
+        stockfish_gate_eval = None
+        stockfish_gate_metrics = None
+        if promoted and config.stockfish_gate_games > 0:
+            stockfish_gate_eval = {
+                "checkpoint": str(candidate),
+                "games": config.stockfish_gate_games,
+                "simulations": config.stockfish_gate_simulations or config.eval_simulations,
+                "c_puct": config.c_puct,
+                "policy_prior_temperature": config.policy_prior_temperature,
+                "opponent": "stockfish",
+                "engine_path": config.stockfish_gate_engine_path,
+                "engine_time": config.stockfish_gate_engine_time,
+                "engine_depth": config.stockfish_gate_engine_depth,
+                "device": config.device,
+                "material_value_weight": config.material_value_weight,
+                "material_value_search_plies": config.material_value_search_plies,
+                "root_mate_search_plies": config.root_mate_search_plies,
+                "root_material_search_plies": config.root_material_search_plies,
+                "root_material_max_loss_cp": config.root_material_max_loss_cp,
+                "seed": iter_seed + 100_000,
+                "max_plies": config.max_plies,
+            }
+            stockfish_gate_metrics = evaluate_checkpoint_from_dict(stockfish_gate_eval)
+            promoted = stockfish_gate_metrics["score_rate"] >= config.stockfish_gate_min_score
         if promoted:
             best_checkpoint = str(candidate)
 
@@ -160,6 +190,8 @@ def run_iterations(config: IterationConfig) -> Path:
                     "promoted": promoted,
                     "metrics": metrics,
                     "eval": eval_config,
+                    "stockfish_gate_metrics": stockfish_gate_metrics,
+                    "stockfish_gate_eval": stockfish_gate_eval,
                 }
             ],
         }

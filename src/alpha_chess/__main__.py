@@ -163,6 +163,12 @@ def main(argv: list[str] | None = None) -> None:
     iterate_parser.add_argument("--promotion-score", type=float, default=0.50)
     iterate_parser.add_argument("--eval-games", type=int, default=8)
     iterate_parser.add_argument("--eval-simulations", type=int, default=64)
+    iterate_parser.add_argument("--stockfish-gate-games", type=int, default=0)
+    iterate_parser.add_argument("--stockfish-gate-simulations", type=int)
+    iterate_parser.add_argument("--stockfish-gate-min-score", type=float, default=0.50)
+    iterate_parser.add_argument("--stockfish-gate-engine-path", default="stockfish")
+    iterate_parser.add_argument("--stockfish-gate-engine-time", type=float, default=0.05)
+    iterate_parser.add_argument("--stockfish-gate-engine-depth", type=int)
     iterate_parser.add_argument("--seed", type=int, default=0)
     iterate_parser.add_argument("--device", default="auto")
 
