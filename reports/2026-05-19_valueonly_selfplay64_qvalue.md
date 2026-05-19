@@ -89,6 +89,20 @@ Higher-search direct smoke:
 - score: `0.0/1`
 - PGN: `reports/gated_selfplay64_valueonlypolicy_qvalue_stockfish_64sims.pgn`
 
+Additional inference-only checks:
+
+| Setting | Games | Score | PGN |
+| --- | ---: | ---: | --- |
+| strict root material, `root_material_search_plies=2`, `root_material_max_loss_cp=0`, 16 sims | 4 | `0.0/4` | `reports/gated_selfplay64_valueonlypolicy_qvalue_rootmaterial0_stockfish_16sims.pgn` |
+| policy-only, 0 sims, no material value blend | 2 | `0.0/2` | `reports/gated_selfplay64_valueonlypolicy_policyonly_stockfish_0sims.pgn` |
+| low search, 4 sims, no material value blend | 2 | `0.0/2` | `reports/gated_selfplay64_valueonlypolicy_lowsearch_stockfish_4sims.pgn` |
+
+The strict root-material filter prunes at least one concrete blunder from the
+64-simulation loss (`15.Nxf7`), but it also biases the opening toward passive
+material-defense moves such as `2.Be2`; it did not improve the direct gate.
+Policy-only and low-search play also lost, so the direct-play failure is not
+just an over-search artifact from the value head.
+
 ## Fixed validation
 
 Validation used CPU, batch size 512, legal policy loss, and `value_weight=0.25`.
