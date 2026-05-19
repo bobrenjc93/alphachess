@@ -69,3 +69,43 @@ The direct Stockfish gate did not run because the candidate failed the parent ga
 ## Conclusion
 
 Rejected. Adding 32 checkpoint self-play games with the current qvalue policy and replay mix degraded the candidate badly against its parent. Future self-play runs should either use a stronger incumbent, a stricter data-quality filter, or a lower self-play weight until the self-play policy is less noisy.
+
+## Continuation: Lower Self-Play Weight
+
+Reused the same 32 generated self-play games with a lower self-play weight:
+
+- `games=0`
+- `self_play_weight=0.10`
+- replay weights: `0.55 0.20 0.10 0.05`
+- `lr=6e-6`
+- same qvalue base checkpoint
+- same Stockfish gate: 2 games, 16 sims, minimum score `0.50`
+
+Candidate:
+
+`experiments/gated-selfplay32-qvalue-vw025-material015/checkpoints/iter_0002/latest.pt`
+
+Parent match:
+
+- score: `6.0/8`
+- wins/draws/losses: `4/4/0`
+
+Stockfish gate:
+
+- score: `0.0/2`
+- wins/draws/losses: `0/0/2`
+- local reproduction PGN: `reports/gated_selfplay32_qvalue_iter2_stockfish_gate_16sims.pgn`
+- promoted: `false`
+
+Fixed validation:
+
+| Dataset | Policy Acc |
+| --- | ---: |
+| `stockfish_multipv_elo1800_4096` | `0.6143` |
+| `puzzles/all_1200_2400_50k` | `0.3363` |
+| `alpha_loss_reports_v2` | `0.6066` |
+| `puzzles/lines_1200_2400_100k` | `0.4556` |
+| `alpha_poisoned_captures_v2` | `0.3929` |
+| `alpha_loss_gamelines_recent_v1` | `0.2442` |
+
+The lower self-play mix produced a candidate that beat the qvalue parent and improved broad Stockfish policy accuracy, but the Stockfish promotion gate correctly rejected it. Direct play remains the limiting signal.

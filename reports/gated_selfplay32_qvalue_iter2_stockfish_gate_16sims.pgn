@@ -1,0 +1,22 @@
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "1"]
+[White "AlphaChess"]
+[Black "tools/stockfish/bin/stockfish"]
+[Result "0-1"]
+[AlphaChessScore "0.0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. Bxc6 dxc6 6. d3 Bd6 7. O-O Be6 8. a4 Qe7 9. Nc3 O-O-O 10. h3 h6 11. Be3 g5 12. Qe2 g4 13. Nd2 gxh3 14. g3 Rdg8 15. f4 Rxg3+ 16. Kh2 Rxe3 17. Qxe3 Ng4+ 18. Kg3 Nxe3 19. Rad1 exf4+ 20. Kh2 Nxf1+ 21. Nxf1 Qg5 22. Rd2 Rg8 23. Rf2 Qg1# 0-1
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "2"]
+[White "tools/stockfish/bin/stockfish"]
+[Black "AlphaChess"]
+[Result "1-0"]
+[AlphaChessScore "0.0"]
+
+1. e4 c5 2. Nf3 Nc6 3. Bb5 e6 4. Bxc6 bxc6 5. d3 d5 6. O-O Nf6 7. e5 Ng8 8. Be3 Ne7 9. Bxc5 Ng6 10. Bxf8 Kxf8 11. d4 c5 12. dxc5 Qe7 13. Qd4 Qxc5 14. Qxc5+ Ne7 15. Re1 Bd7 16. Nc3 Ke8 17. Nb5 a6 18. Nc7+ Kf8 19. Nxa8 Rg8 20. Nb6 Be8 21. Nc8 g5 22. Qxe7+ Kg7 23. Nd6 g4 24. Nxe8+ Rxe8 25. Qf6+ Kf8 26. Ng5 Re7 27. Qh8# 1-0
+
