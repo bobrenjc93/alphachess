@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T13:24:47-07:00`.
+Last updated: `2026-05-19T13:29:36-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -31,7 +31,7 @@ uses the closest honest equivalent:
   has no finite point estimate.
 
 Timestamps are real `git log --date=iso-strict` commit times unless marked as a
-PGN timestamp, where the result was generated after the latest committed report.
+PGN file mtime, where the result was generated after the latest committed report.
 
 | Timestamp | Milestone | Parent/internal score | Direct Stockfish score | Strength read |
 | --- | --- | ---: | ---: | --- |
@@ -48,16 +48,17 @@ PGN timestamp, where the result was generated after the latest committed report.
 | `2026-05-19T12:27:41-07:00` | Value-head-only calibration (`0c64101`, `reports/2026-05-19_value_head_only_hardlabels.md`). | `6.0/8` vs hard-label parent | `0.0/4` | Value fit improved, direct tactical failures remained. |
 | `2026-05-19T12:40:49-07:00` | Leaf-material MCTS value blend (`7ba3097`, `reports/2026-05-19_leaf_material_mcts_probe.md`). | N/A | all tested variants `0.0/2`; broad 64-sim check `0.0/2` | Search-time material fallback did not recover the gate. |
 | `2026-05-19T12:52:53-07:00` | Latest-loss replay repair (`8689a40`, `reports/2026-05-19_leaf_loss_replay_repair.md`). | `2.0/8` vs hard-label parent | `0.0/2` | Narrow loss replay overfit/regressed. |
-| `2026-05-19T12:53:53-07:00` PGN timestamp | Root-mate-depth-5 inference checks (`reports/2026-05-19_rootmate5_and_16k_refresh.md`). | N/A | hard-label `0.0/2`; broad `0.0/2` | Deeper root mate filter alone was not enough. |
-| `2026-05-19T13:02:42-07:00` PGN timestamp | 16k Stockfish plus latest-loss policy refresh (`reports/2026-05-19_rootmate5_and_16k_refresh.md`). | `2.0/8` vs qvalue | `0.0/2` | Broader supervised refresh also regressed. |
-| `2026-05-19T13:17:29-07:00` PGN timestamp | Full-network hard-label 16k/latest-loss refresh (`reports/2026-05-19_fullhard_16k_leafloss.md`). | `2.0/8` vs qvalue | `0.0/2` | Full-network low-LR tuning also regressed. |
-| `2026-05-19T13:24:47-07:00` | Root king-safety MCTS filter (`reports/2026-05-19_root_king_safety_filter.md`). | N/A | all tested variants `0.0/2` | Shallow static king-safety pruning did not recover the gate. |
+| `2026-05-19T12:53:53-07:00` PGN file mtime | Root-mate-depth-5 inference checks (`reports/2026-05-19_rootmate5_and_16k_refresh.md`). | N/A | hard-label `0.0/2`; broad `0.0/2` | Deeper root mate filter alone was not enough. |
+| `2026-05-19T13:02:42-07:00` PGN file mtime | 16k Stockfish plus latest-loss policy refresh (`reports/2026-05-19_rootmate5_and_16k_refresh.md`). | `2.0/8` vs qvalue | `0.0/2` | Broader supervised refresh also regressed. |
+| `2026-05-19T13:17:29-07:00` PGN file mtime | Full-network hard-label 16k/latest-loss refresh (`reports/2026-05-19_fullhard_16k_leafloss.md`). | `2.0/8` vs qvalue | `0.0/2` | Full-network low-LR tuning also regressed. |
+| `2026-05-19T13:26:47-07:00` | Root king-safety MCTS filter (`cef62fb`, `reports/2026-05-19_root_king_safety_filter.md`). | N/A | all tested variants `0.0/2` | Shallow static king-safety pruning did not recover the gate. |
+| `2026-05-19T13:29:14-07:00` PGN file mtime | Policy-head broad 256-simulation follow-up (`reports/policyhead_broad_qvalue_stockfish_256sims.pgn`). | N/A | `0.0/2` | Deeper search did not reproduce the earlier Stockfish draw. |
 
 Current practical status:
 
 - Best direct result so far: `0.5/4` against the local Stockfish smoke gate
   from the policy-head broad run. It did not reproduce in follow-up 64-sim or
-  inference-sweep probes.
+  256-sim probes, or inference-sweep probes.
 - Best working parent for future experiments: the qvalue puzzle-line checkpoint
   at `experiments/focus-qvalue-puzzlelines20-vw025-material015/checkpoints/iter_0001/latest.pt`.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
