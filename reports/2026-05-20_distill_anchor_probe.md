@@ -491,3 +491,19 @@ No checkpoint or interpolation satisfied the broad guard, so I did not spend a
 direct Stockfish gate. The current repair signal improves loss marginally but
 does not lift the actual target ranks; these failures need broader coverage or
 a stronger objective than another tiny context replay.
+
+## Bad-Action Margin Diagnostic
+
+Because the first-blunder rows include both the played mistake and the
+Stockfish target, I also tested stronger bad-action margin pressure on the same
+72-position source.
+
+| Run | Holdout top-1 | Holdout top-3 | Holdout top-5 | Context policy loss | Context top-3/top-5 | Target ranks after update | Read |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| bad-action weight `3.0`, lr `1e-5`, epoch 2 | `0.3394` | `0.5409` | `0.6406` | not selected | not selected | `34/42`, `21/32` | Missed the broad guard and did not lift the new targets. |
+| bad-action weight `3.0`, lr `1e-3`, single-step overfit | `0.3374` | `0.5399` | `0.6415` | `3.5508` | `0.4028`/`0.5833` | `30/42`, `19/32` | The objective can move the context slice, but target ranks remain poor and broad holdout collapses. |
+
+I did not run a direct Stockfish gate for either checkpoint. The margin loss is
+not enough by itself: at guarded learning rates it does not move the targets,
+and at overfit learning rates it damages broad ranking before the new targets
+become plausible policy choices.
