@@ -164,3 +164,17 @@ The new selector did prevent the final-epoch collapse: `latest.pt` is epoch 1,
 not epoch 4, and the broad32k diagnostics match the manually inspected epoch-1
 checkpoint. It still failed both Stockfish games, so validation selection is a
 process fix rather than a strength breakthrough.
+
+## Root-Guard Check on Selected Checkpoint
+
+Timestamp: `2026-05-19T17:43:06-07:00`
+
+I also ran the selected checkpoint with the current worst-depth root material
+guard and root king-safety guard:
+
+| Setting | Direct Stockfish score | PGN |
+| --- | ---: | --- |
+| `root_material_search_plies=3`, `root_material_max_loss_cp=100`, `root_king_safety_search_plies=2`, `root_king_safety_max_loss_cp=100` | `0.0/2` | `reports/policyhead_broad32k_selectbest_rootguards_stockfish.pgn` |
+
+The guarded losses still collapse tactically, so this checkpoint needs a
+stronger policy/value training signal rather than only the current root filters.
