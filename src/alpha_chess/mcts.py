@@ -11,6 +11,7 @@ from alpha_chess.chess_env import ACTION_SIZE, action_to_move, legal_actions, te
 from alpha_chess.evaluator import PIECE_VALUES, Evaluator
 
 MATE_SCORE_CP = 100_000
+TACTICAL_MATERIAL_CANDIDATE_LIMIT = 16
 QUIET_MATERIAL_CANDIDATE_LIMIT = 8
 BOARD_SIZE = 8
 KING_SHELTER_NEAR_PAWN_CP = 80
@@ -636,7 +637,7 @@ def _material_tactical_moves(board: chess.Board) -> list[chess.Move]:
         if board.is_capture(move) or move.promotion or board.gives_check(move)
     ]
     moves.sort(key=lambda move: _move_material_priority(board, move), reverse=True)
-    return moves
+    return moves[:TACTICAL_MATERIAL_CANDIDATE_LIMIT]
 
 
 def _move_material_priority(board: chess.Board, move: chess.Move) -> int:

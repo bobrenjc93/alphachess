@@ -3,7 +3,15 @@ import numpy as np
 
 from alpha_chess.chess_env import ACTION_SIZE, action_to_move, legal_actions, move_to_action
 from alpha_chess.evaluator import UniformEvaluator
-from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig, Node, SearchResult, advance_root
+from alpha_chess.mcts import (
+    TACTICAL_MATERIAL_CANDIDATE_LIMIT,
+    AlphaZeroMCTS,
+    MCTSConfig,
+    Node,
+    SearchResult,
+    _material_tactical_moves,
+    advance_root,
+)
 
 
 class SparsePolicyEvaluator:
@@ -246,6 +254,21 @@ def test_mcts_root_material_filter_can_be_disabled() -> None:
     result = search.run(board)
 
     assert blunder_action in result.root.children
+
+
+def test_material_tactical_moves_are_capped_by_priority() -> None:
+    board = chess.Board("8/PPPPPPPP/8/8/4k3/8/8/4K3 w - - 0 1")
+    raw_tactical = [
+        move
+        for move in board.legal_moves
+        if board.is_capture(move) or move.promotion or board.gives_check(move)
+    ]
+
+    moves = _material_tactical_moves(board)
+
+    assert len(raw_tactical) > TACTICAL_MATERIAL_CANDIDATE_LIMIT
+    assert len(moves) == TACTICAL_MATERIAL_CANDIDATE_LIMIT
+    assert all(move.promotion for move in moves)
 
 
 def test_mcts_root_prunes_queen_for_rook_trap_from_stockfish_game() -> None:
