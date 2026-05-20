@@ -1,6 +1,6 @@
 # Guarded Composite Selector Probe
 
-Timestamp: `2026-05-20T13:39:48-07:00`
+Timestamp: `2026-05-20T13:43:48-07:00`
 
 ## Summary
 
@@ -235,3 +235,42 @@ Result: `18` positions from both games.
 The context run moves game 2's first confirmed mistake earlier than the final
 `...Nxa2+` material grab. The next repair should focus on these lead-up states
 instead of only the final mate/promotion positions.
+
+## Context-Repair Probe
+
+I tried a very small policy-head repair from the guard-passing blend using the
+18-position context slice mixed lightly with the broad teacher:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-guarded-blends-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --data data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/guarded_blend_gate_firstblunders_context_v1 \
+  --holdout-data data/teacher/stockfish_multipv_elo1800_holdout8192_t005_skip65536 \
+  --out experiments/policyhead192-guarded-blend-contextrepair-v1/checkpoints/iter_0001 \
+  --epochs 3 \
+  --batch-size 512 \
+  --lr 5e-8 \
+  --weight-decay 1e-4 \
+  --value-weight 0.05 \
+  --bad-action-weight 0.3 \
+  --bad-action-margin 1.0 \
+  --data-weights 0.95 0.05 \
+  --legal-policy-loss \
+  --policy-head-only \
+  --select-best-by holdout_policy_acc+holdout_policy_top3_acc \
+  --select-best-require 'holdout_policy_acc>=0.3400' 'holdout_policy_top3_acc>=0.5420' \
+  --device cuda
+```
+
+All epochs were rejected:
+
+| Epoch | Holdout top-1 | Holdout top-3 | Holdout top-5 | Holdout policy loss | Eligible |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 1 | `0.3395` | `0.5383` | `0.6393` | `3.6087` | no |
+| 2 | `0.3392` | `0.5382` | `0.6401` | `3.6183` | no |
+| 3 | `0.3391` | `0.5385` | `0.6394` | `3.6363` | no |
+
+Even a `5%` context slice weight immediately erased the blend's top-3 gain.
+This reinforces that narrow loss repair needs either a much lower effective
+weight or a different objective; otherwise it destroys the broad ranking signal
+before direct play.
