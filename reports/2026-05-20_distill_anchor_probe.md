@@ -637,3 +637,40 @@ First-blunder mining found:
 This is the best broad-holdout candidate in this probe, but it still does not
 transfer to direct Stockfish play. The remaining failures are still early
 opening choices outside the exact book.
+
+I also spent a gate on the `50%` blend because it had stronger context loss and
+the highest holdout top-1 while still satisfying the broad guard:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening_context72_hardlabels_cap20_lr2e6_blend_0.50.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/guarded_blend_top3book_all_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --good-action-book-top-k 3 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_broad_opening_context72_blend050_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. PGN file mtime: `2026-05-20T15:52:48-07:00`.
+
+First-blunder mining found:
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Qg5` | `Qa4` | `0.1520` | `r2q1rk1/p4ppp/2pb1n2/3p3b/5Q2/N2B3P/PPP2PP1/R1B1R1K1 w - - 3 14` |
+| 2 | `...Bxb5` | `...Qa5+` | `0.3413` | `r2qkbnr/p2b1ppp/4p3/1N1p4/3Q1B2/8/PPP1BPPP/R3K2R b KQkq - 3 11` |
+
+Both interpolations clear the broad holdout guard and both lose directly. The
+broader supervised mix is useful for validation, but this candidate family is
+still rejected for promotion.
