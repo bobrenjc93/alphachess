@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T00:01:38-07:00`.
+Last updated: `2026-05-20T00:22:48-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -99,6 +99,7 @@ latest committed report.
 | `2026-05-19T23:33:20-07:00` PGN file mtime | Top-3 hard-negative repair (`reports/2026-05-19_hard_negative_topk_repair.md`). | N/A | `0.0/2` | New vector bad-action training reduced top-3 hard-negative loss, but disjoint holdout top-1 regressed to `0.3436` and direct play still failed. |
 | `2026-05-19T23:49:30-07:00` PGN file mtime | Opening/ELO2000/tactical mix (`reports/2026-05-19_opening_elo2000_tactical_probe.md`). | N/A | `0.0/2` | Specialist opening and tactical sources improved their own split metrics but regressed broad holdout top-1 to `0.3425` and still failed direct play. |
 | `2026-05-20T00:01:38-07:00` report timestamp | Soft-MultiPV recalibration (`reports/2026-05-20_softmultipv_recalibration_probe.md`). | N/A | not gated | Dense MultiPV targets regressed disjoint holdout top-1 to `0.3374`, so the branch was rejected before direct play. |
+| `2026-05-20T00:22:48-07:00` PGN file mtime | Stockfish-confirmed model-blunder mining (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | New miner found `2,010` true value-dropping model top moves; a small policy-head repair reduced bad-action loss slightly but still failed direct play. |
 
 Current practical status:
 
@@ -186,6 +187,9 @@ Current practical status:
 - Dense MultiPV soft-target recalibration regressed the hard-label holdout
   ranking badly (`0.3374` top-1), so it is not a useful repair for the current
   checkpoint.
+- Stockfish-confirmed model-blunder mining found a sharper signal than plain
+  label disagreement, but the first small policy-head repair still left target
+  top-1 at `0.0` on that mined slice and scored `0.0/2` against Stockfish.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
@@ -339,6 +343,21 @@ uv run alpha-chess hard-negatives \
   --checkpoint checkpoints/current/latest.pt \
   --data data/teacher/stockfish_sample \
   --out data/teacher/current_hard_negatives \
+  --prefer-action-labels
+```
+
+To focus on model moves that Stockfish confirms are harmful, mine only top
+model moves whose played continuation drops the root value:
+
+```bash
+uv run alpha-chess model-blunders \
+  --checkpoint checkpoints/current/latest.pt \
+  --data data/teacher/stockfish_sample \
+  --out data/teacher/current_model_blunders \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.02 \
+  --max-positions 8192 \
+  --min-value-delta 0.08 \
   --prefer-action-labels
 ```
 

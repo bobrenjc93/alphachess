@@ -10,6 +10,7 @@ from rich import print
 from alpha_chess.evaluate import EvalConfig, evaluate_checkpoint
 from alpha_chess.hard_negatives import HardNegativeConfig, mine_hard_negatives
 from alpha_chess.iteration import IterationConfig, run_iterations
+from alpha_chess.model_blunders import ModelBlunderConfig, mine_model_blunders
 from alpha_chess.model import blend_checkpoints
 from alpha_chess.pgn_import import PGNImportConfig, import_pgn
 from alpha_chess.puzzle_import import PuzzleImportConfig, import_puzzles
@@ -96,6 +97,24 @@ def main(argv: list[str] | None = None) -> None:
     hard_negative_parser.add_argument("--bad-actions-per-position", type=int, default=1)
     hard_negative_parser.add_argument("--prefer-action-labels", action="store_true")
     hard_negative_parser.add_argument("--device", default="auto")
+
+    model_blunder_parser = subparsers.add_parser(
+        "model-blunders",
+        help="mine model top moves that Stockfish scores as value-dropping blunders",
+    )
+    model_blunder_parser.add_argument("--checkpoint", required=True)
+    model_blunder_parser.add_argument("--data", required=True, nargs="+")
+    model_blunder_parser.add_argument("--out", required=True)
+    model_blunder_parser.add_argument("--engine-path", default="stockfish")
+    model_blunder_parser.add_argument("--engine-time", type=float, default=0.02)
+    model_blunder_parser.add_argument("--engine-depth", type=int)
+    model_blunder_parser.add_argument("--max-positions", type=int, default=8192)
+    model_blunder_parser.add_argument("--min-value-delta", type=float, default=0.08)
+    model_blunder_parser.add_argument("--bad-actions-per-position", type=int, default=1)
+    model_blunder_parser.add_argument("--batch-size", type=int, default=256)
+    model_blunder_parser.add_argument("--chunk-size", type=int, default=1024)
+    model_blunder_parser.add_argument("--prefer-action-labels", action="store_true")
+    model_blunder_parser.add_argument("--device", default="auto")
 
     blend_parser = subparsers.add_parser(
         "blend-checkpoints", help="linearly interpolate two checkpoints"
@@ -297,6 +316,12 @@ def main(argv: list[str] | None = None) -> None:
         kwargs.pop("command", None)
         config = HardNegativeConfig(**kwargs)
         paths = mine_hard_negatives(config)
+        print({"written": [str(path) for path in paths], "config": asdict(config)})
+    elif args.command == "model-blunders":
+        kwargs = vars(args).copy()
+        kwargs.pop("command", None)
+        config = ModelBlunderConfig(**kwargs)
+        paths = mine_model_blunders(config)
         print({"written": [str(path) for path in paths], "config": asdict(config)})
     elif args.command == "blend-checkpoints":
         output = blend_checkpoints(
