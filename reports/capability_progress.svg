@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="940" height="390" viewBox="0 0 940 390" role="img" aria-labelledby="title desc">
   <title id="title">AlphaChess Capability Progress</title>
-  <desc id="desc">Simple line chart of AlphaChess capability over real result timestamps, similar to an AlphaGo rating-over-time graph. The y axis is a conservative direct Stockfish score-rate proxy: score divided by max(games, 4), with the best value seen so far plotted over time. The plotted checks follow the README progress table from 2026-05-18T09:14:04-07:00 through 2026-05-20T09:07:55-07:00. The 50 percent line marks the local Stockfish promotion gate.</desc>
+  <desc id="desc">Simple line chart of AlphaChess capability over real result timestamps, similar to an AlphaGo rating-over-time graph. The y axis is a local Elo proxy derived from the conservative direct Stockfish score-rate proxy: score divided by max(games, 4), converted with 400 times log10(p divided by 1-p). Scoreless gates are drawn at a floor of less than or equal to -800 Elo because their logit is otherwise undefined. The plotted checks follow the README progress table from 2026-05-18T09:14:04-07:00 through 2026-05-20T09:07:55-07:00. The 0 Elo line marks the local Stockfish promotion gate.</desc>
   <rect width="940" height="390" fill="#fbfbf8"/>
 
   <text x="92" y="34" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#202124">AlphaChess capability progress</text>
-  <text x="92" y="56" font-family="Arial, sans-serif" font-size="12" fill="#5f6368">Best conservative direct-Stockfish score rate: score / max(games, 4). Not calibrated Elo.</text>
+  <text x="92" y="56" font-family="Arial, sans-serif" font-size="12" fill="#5f6368">Best conservative direct-Stockfish Elo proxy from real result timestamps. Not calibrated chess Elo.</text>
 
   <g font-family="Arial, sans-serif" font-size="11" fill="#5f6368">
     <line x1="92" y1="68" x2="92" y2="310" stroke="#5f6368" stroke-width="1"/>
@@ -16,11 +16,11 @@
     <line x1="92" y1="249.5" x2="850" y2="249.5" stroke="#e3e4df" stroke-width="1"/>
     <line x1="92" y1="310" x2="850" y2="310" stroke="#e3e4df" stroke-width="1"/>
 
-    <text x="58" y="72" text-anchor="end">50%</text>
-    <text x="58" y="132.5" text-anchor="end">37.5%</text>
-    <text x="58" y="193" text-anchor="end">25%</text>
-    <text x="58" y="253.5" text-anchor="end">12.5%</text>
-    <text x="58" y="314" text-anchor="end">0%</text>
+    <text x="58" y="72" text-anchor="end">0</text>
+    <text x="58" y="132.5" text-anchor="end">-200</text>
+    <text x="58" y="193" text-anchor="end">-400</text>
+    <text x="58" y="253.5" text-anchor="end">-600</text>
+    <text x="58" y="314" text-anchor="end">&lt;= -800</text>
     <text x="858" y="72" fill="#a23b31">promotion gate</text>
 
     <text x="92" y="335" text-anchor="middle">05-18 09:14</text>
@@ -29,10 +29,10 @@
     <text x="536.6" y="335" text-anchor="middle">05-19 10:31</text>
     <text x="850" y="335" text-anchor="middle">05-20 09:07</text>
     <text x="471" y="374" text-anchor="middle">real result timestamp</text>
-    <text x="20" y="198" text-anchor="middle" transform="rotate(-90 20 198)">Stockfish gate score-rate proxy</text>
+    <text x="20" y="198" text-anchor="middle" transform="rotate(-90 20 198)">local Stockfish Elo proxy</text>
   </g>
 
-  <path d="M 92 310 L 212 310 L 212 249.5 L 850 249.5" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 92 310 L 212 310 L 212 170.2 L 850 170.2" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
 
   <g fill="#9aa0a6" stroke="#fbfbf8" stroke-width="2">
     <circle cx="92" cy="310" r="4"/>
@@ -85,30 +85,30 @@
   </g>
 
   <g fill="#1f6f8b" stroke="#fbfbf8" stroke-width="2">
-    <circle cx="212" cy="249.5" r="5"/>
-    <circle cx="536.6" cy="249.5" r="5"/>
-    <circle cx="668.4" cy="249.5" r="5"/>
+    <circle cx="212" cy="170.2" r="5"/>
+    <circle cx="536.6" cy="170.2" r="5"/>
+    <circle cx="668.4" cy="170.2" r="5"/>
   </g>
 
   <g fill="#ffffff" stroke="#d9822b" stroke-width="2">
-    <circle cx="337.8" cy="249.5" r="4"/>
-    <circle cx="352.7" cy="249.5" r="4"/>
-    <circle cx="596.9" cy="249.5" r="4"/>
-    <circle cx="668.4" cy="249.5" r="6"/>
+    <circle cx="337.8" cy="170.2" r="4"/>
+    <circle cx="352.7" cy="170.2" r="4"/>
+    <circle cx="596.9" cy="170.2" r="4"/>
+    <circle cx="668.4" cy="170.2" r="6"/>
   </g>
 
   <g font-family="Arial, sans-serif" font-size="12" fill="#202124">
-    <text x="258" y="237" font-weight="700" fill="#1f6f8b">0.5/2 material-prior smoke</text>
-    <text x="540" y="237" font-weight="700" fill="#1f6f8b">0.5/4 first 4-game draw</text>
-    <text x="684" y="268" fill="#1f6f8b">12.5% proxy, about -338 Elo vs gate</text>
-    <text x="430" y="229" fill="#9a5b16">one-game PV-line draws</text>
-    <text x="752" y="229" fill="#9a5b16">0.5/2 smokes, not confirmed</text>
+    <text x="258" y="158" font-weight="700" fill="#1f6f8b">0.5/2 material-prior smoke</text>
+    <text x="540" y="158" font-weight="700" fill="#1f6f8b">0.5/4 first 4-game draw</text>
+    <text x="684" y="188" fill="#1f6f8b">12.5% proxy, about -338 Elo vs gate</text>
+    <text x="430" y="150" fill="#9a5b16">one-game PV-line draws</text>
+    <text x="752" y="150" fill="#9a5b16">0.5/2 smokes, not confirmed</text>
     <text x="758" y="303" fill="#5f6368">latest gate 0.0/2</text>
   </g>
 
   <g font-family="Arial, sans-serif" font-size="11" fill="#5f6368">
     <rect x="92" y="352" width="16" height="3" fill="#1f6f8b"/>
-    <text x="114" y="358">best conservative score-rate proxy</text>
+    <text x="114" y="358">best conservative Elo proxy</text>
     <circle cx="347" cy="356" r="4" fill="#ffffff" stroke="#d9822b" stroke-width="2"/>
     <text x="358" y="359">volatile positive smoke</text>
     <circle cx="510" cy="356" r="4" fill="#9aa0a6"/>
