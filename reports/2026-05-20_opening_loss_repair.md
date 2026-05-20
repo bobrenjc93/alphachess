@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T06:02:44-07:00`
+Timestamp: `2026-05-20T06:09:52-07:00`
 
 ## Summary
 
@@ -48,6 +48,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | best dense legal-value policy loss | policy head only from top-3 fullnet parent, LR `1.2e-6`, bad-action weight `0.8`, weights `0.20/0.14/0.18/0.34/0.14` | top-1 `0.3356`, top-3 `0.5288`, top-5 `0.6345` | legal-value top-1 `0.4908`, top-3 `0.7447`, top-5 `0.8461`, bad-action loss `0.1980`; dense legal-bad bad-action loss `0.1874`; recent all-blunders bad-action loss `2.0366`; recent80 direct-loss bad-action loss `2.3648` | plain `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_badbook_strictguards_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | capture-starting mate-search guard | same checkpoint, same legal-value bad-action book, strict guards, `root_mate_search_plies=5` with mate recursion over checks plus high-priority captures/promotions | N/A | root regression fixed: the latest gate's `...axb3 Kc1 Ne2+ Kb1 Rd1#` family is detected; a depth-7 root check prunes the earlier `Ne3` move but is too slow for full-game gates without more pruning | book+strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_badbook_capturemate5_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | exact Stockfish good-action book | same checkpoint, legal-value good-action book plus bad-action book, strict guards | N/A | restored the exact teacher opening `e4 e5 Nf3 Nc6 d4`, proving the book can override overzealous root heuristics at known positions | good+bad book strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_goodbadbook_strict_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | broad exact teacher books | same checkpoint, broad Stockfish good-action book plus recent loss/legal-value/top-3 exact books and strict guards | N/A | expanded exact-position coverage changed the mid-opening but still left uncovered tactical collapses | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_broadgoodbooks_strict_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -85,3 +86,7 @@ teacher line, but both direct games still failed after the book stopped
 covering the position. The current gap is therefore no longer just the root
 heuristics rejecting known-good openings; the policy/search stack still needs
 general tactical reliability after the exact teacher table ends.
+Combining broader exact books from the 65k Stockfish teacher, recent loss
+openings, legal-value data, and top-3 confirmed blunders also failed `0.0/2`.
+That makes exact-position table coverage a diagnostic aid, not a path to the
+current direct gate by itself.

@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T06:02:44-07:00`.
+Last updated: `2026-05-20T06:09:52-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -130,6 +130,7 @@ latest committed report.
 | `2026-05-20T05:15:06-07:00` PGN file mtime | Dense legal-value policy opening repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | plain `0.0/2`; book+strict `0.0/2` | Dense legal-move value policy improved its own policy loss to `5.0559` and recent direct-loss bad-action loss to `2.3648`, but broad holdout fell to `0.3356` and both direct gates still failed. |
 | `2026-05-20T05:50:15-07:00` PGN file mtime | Capture-starting mate-search guard (`reports/2026-05-20_opening_loss_repair.md`). | N/A | book+strict `0.0/2` | Root mate search now follows checking moves plus high-priority captures/promotions, catching a real `...axb3` forced-mate family from the latest gate; the comparable depth-5 Stockfish check still failed. |
 | `2026-05-20T06:02:44-07:00` PGN file mtime | Exact Stockfish good-action book (`reports/2026-05-20_opening_loss_repair.md`). | N/A | good+bad book strict `0.0/2` | Exact teacher best-move filtering restored the known `e4 e5 Nf3 Nc6 d4` opening line, but direct play still collapsed tactically after leaving the book. |
+| `2026-05-20T06:09:52-07:00` PGN file mtime | Broad exact teacher books (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Combining broad Stockfish, recent loss, legal-value, and top-3 confirmed-blunder exact books still failed both direct games. |
 
 Current practical status:
 
@@ -161,6 +162,9 @@ Current practical status:
 - Exact Stockfish good-action books can now override heuristic root guards at
   known teacher positions, but the first direct gate with the legal-value book
   still lost both games after the opening line.
+- Combining broader exact teacher books also failed, so exact-position opening
+  coverage is not enough without stronger tactical generalization after the
+  book ends.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the
