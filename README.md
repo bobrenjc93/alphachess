@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T16:00:05-07:00`.
+Result data through: `2026-05-20T16:21:53-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -183,6 +183,7 @@ latest committed report.
 | `2026-05-20T15:47:37-07:00` PGN file mtime | Broad opening/context hard-label blend (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_broad_opening_context72_blend025_stockfish_gate.pgn`). | N/A | context+top-3 book gate `0.0/2` | A broad/opening/context mix produced the best holdout in this probe (`0.3451` top-1, `0.5448` top-3 after 25% interpolation), but direct play still lost both games with first failures at `Na3` vs `h3` and `...Qa5` vs `...d5`. |
 | `2026-05-20T15:52:48-07:00` PGN file mtime | Broad opening/context hard-label 50% blend (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_broad_opening_context72_blend050_stockfish_gate.pgn`). | N/A | context+top-3 book gate `0.0/2` | The 50% interpolation also passed the broad guard, but still lost both direct games with first failures at `Qg5` vs `Qa4` and `...Bxb5` vs `...Qa5+`. |
 | `2026-05-20T16:00:05-07:00` PGN file mtime | Aggregated 180-position opening-stability mix (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening_stability180_stockfish_gate.pgn`). | N/A | opening-stability gate `0.0/2` | Aggregating 20 failed games into a 180-position context source selected a guarded checkpoint (`0.3445` top-1, `0.5421` top-3; stability top-3 `0.5200`), but direct play still lost with first failures at `Bd3` vs `Bd4` and very early `...e5` vs `...Nf6`. |
+| `2026-05-20T16:21:53-07:00` PGN file mtime | Higher-time 16k opening source plus stability mix (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening16k_stability180_blend075_stockfish_gate.pgn`). | N/A | opening16k+stability gate `0.0/2` | A new 16,384-position `0.05s` opening teacher improved validation and selected a guard-passing 75% blend, but direct play still lost both games. First failures were the persistent `Bd3` vs `Bd4` motif and `...Be7` vs `...Bc5`. |
 
 Current practical status:
 
@@ -243,6 +244,10 @@ Current practical status:
   selected cleanly and improved context top-3, but it still failed direct play.
   The latest Black failure appears at ply 3, pointing to an opening-coverage
   gap rather than another tiny-context repair.
+- A new 16k higher-time opening source improves validation but still does not
+  produce a direct score. The persistent `Bd3` vs `Bd4` White failure suggests
+  the next step needs better tactical/opening search supervision, not just more
+  early-position labels.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.

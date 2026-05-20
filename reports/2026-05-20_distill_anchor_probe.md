@@ -732,3 +732,73 @@ This is the best selected broad/opening/context candidate so far, but it still
 fails direct play immediately. The new Black failure appears as early as ply 3,
 so the next data step should broaden opening coverage rather than only append
 more local first-blunder contexts.
+
+## Higher-Time 16k Opening Source
+
+To address the ply-3 opening failure, I generated a larger higher-time opening
+window source:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn data/raw/lichess_db_standard_rated_2013-01.pgn.zst \
+  --out data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --max-positions 16384 \
+  --min-elo 1800 \
+  --min-initial-seconds 180 \
+  --multipv 4 \
+  --policy-temperature-cp 180 \
+  --position-stride 1 \
+  --min-ply 0 \
+  --max-ply 24 \
+  --chunk-size 1024
+```
+
+Result: `16,384` opening-window positions.
+
+I swapped this source into the broad/opening/stability hard-label recipe. The
+raw run missed the top-3 guard, but interpolations cleared it:
+
+| Candidate | Holdout top-1 | Holdout top-3 | Holdout top-5 | Stability source top-1/top-3/top-5 | Read |
+| --- | ---: | ---: | ---: | ---: | --- |
+| raw epoch 2 | `0.3447` | `0.5413` | `0.6443` | `0.4000`/`0.6000`/`0.7000` | Strong stability split, top-3 just below guard. |
+| `25%` blend | `0.3452` | `0.5442` | `0.6434` | `0.2389`/`0.4167`/`0.5333` | Best holdout top-3. |
+| `50%` blend | `0.3459` | `0.5430` | `0.6429` | `0.2444`/`0.4222`/`0.5333` | Best holdout top-1. |
+| `75%` blend | `0.3456` | `0.5433` | `0.6439` | `0.2444`/`0.4278`/`0.5444` | Best stability metrics among the guard-passing blends. |
+
+I gated the `75%` blend:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_hardlabels_cap20_lr2e6_blend_0.75.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --good-action-book-top-k 3 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_opening16k_stability180_blend075_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. PGN file mtime: `2026-05-20T16:21:53-07:00`.
+
+First-blunder mining found:
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Bd3` | `Bd4` | `0.2360` | `r2qr1k1/p3bppp/2p2nb1/3p4/8/2N1B2P/PPP1BPP1/2RQR1K1 w - - 3 15` |
+| 2 | `...Be7` | `...Bc5` | `0.1383` | `r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/3P1N2/PPP2PPP/RNBQK2R b KQkq - 0 5` |
+
+The higher-time opening source improves validation and changes the Black game,
+but it still does not transfer to a nonzero direct result. The White
+`Bd3`/`Bd4` motif persisted across the 180-source and 16k-opening branches.
