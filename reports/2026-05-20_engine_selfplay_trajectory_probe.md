@@ -1,6 +1,6 @@
 # Engine Self-Play Trajectory Probe
 
-Timestamp: `2026-05-20T10:53:16-07:00`
+Timestamp: `2026-05-20T10:57:06-07:00`
 
 ## Summary
 
@@ -9,8 +9,9 @@ I added a compact Stockfish-vs-Stockfish trajectory source using the new
 broad-holdout fullnet checkpoint. It did not. The initial selected policy-head
 tune lowered policy losses but regressed top-1 accuracy on every validation
 source. A lower-weight ablation reduced the loss further and improved recent120
-v2 top-1, but it still regressed broad holdout and engine-trajectory top-1, so
-both variants were rejected before a direct Stockfish gate.
+v2 top-1, but it still regressed broad holdout and engine-trajectory top-1. A
+follow-up direct Stockfish gate on that lower-weight checkpoint also lost both
+games.
 
 ## Data
 
@@ -91,7 +92,42 @@ uv run alpha-chess validate \
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | parent `policyhead192-stockfish-confirmed-broad73k-top3-fullnet-v1` | `0.3231` | `0.3395` | `0.2480` | `0.3652` | `0.5421` / `0.6425` | N/A |
 | `policyhead192-enginegames-policyhead-v1`, weights `0.45/0.35/0.20` | `0.3224` | `0.3390` | `0.2473` | `0.3645` | `0.5363` / `0.6385` | rejected before direct gate |
-| `policyhead192-enginegames-lowweight-policyhead-v1`, weights `0.70/0.10/0.20` | `0.3226` | `0.3387` | `0.2458` | `0.3669` | `0.5366` / `0.6383` | rejected before direct gate |
+| `policyhead192-enginegames-lowweight-policyhead-v1`, weights `0.70/0.10/0.20` | `0.3226` | `0.3387` | `0.2458` | `0.3669` | `0.5366` / `0.6383` | `0.0/2` |
+
+## Direct Gate
+
+The lower-weight checkpoint was checked after the validation read because it
+was the only variant that improved recent120 v2 top-1. The PGN file mtime was
+`2026-05-20T10:57:06-07:00`.
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-enginegames-lowweight-policyhead-v1/checkpoints/iter_0001/latest.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_selfplay_4096_t01_v1 data/teacher/alpha_recent120_fullgame_legalvalue_v2 data/teacher/alpha_recent120_policyacc_directloss_legalvalue_v1 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 data/teacher/alpha_recent120_policyacc_directloss_legalvalue_v1 \
+  --pgn-out reports/policyhead192_enginegames_lowweight_stockfish_gate.pgn
+```
+
+Result: `{'games': 2.0, 'score': 0.0, 'score_rate': 0.0, 'wins': 0.0,
+'draws': 0.0, 'losses': 2.0}`.
+
+The losses were not duplicates of the earlier recent120 stems: AlphaChess lost
+as White after `...Rxb2` and a back-rank mate, then lost as Black to a kingside
+attack after `Bxh6` / `Bxg7+`. That reinforces the current read that exact
+books and small trajectory additions shift the failure surface without fixing
+the broader tactical ranking problem.
 
 Both candidates had lower policy losses than the parent, but the ranking metric
 that matters for direct move choice got worse on the broad holdout. The

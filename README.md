@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T10:53:16-07:00`.
+Result data through: `2026-05-20T10:57:06-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -159,6 +159,7 @@ latest committed report.
 | `2026-05-20T10:34:29-07:00` report timestamp | Recent120 color-mirror policy-head probe (`reports/2026-05-20_opening_loss_repair.md`). | N/A | not gated | Color-mirror augmentation regressed broad holdout top-1 to `0.3342` and v2 top-1 to `0.3772`, so it was rejected before direct play. |
 | `2026-05-20T10:49:03-07:00` report timestamp | Engine self-play trajectory policy-head probe (`reports/2026-05-20_engine_selfplay_trajectory_probe.md`). | N/A | not gated | A 4,096-position Stockfish self-play trajectory source lowered losses but regressed top-1 on broad holdout (`0.3395` to `0.3390`), engine-game labels (`0.2480` to `0.2473`), and recent120 v2 (`0.3652` to `0.3645`). |
 | `2026-05-20T10:53:16-07:00` report timestamp | Engine self-play low-weight ablation (`reports/2026-05-20_engine_selfplay_trajectory_probe.md`). | N/A | not gated | Reducing the engine trajectory source from `35%` to `10%` still regressed broad holdout top-1 (`0.3395` to `0.3387`) and engine-game top-1 (`0.2480` to `0.2458`), despite improving recent120 v2 top-1 to `0.3669`. |
+| `2026-05-20T10:57:06-07:00` PGN file mtime | Engine self-play low-weight direct gate (`reports/policyhead192_enginegames_lowweight_stockfish_gate.pgn`). | N/A | book+strict `0.0/2` | The lower-weight engine-trajectory checkpoint still lost both direct games, including a rook-invasion mate as White and a kingside attack collapse as Black. |
 
 Current practical status:
 
@@ -263,7 +264,7 @@ Current practical status:
 - The first engine self-play trajectory source plugs into the teacher pipeline,
   but its initial policy-head mix lowered losses without improving top-1
   ranking. A lower-weight variant still regressed broad and engine-game top-1,
-  so both were rejected before direct play.
+  and its follow-up direct gate also lost both games.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the
