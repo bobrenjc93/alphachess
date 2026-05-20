@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T20:51:58-07:00`.
+Last updated: `2026-05-19T21:24:52-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -88,6 +88,8 @@ latest committed report.
 | `2026-05-19T19:56:50-07:00` report timestamp | Broad65k expert-mix follow-up (`reports/2026-05-19_broad65k_scale_probe.md`). | `4.0/8` vs hard-label loss-repair parent | `0.0/2` | Mixing expert rapid games improved expert-move validation but regressed broad Stockfish validation and still failed direct play. |
 | `2026-05-19T20:27:24-07:00` report timestamp | Fullnet192 capacity scratch probe (`reports/2026-05-19_fullnet192_capacity_probe.md`). | `8.0/8` vs uniform | gate `0.0/2`; 64-sim `0.0/2`; policy-only `0.0/2` | A larger 192x8 model memorized broad/loss labels far better, but direct tactical play still failed. |
 | `2026-05-19T20:49:36-07:00` report timestamp | Fullnet192 puzzle-mix follow-up (`reports/2026-05-19_fullnet192_capacity_probe.md`). | `2.0/8` vs fullnet192 scratch parent | `0.0/2` | Puzzle-line fine-tuning improved puzzle validation only modestly and regressed parent play. |
+| `2026-05-19T21:18:15-07:00` report timestamp | Fullnet192 loss-blunder replay data (`reports/2026-05-19_fullnet192_capacity_probe.md`). | N/A | N/A | Mined `238` positions and `34` bad-action labels from fullnet192 direct losses; GPU repair was blocked by reservation snapshot prep. |
+| `2026-05-19T21:22:07-07:00` report timestamp | CPU fullnet192 loss-overfit smoke (`reports/2026-05-19_fullnet192_capacity_probe.md`). | N/A | `0.0/2` | Narrow CPU policy-head overfit worsened full-slice bad-action loss to `4.4458` vs parent `4.4038`, so it was rejected. |
 
 Current practical status:
 
@@ -151,6 +153,9 @@ Current practical status:
 - Puzzle-line fine-tuning of that larger model improved puzzle validation only
   to `0.3442` on its split and lost the parent match `2.0/8`, so the current
   puzzle mix is not sufficient either.
+- Fullnet192 loss-blunder replay now exists with `238` positions and `34`
+  bad-action labels, but the first CPU-only overfit smoke worsened the targeted
+  loss slice and still scored `0.0/2` against Stockfish.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
