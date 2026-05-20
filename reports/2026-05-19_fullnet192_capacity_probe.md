@@ -148,3 +148,41 @@ Planned config highlights:
 The A100 reservation `26ab7495` never became active because `gpu-dev` reported
 `Waiting for disk snapshot to complete (from previous session)`. I canceled the
 reservation. This repair is ready to retry once GPU reservations are healthy.
+
+## CPU Fullnet192 Loss Overfit Smoke
+
+Timestamp: `2026-05-19T21:22:07-07:00`
+
+While GPU reservations were blocked, I ran a narrow CPU policy-head-only overfit
+on only `fullnet192_lossblunders_v1`:
+
+```text
+experiments/policyhead192-fullnetloss-cpu-overfit-v1
+```
+
+Config highlights:
+
+- checkpoint: `experiments/fullnet192-broad65k-expertmix-scratch-v1/checkpoints/iter_0001/latest.pt`
+- data: `data/teacher/fullnet192_lossblunders_v1`
+- `policy_head_only=true`
+- `epochs=10`
+- `lr=0.00001`
+- `bad_action_weight=0.20`
+- `select_best_by=val_bad_action_loss`
+
+The selector chose epoch 2 with held-out `val_bad_action_loss=3.8579`.
+Full-slice validation worsened versus the parent baseline:
+
+| Checkpoint | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| fullnet192 scratch parent | `0.2059` | `0.4412` | `0.5378` | `4.4038` |
+| CPU loss overfit | `0.2059` | `0.4370` | `0.5336` | `4.4458` |
+
+Direct check:
+
+| Check | Score | PGN |
+| --- | ---: | --- |
+| Stockfish gate | `0.0/2` | `reports/policyhead192_fullnetloss_cpu_overfit_stockfish_gate.pgn` |
+
+The tiny CPU overfit is rejected. It did not improve the full loss slice or
+direct play.
