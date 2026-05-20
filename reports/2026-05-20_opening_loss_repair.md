@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T04:23:13-07:00`
+Timestamp: `2026-05-20T04:33:47-07:00`
 
 ## Summary
 
@@ -41,6 +41,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | --- | --- | --- | ---: | ---: | ---: |
 | `experiments/policyhead192-openingloss-context-fullnet-v1/checkpoints/iter_0001` | best opening-context bad-action loss, epoch `4` | full network, LR `7.5e-7`, bad-action weight `0.90`, weights `0.20/0.16/0.24/0.40` | top-1 `0.3356`, top-3 `0.5344`, top-5 `0.6389` | opening context top-1 `0.5796`, top-3 `0.8513`, bad-action loss `0.9588`; top-3 direct-loss bad-action loss `2.5670`; recent80 direct-loss bad-action loss `2.6469` | plain `0.0/2` (`reports/policyhead192_openingloss_context_fullnet_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_openingloss_context_fullnet_badbook_strictguards_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent-opening-allblunders-policyhead-v1/checkpoints/iter_0001` | best recent opening all-blunders bad-action loss, epoch `4` | policy head only, LR `2e-6`, bad-action weight `1.0`, weights `0.20/0.14/0.20/0.46` | top-1 `0.3429`, top-3 `0.5414`, top-5 `0.6403` | recent opening all-blunders top-1 `0.3264`, top-3 `0.5496`, top-5 `0.6909`, bad-action loss `2.1351`; recent80 direct-loss bad-action loss `2.5558`; top-3 direct-loss bad-action loss `2.6727` | plain `0.0/2` (`reports/policyhead192_recent_opening_allblunders_policyhead_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_recent_opening_allblunders_policyhead_badbook_strictguards_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent-opening-allblunders-fullnet-v1/checkpoints/iter_0001` | best recent opening all-blunders bad-action loss | full network, LR `5e-7`, bad-action weight `1.0`, weights `0.18/0.12/0.20/0.50` | top-1 `0.3370`, top-3 `0.5383`, top-5 `0.6384` | recent opening all-blunders top-1 `0.3149`, top-3 `0.5571`, top-5 `0.6765`, bad-action loss `2.0906`; recent80 direct-loss top-1 `0.2434`, top-3 `0.4644`, top-5 `0.5750`, bad-action loss `2.5354`; top-3 direct-loss top-1 `0.2130`, top-3 `0.4060`, top-5 `0.5138`, bad-action loss `2.6586` | plain `0.0/2` (`reports/policyhead192_recent_opening_allblunders_fullnet_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_recent_opening_allblunders_fullnet_badbook_strictguards_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -50,3 +51,7 @@ opening choices, which means the mined labels do affect move selection, but
 Stockfish still finds adjacent tactical collapses. The current blocker is not
 just one repeated bad move in the common `e4 e5 Nf3 Nc6 d4` stem; the model and
 search need stronger tactical credit assignment across nearby opening families.
+The full-network all-blunders follow-up reduced the targeted all-blunders
+bad-action loss slightly versus policy-head-only tuning, but it worsened the
+broad holdout and still did not transfer to direct play. The exact-book gate
+again changed openings, then failed through nearby tactical collapses.

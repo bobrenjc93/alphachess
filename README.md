@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T04:23:13-07:00`.
+Last updated: `2026-05-20T04:33:47-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -125,6 +125,7 @@ latest committed report.
 | `2026-05-20T03:43:09-07:00` PGN file mtime | First-blunder plus puzzle-line full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Adding `100,000` puzzle-line positions improved puzzle validation to `0.3602`, but broad holdout fell to `0.3413`, recent-loss metrics regressed, and the direct gate still failed. |
 | `2026-05-20T04:02:45-07:00` PGN file mtime | Loss-only opening-context full-network repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | plain `0.0/2`; book+strict `0.0/2` | `--player-score-max 0.0` enabled loss-only mining; wider opening context improved targeted bad-action loss but broad holdout fell to `0.3356` and direct play still failed. |
 | `2026-05-20T04:21:51-07:00` PGN file mtime | Recent opening all-blunders policy-head repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | plain `0.0/2`; book+strict `0.0/2` | Mining all early confirmed blunders from the `80` most recent Stockfish PGNs produced `4,096` positions and `763` bad actions; exact books changed the openings but did not stop adjacent tactical collapses. |
+| `2026-05-20T04:32:27-07:00` PGN file mtime | Recent opening all-blunders full-network repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | plain `0.0/2`; book+strict `0.0/2` | Full-network fitting reduced recent all-blunders bad-action loss to `2.0906`, but disjoint holdout fell to `0.3370` and direct play still failed. |
 
 Current practical status:
 
@@ -251,6 +252,9 @@ Current practical status:
   puzzle fit but did not transfer to direct Stockfish play.
 - Loss-only opening mining and exact bad-action books changed some failed
   opening choices, but the model still collapses in adjacent tactical lines.
+- Full-network all-blunders tuning reduced the targeted recent-opening
+  bad-action loss slightly, but broad holdout regressed and both plain and
+  strict direct gates remained `0.0/2`.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
