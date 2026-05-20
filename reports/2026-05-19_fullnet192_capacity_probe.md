@@ -98,3 +98,53 @@ Direct checks:
 The puzzle mix improved the puzzle-source validation only modestly and regressed
 the parent match. It still failed direct Stockfish, so this mix is not a
 promotion path.
+
+## Fullnet192 Loss-Blunder Replay
+
+Timestamp: `2026-05-19T21:18:15-07:00`
+
+I mined the fullnet192 direct losses into another ignored hard-negative replay:
+
+```text
+data/teacher/fullnet192_lossblunders_v1
+```
+
+Generation inputs:
+
+- `reports/fullnet192_broad65k_expertmix_scratch_stockfish_gate.pgn`
+- `reports/fullnet192_broad65k_expertmix_scratch_64sims_stockfish.pgn`
+- `reports/fullnet192_broad65k_expertmix_scratch_policyonly_stockfish.pgn`
+- `reports/policyhead192_broad65k_puzzlemix_stockfish_gate.pgn`
+
+Generation settings: `engine_time=0.05`, `multipv=8`,
+`policy_temperature_cp=180`, `min_value_delta=0.08`, `position_stride=1`,
+`pv_plies=4`, `game_line_plies=2`, `player_name=AlphaChess`.
+
+The dataset has `238` positions and `34` bad-action labels. Baseline validation
+on this new slice:
+
+| Checkpoint | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| fullnet192 scratch | `0.2059` | `0.4412` | `0.5378` | `4.4038` |
+| policyhead192 puzzle mix | `0.2353` | `0.4454` | `0.5294` | `3.6894` |
+
+I attempted to start a targeted policy-head repair:
+
+```text
+experiments/policyhead192-fullnetloss-repair-v1
+```
+
+Planned config highlights:
+
+- checkpoint: `experiments/fullnet192-broad65k-expertmix-scratch-v1/checkpoints/iter_0001/latest.pt`
+- replay weights: broad65k `0.50`, puzzle lines `0.20`,
+  fullnet192 loss blunders `0.15`, all-loss bad actions `0.08`,
+  hard-label loss blunders `0.07`
+- `policy_head_only=true`
+- `bad_action_weight=0.15`
+- `lr=0.00001`
+- `select_best_by=val_source_2_bad_action_loss`
+
+The A100 reservation `26ab7495` never became active because `gpu-dev` reported
+`Waiting for disk snapshot to complete (from previous session)`. I canceled the
+reservation. This repair is ready to retry once GPU reservations are healthy.
