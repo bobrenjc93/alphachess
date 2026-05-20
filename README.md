@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T19:11:32-07:00`.
+Last updated: `2026-05-19T19:34:56-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -84,6 +84,7 @@ latest committed report.
 | `2026-05-19T18:14:27-07:00` report timestamp | Full-network selected-loss repair (`reports/2026-05-19_broad32k_scale_probe.md`). | `2.0/8` vs selected broad32k parent | `0.0/2` | Unfreezing the trunk reduced targeted bad-action loss but regressed broad32k top-1 to `0.3383` and still failed direct Stockfish. |
 | `2026-05-19T18:48:42-07:00` report timestamp | Broad32k hard-label selector repair (`reports/2026-05-19_broad32k_scale_probe.md`, `reports/policyhead_broad32k_hardlabels_selectbest_stockfish_gate.pgn`). | `6.0/8` vs selected broad32k parent | `0.0/2` | Hard-label fine-tuning selected epoch 3 and lifted broad32k source-0 top-1 to `0.3605`, but direct Stockfish still failed. |
 | `2026-05-19T19:11:04-07:00` report timestamp | Hard-label loss-repair probe (`reports/2026-05-19_broad32k_scale_probe.md`). | `8.0/8` vs hard-label parent | gate `0.0/2`; material `0.0/2`; root guards `0.0/2` | New loss replay raised broad32k hard-label top-1 to `0.3661`, but the direct tactical failures persisted. |
+| `2026-05-19T19:34:49-07:00` report timestamp | Broad65k scale probe (`reports/2026-05-19_broad65k_scale_probe.md`). | `4.0/8` vs hard-label loss-repair parent | `0.0/2` | Doubling the broad teacher to 65k nudged validation but regressed parent play and did not move direct Stockfish. |
 
 Current practical status:
 
@@ -135,6 +136,9 @@ Current practical status:
 - A follow-up hard-label loss repair lifted broad32k hard-label top-1 to
   `0.3661` and beat its parent `8.0/8`, but material blending and root guards
   still scored `0.0/2` each against Stockfish.
+- Doubling the broad teacher set to 65k positions only nudged fixed validation
+  (`0.3488` top-1 on 65k, `0.3665` on the older 32k slice) and regressed the
+  parent match to `4.0/8`; broader cheap labels alone are not enough.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
