@@ -1,14 +1,16 @@
 # Engine Self-Play Trajectory Probe
 
-Timestamp: `2026-05-20T10:49:03-07:00`
+Timestamp: `2026-05-20T10:53:16-07:00`
 
 ## Summary
 
 I added a compact Stockfish-vs-Stockfish trajectory source using the new
 `engine-self-play` command and tested whether it helps the current best
-broad-holdout fullnet checkpoint. It did not. The selected policy-head tune
-lowered policy losses, but top-1 accuracy regressed on every validation source,
-so I rejected it before a direct Stockfish gate.
+broad-holdout fullnet checkpoint. It did not. The initial selected policy-head
+tune lowered policy losses but regressed top-1 accuracy on every validation
+source. A lower-weight ablation reduced the loss further and improved recent120
+v2 top-1, but it still regressed broad holdout and engine-trajectory top-1, so
+both variants were rejected before a direct Stockfish gate.
 
 ## Data
 
@@ -88,11 +90,12 @@ uv run alpha-chess validate \
 | Checkpoint | Overall top-1 | Broad holdout top-1 | Engine self-play top-1 | Recent120 v2 top-1 | Broad top-3/top-5 | Direct gate |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | parent `policyhead192-stockfish-confirmed-broad73k-top3-fullnet-v1` | `0.3231` | `0.3395` | `0.2480` | `0.3652` | `0.5421` / `0.6425` | N/A |
-| `policyhead192-enginegames-policyhead-v1` | `0.3224` | `0.3390` | `0.2473` | `0.3645` | `0.5363` / `0.6385` | rejected before direct gate |
+| `policyhead192-enginegames-policyhead-v1`, weights `0.45/0.35/0.20` | `0.3224` | `0.3390` | `0.2473` | `0.3645` | `0.5363` / `0.6385` | rejected before direct gate |
+| `policyhead192-enginegames-lowweight-policyhead-v1`, weights `0.70/0.10/0.20` | `0.3226` | `0.3387` | `0.2458` | `0.3669` | `0.5366` / `0.6383` | rejected before direct gate |
 
-The candidate had lower policy losses (`4.1478 -> 4.0462` overall), but the
-ranking metric that matters for direct move choice got worse on all three
-sources. This first trajectory-source mix is not a promotion candidate. The
-next useful variant should either make the engine-game source stronger and
-disjoint, or train from it at larger scale with a selector that requires broad
-holdout top-k to stay flat.
+Both candidates had lower policy losses than the parent, but the ranking metric
+that matters for direct move choice got worse on the broad holdout. The
+low-weight run suggests that simply reducing the new source weight is not
+enough. The next useful variant should either make the engine-game source
+stronger and disjoint, or train from it at larger scale with a selector that
+requires broad holdout top-k to stay flat.
