@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T20:07:36-07:00`.
+Last updated: `2026-05-19T20:51:58-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -86,6 +86,8 @@ latest committed report.
 | `2026-05-19T19:11:04-07:00` report timestamp | Hard-label loss-repair probe (`reports/2026-05-19_broad32k_scale_probe.md`). | `8.0/8` vs hard-label parent | gate `0.0/2`; material `0.0/2`; root guards `0.0/2` | New loss replay raised broad32k hard-label top-1 to `0.3661`, but the direct tactical failures persisted. |
 | `2026-05-19T19:34:49-07:00` report timestamp | Broad65k scale probe (`reports/2026-05-19_broad65k_scale_probe.md`). | `4.0/8` vs hard-label loss-repair parent | `0.0/2` | Doubling the broad teacher to 65k nudged validation but regressed parent play and did not move direct Stockfish. |
 | `2026-05-19T19:56:50-07:00` report timestamp | Broad65k expert-mix follow-up (`reports/2026-05-19_broad65k_scale_probe.md`). | `4.0/8` vs hard-label loss-repair parent | `0.0/2` | Mixing expert rapid games improved expert-move validation but regressed broad Stockfish validation and still failed direct play. |
+| `2026-05-19T20:27:24-07:00` report timestamp | Fullnet192 capacity scratch probe (`reports/2026-05-19_fullnet192_capacity_probe.md`). | `8.0/8` vs uniform | gate `0.0/2`; 64-sim `0.0/2`; policy-only `0.0/2` | A larger 192x8 model memorized broad/loss labels far better, but direct tactical play still failed. |
+| `2026-05-19T20:49:36-07:00` report timestamp | Fullnet192 puzzle-mix follow-up (`reports/2026-05-19_fullnet192_capacity_probe.md`). | `2.0/8` vs fullnet192 scratch parent | `0.0/2` | Puzzle-line fine-tuning improved puzzle validation only modestly and regressed parent play. |
 
 Current practical status:
 
@@ -143,6 +145,12 @@ Current practical status:
 - Adding rapid expert games lifted expert top-1 to `0.4171`, but broad65k
   top-1 fell to `0.3476`, the parent match stayed `4.0/8`, and direct Stockfish
   remained `0.0/2`.
+- A larger 192x8 full-network scratch model can memorize the broad65k teacher
+  (`0.8620` top-1) and the tiny loss slice (`0.9091` top-1), but policy-only,
+  16-sim, and 64-sim direct checks all still lost.
+- Puzzle-line fine-tuning of that larger model improved puzzle validation only
+  to `0.3442` on its split and lost the parent match `2.0/8`, so the current
+  puzzle mix is not sufficient either.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
