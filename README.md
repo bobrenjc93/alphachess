@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T03:43:28-07:00`.
+Last updated: `2026-05-20T04:23:13-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -123,6 +123,8 @@ latest committed report.
 | `2026-05-20T03:13:57-07:00` PGN file mtime | Context direct-loss value-head-only repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Freezing policy/trunk and recalibrating only the value head also failed the direct Stockfish gate. |
 | `2026-05-20T03:24:21-07:00` PGN file mtime | First-blunder-only context policy-head repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Mining only the first confirmed blunder per recent loss game produced `1,155` focused positions and `163` bad actions; policy-head repair fit that slice but still lost both direct games. |
 | `2026-05-20T03:43:09-07:00` PGN file mtime | First-blunder plus puzzle-line full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Adding `100,000` puzzle-line positions improved puzzle validation to `0.3602`, but broad holdout fell to `0.3413`, recent-loss metrics regressed, and the direct gate still failed. |
+| `2026-05-20T04:02:45-07:00` PGN file mtime | Loss-only opening-context full-network repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | plain `0.0/2`; book+strict `0.0/2` | `--player-score-max 0.0` enabled loss-only mining; wider opening context improved targeted bad-action loss but broad holdout fell to `0.3356` and direct play still failed. |
+| `2026-05-20T04:21:51-07:00` PGN file mtime | Recent opening all-blunders policy-head repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | plain `0.0/2`; book+strict `0.0/2` | Mining all early confirmed blunders from the `80` most recent Stockfish PGNs produced `4,096` positions and `763` bad actions; exact books changed the openings but did not stop adjacent tactical collapses. |
 
 Current practical status:
 
@@ -247,6 +249,8 @@ Current practical status:
   cleanly, but a narrow policy-head repair from it still failed direct play.
 - Adding broad puzzle-line tactics to that first-blunder objective improved
   puzzle fit but did not transfer to direct Stockfish play.
+- Loss-only opening mining and exact bad-action books changed some failed
+  opening choices, but the model still collapses in adjacent tactical lines.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
