@@ -133,6 +133,7 @@ Tests: `uv run pytest` passed with `96 passed`.
 | --- | --- | ---: |
 | hard-negative broad/t05 parent | `data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_v1` | `0.0/2` (`reports/policyhead192_hardneg_broad73k_badbook_stockfish_gate.pgn`) |
 | broad73k full-network repair | `data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_v1` | `0.0/2` (`reports/policyhead192_broad73k_fullnet_badbook_stockfish_gate.pgn`) |
+| broad73k full-network repair plus strict root guards | `data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_v1` | `0.0/2` (`reports/policyhead192_broad73k_fullnet_badbook_strictguards_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -154,4 +155,5 @@ not improve direct play, and the margin loss on the broad slice did not beat the
 parent, so the next repair needs either a different objective or direct
 move-selection use of this signal rather than another small supervised replay.
 The first exact-position move-selection use did not cover enough of the direct
-loss lines to change the gate.
+loss lines to change the gate. Combining the book with stricter mate,
+material, and king-safety root filters also failed.
