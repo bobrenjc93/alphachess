@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T12:59:27-07:00`.
+Result data through: `2026-05-20T13:09:24-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -162,6 +162,7 @@ latest committed report.
 | `2026-05-20T10:57:06-07:00` PGN file mtime | Engine self-play low-weight direct gate (`reports/policyhead192_enginegames_lowweight_stockfish_gate.pgn`). | N/A | book+strict `0.0/2` | The lower-weight engine-trajectory checkpoint still lost both direct games, including a rook-invasion mate as White and a kingside attack collapse as Black. |
 | `2026-05-20T12:53:06-07:00` checkpoint mtime | Guarded composite broad65k selector probe (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | The new `top1+top3` selector with broad holdout floors rejected all epochs: top-1 stayed near baseline, but top-3 fell from `0.5421` to `0.5381-0.5388` despite lower policy loss. |
 | `2026-05-20T12:59:27-07:00` checkpoint mtime | Guarded mixed-source selector probe (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | Adding t05 labels, confirmed-blunder labels, and recent first-blunder context also failed the broad top-3 floor: top-1 reached `0.3398`, but top-3 stayed around `0.5377-0.5381`. |
+| `2026-05-20T13:09:24-07:00` report timestamp | Guarded parent/candidate blend probe (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | gate interrupted | A `10%` blend of the parent with broad-only epoch 3 cleared the broad guard and improved holdout top-1/top-3 to `0.3401`/`0.5426`; the follow-up direct gate was interrupted when the reservation was canceled. |
 
 Current practical status:
 
@@ -271,6 +272,10 @@ Current practical status:
   continuation and a small mixed-source follow-up selected by holdout top-1
   plus top-3 correctly rejected every epoch because top-3 regressed, so no
   Stockfish gate was spent on either checkpoint.
+- Blending a rejected checkpoint back toward the parent is promising as a cheap
+  recovery step: the `10%` blend with broad-only epoch 3 cleared the broad
+  holdout guard and should be the next direct-gate candidate when a persistent
+  GPU workspace is available.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the

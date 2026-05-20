@@ -1,6 +1,6 @@
 # Guarded Composite Selector Probe
 
-Timestamp: `2026-05-20T12:59:27-07:00`
+Timestamp: `2026-05-20T13:09:24-07:00`
 
 ## Summary
 
@@ -121,3 +121,28 @@ This is sharper than the broad-only run: top-1 was at or slightly above the
 parent baseline in several epochs, but top-3 stayed well below the `0.5420`
 floor. That confirms top-1 alone is not a sufficient selector for the current
 teacher mix.
+
+## Blend Follow-Up
+
+I then blended the parent with the best-looking rejected epochs. This is cheap
+and directly tests whether a small step toward the candidate can keep the
+parent's top-k ranking while taking the lower-loss/top-1 signal.
+
+| Source checkpoint | Weight on candidate | Holdout top-1 | Holdout top-3 | Holdout top-5 | Holdout policy loss | Read |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| mixed-source epoch 1 | `0.05` | `0.3398` | `0.5420` | `0.6422` | `3.7775` | near guard |
+| mixed-source epoch 1 | `0.10` | `0.3397` | `0.5421` | `0.6417` | `3.7680` | preserves top-3 |
+| mixed-source epoch 1 | `0.20` | `0.3398` | `0.5421` | `0.6412` | `3.7496` | preserves top-3 |
+| mixed-source epoch 1 | `0.30` | `0.3401` | `0.5406` | `0.6403` | `3.7321` | top-3 regresses |
+| broad-only epoch 3 | `0.05` | `0.3402` | `0.5422` | `0.6421` | `3.7779` | clears guard |
+| broad-only epoch 3 | `0.10` | `0.3401` | `0.5426` | `0.6422` | `3.7688` | best guard-passing blend |
+| broad-only epoch 3 | `0.20` | `0.3401` | `0.5414` | `0.6410` | `3.7512` | top-3 regresses |
+| broad-only epoch 3 | `0.30` | `0.3398` | `0.5410` | `0.6407` | `3.7345` | top-3 regresses |
+
+The `broad-only epoch 3` blend at `0.10` is the best checkpoint from this
+sequence: it improves disjoint broad top-1 from `0.3395` to `0.3401`, top-3
+from `0.5421` to `0.5426`, keeps top-5 roughly flat, and lowers policy loss.
+I started a two-game direct Stockfish gate for it, but the persistent GPU
+reservation was canceled mid-run, so no complete PGN/result was produced. This
+blend should be the next direct-gate candidate when the persistent workspace is
+available again.
