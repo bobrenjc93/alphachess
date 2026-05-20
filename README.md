@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T15:15:06-07:00`.
+Result data through: `2026-05-20T15:25:31-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -176,6 +176,7 @@ latest committed report.
 | `2026-05-20T14:57:23-07:00` PGN file mtime | Aggregated context-book diagnostic (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_guarded_blend_contextbook_all_stockfish_gate.pgn`). | N/A | merged context-book gate `0.0/2` | Using the merged 54-position context book directly still lost both games; new first failures appeared at `Nd2` vs `Qf3` and `...Bb4` vs `...Nxd4`. |
 | `2026-05-20T15:03:04-07:00` PGN file mtime | Aggregated context book at 64 simulations (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_guarded_blend_contextbook_all_64sims_stockfish_gate.pgn`). | N/A | merged context-book 64-sim gate `0.0/2` | Raising the merged context-book candidate from 16 to 64 MCTS simulations still lost both games, so this branch is not merely search-starved at the direct gate. |
 | `2026-05-20T15:15:06-07:00` PGN file mtime | Top-k good-action book diagnostic (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_guarded_blend_contextbook_all_top3book_stockfish_gate.pgn`). | N/A | top-3 good-book gate `0.0/2` | Enabling `--good-action-book-top-k 3` for combined action/policy teacher files widened exact Stockfish alternatives, but still lost both games with new first failures at `Re2` vs `Nb1` and `...Qe8` vs `...Qe7`. |
+| `2026-05-20T15:25:31-07:00` checkpoint mtime | 72-position top-k context repair (`reports/2026-05-20_distill_anchor_probe.md`). | N/A | not gated | Adding the top-k gate failures produced a 72-position context source from 8 failed games. Distillation-anchored repairs improved context policy loss only marginally (`3.7314` to `3.7228`) and still missed the broad top-1 guard, so no direct gate was spent. |
 
 Current practical status:
 
@@ -218,6 +219,10 @@ Current practical status:
   files instead of only policy-only data. A top-3 exact-book gate still scored
   `0.0/2`, so wider teacher alternatives move the failure surface rather than
   solving direct Stockfish transfer.
+- The new top-k failures are outside the exact book and have very low raw
+  target policy ranks (`32/42` and `21/32`). A 72-position context repair with
+  a separate broad distillation anchor barely moved context loss and still
+  missed the broad top-1 guard, so this needs a broader signal than tiny replay.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.

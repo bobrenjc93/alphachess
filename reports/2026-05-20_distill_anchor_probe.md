@@ -442,3 +442,52 @@ This confirms the top-k flag now has the intended effect on combined
 action/policy teacher files. It does not solve the current transfer problem:
 even broader exact teacher alternatives still move the first failure surface
 instead of producing a nonzero direct Stockfish result.
+
+## 72-Position Context Repair Follow-Up
+
+The top-3 exact-book failures were outside the merged good-action book. The
+guarded blend's raw policy also ranked the new Stockfish targets very low:
+
+| Game | Played move | Stockfish target | Target policy rank | Target policy prob |
+| --- | --- | --- | ---: | ---: |
+| 1 | `Re2` | `Nb1` | `32` / `42` legal moves | `0.000123` |
+| 2 | `...Qe8` | `...Qe7` | `21` / `32` legal moves | `0.000306` |
+
+I regenerated the aggregate first-blunder context source with the new top-3
+book gate included and `engine_time=0.05`:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn reports/policyhead192_guarded_blend_broad_epoch3_w010_stockfish_gate.pgn reports/policyhead192_guarded_blend_contextbook_stockfish_gate.pgn reports/policyhead192_guarded_blend_contextbook_v2_stockfish_gate.pgn reports/policyhead192_guarded_blend_contextbook_all_top3book_stockfish_gate.pgn \
+  --out data/teacher/guarded_blend_top3book_all_firstblunders_context_t05_v1 \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --player-name AlphaChess \
+  --position-stride 1 \
+  --min-value-delta 0.08 \
+  --multipv 4 \
+  --policy-temperature-cp 180 \
+  --first-blunder-only \
+  --blunder-context-plies 2 \
+  --pv-plies 4 \
+  --game-line-plies 2 \
+  --chunk-size 256
+```
+
+Result: `72` positions from `8` failed direct games.
+
+I then tested a more conservative independent-anchor repair and a stronger
+single-step diagnostic from the guarded blend:
+
+| Run | Best checkpoint read | Holdout top-1 | Holdout top-3 | Holdout top-5 | Context policy loss | Context top-1/top-3/top-5 | Read |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| starting blend | baseline | `0.3401` | `0.5426` | `0.6422` | `3.7314` | `0.1806`/`0.3750`/`0.5417` | Guard-passing broad baseline, but weak on the new context. |
+| distill weight `50`, lr `5e-9` | epoch 1 | `0.3394` | `0.5420` | `0.6416` | `3.7249` | `0.1806`/`0.3750`/`0.5278` | Too conservative to move target ranks, but already below top-1 guard. |
+| distill weight `10`, lr `1e-8` | epoch 1 | `0.3394` | `0.5420` | `0.6416` | `3.7249` | `0.1806`/`0.3750`/`0.5278` | Same practical trajectory as the higher-distill run. |
+| distill weight `10`, lr `1e-5` | single step | `0.3394` | `0.5421` | `0.6415` | `3.7228` | `0.1806`/`0.3750`/`0.5278` | Slightly better context loss, still below top-1 guard. |
+| `1e-5` update blended back at `25%` | interpolation | `0.3396` | `0.5425` | `0.6421` | `3.7291` | `0.1806`/`0.3750`/`0.5278` | Best interpolation recovered top-3/top-5 but still missed top-1. |
+
+No checkpoint or interpolation satisfied the broad guard, so I did not spend a
+direct Stockfish gate. The current repair signal improves loss marginally but
+does not lift the actual target ranks; these failures need broader coverage or
+a stronger objective than another tiny context replay.
