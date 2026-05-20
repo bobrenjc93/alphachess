@@ -103,6 +103,16 @@ Direct gate:
 | --- | ---: | --- |
 | Stockfish gate | `0.0/2` | `reports/policyhead192_stockfish_confirmed_blunder_repair_gate.pgn` |
 
+## H100 full-network follow-ups
+
+The policy-head-only repair did not move target top-1, so I used the active
+H100 reservation to try two trunk-unfrozen repairs from the same parent.
+
+| Run | Selection | Key settings | Disjoint holdout | Confirmed blunders | Direct gate |
+| --- | --- | --- | ---: | ---: | ---: |
+| `experiments/policyhead192-stockfish-confirmed-fullnet-v1/checkpoints/iter_0001` | best `holdout_policy_acc`, epoch `3` | LR `1e-6`, bad-action weight `0.20`, weights `0.43/0.24/0.23/0.05/0.05` | top-1 `0.3446`, top-3 `0.5470`, top-5 `0.6483` | top-1 `0.0199`, top-3 `0.3423`, top-5 `0.5075`, bad-action loss `4.0469` | `0.0/2` (`reports/policyhead192_stockfish_confirmed_fullnet_gate.pgn`) |
+| `experiments/policyhead192-stockfish-confirmed-fullnet-badmargin-v1/checkpoints/iter_0001` | best confirmed-blunder bad-action loss, epoch `5` | LR `7.5e-7`, bad-action weight `0.50`, weights `0.40/0.22/0.28/0.05/0.05` | top-1 `0.3439`, top-3 `0.5470`, top-5 `0.6476` | top-1 `0.0209`, top-3 `0.3458`, top-5 `0.5095`, bad-action loss `4.0162` | `0.0/2` (`reports/policyhead192_stockfish_confirmed_fullnet_badmargin_gate.pgn`) |
+
 ## Read
 
 Stockfish-confirmed model-blunder mining is useful because it separates true
@@ -111,6 +121,11 @@ attempt shows the current policy-head-only recipe is too weak: it moves top-k
 and bad-action loss slightly, but target top-1 remains `0.0` on the mined set
 and direct play is unchanged.
 
-Next, this signal should either be mined at larger scale with stronger/full-net
-updates or used for candidate filtering during move selection, rather than
-treated as another small policy-head replay slice.
+The H100 full-network follow-ups did get confirmed-blunder target top-1 off
+zero, but only to about `2%`. The bad-margin selector also improved the mined
+bad-action margin relative to the parent, while slightly regressing the disjoint
+holdout. Both still scored `0.0/2` against Stockfish, so this signal is useful
+diagnostically but is not yet strong enough as a small replay slice.
+
+Next, this signal should be mined at larger scale or turned into a move
+filtering/ranking objective that affects many more direct-game positions.

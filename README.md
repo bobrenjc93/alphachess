@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T00:26:09-07:00`.
+Last updated: `2026-05-20T00:46:03-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -100,14 +100,18 @@ latest committed report.
 | `2026-05-19T23:49:30-07:00` PGN file mtime | Opening/ELO2000/tactical mix (`reports/2026-05-19_opening_elo2000_tactical_probe.md`). | N/A | `0.0/2` | Specialist opening and tactical sources improved their own split metrics but regressed broad holdout top-1 to `0.3425` and still failed direct play. |
 | `2026-05-20T00:01:38-07:00` report timestamp | Soft-MultiPV recalibration (`reports/2026-05-20_softmultipv_recalibration_probe.md`). | N/A | not gated | Dense MultiPV targets regressed disjoint holdout top-1 to `0.3374`, so the branch was rejected before direct play. |
 | `2026-05-20T00:22:48-07:00` PGN file mtime | Stockfish-confirmed model-blunder mining (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | New miner found `2,010` true value-dropping model top moves; a small policy-head repair reduced bad-action loss slightly but still failed direct play. |
+| `2026-05-20T00:40:04-07:00` PGN file mtime | Stockfish-confirmed full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | H100 trunk-unfrozen repair nudged disjoint holdout top-1 to `0.3446` and confirmed-blunder top-1 to `0.0199`, but direct play did not improve. |
+| `2026-05-20T00:45:14-07:00` PGN file mtime | Bad-margin-selected full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Stronger bad-action pressure improved confirmed-blunder bad-action loss to `4.0162` and top-1 to `0.0209`, but broad holdout slipped and the gate still failed. |
 
 Current practical status:
 
 - Best 4-game direct result so far: `0.5/4` against the local Stockfish smoke
   gate from the policy-head broad run. Earlier `0.5/2` and `0.5/1` direct
   smokes exist, but they did not confirm in follow-up checks.
-- Best working parent for future experiments: the qvalue puzzle-line checkpoint
-  at `experiments/focus-qvalue-puzzlelines20-vw025-material015/checkpoints/iter_0001/latest.pt`.
+- Best direct-smoke checkpoint so far is still the policy-head broad run, but
+  it is not promotable. The strongest current supervised holdout parent is the
+  hard-negative broad/t05 branch, with later full-network confirmed-blunder
+  follow-ups only nudging holdout metrics and still failing direct play.
 - Latest diagnostics show both ranking and policy-confidence failures: many
   loss positions have the Stockfish target in the policy top-5, while recent
   direct losses also include high-confidence policy top-1 blunders. A focused
@@ -178,9 +182,9 @@ Current practical status:
   to move the direct gate so far; deeper attacking collapses remain the current
   blocker.
 - Broader model-mined hard negatives can still improve supervised holdout
-  metrics slightly: the best disjoint broad holdout top-1 so far is `0.3442`.
-  But both the top-1 and top-3 hard-negative repairs scored `0.0/2` against
-  Stockfish.
+  metrics slightly, and the holdout-selected full-network confirmed-blunder
+  follow-up nudged the best disjoint broad holdout top-1 to `0.3446`. That
+  still did not transfer to direct Stockfish play.
 - Adding specialist opening, ELO2000, and tactical continuation slices improves
   those local source metrics but regresses the broad holdout and still fails the
   direct gate.
@@ -190,6 +194,9 @@ Current practical status:
 - Stockfish-confirmed model-blunder mining found a sharper signal than plain
   label disagreement, but the first small policy-head repair still left target
   top-1 at `0.0` on that mined slice and scored `0.0/2` against Stockfish.
+- Full-network H100 follow-ups on the same confirmed-blunder slice got mined
+  target top-1 off zero, but only to about `2%`; both variants still scored
+  `0.0/2` against Stockfish.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
