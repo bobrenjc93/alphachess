@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T01:40:28-07:00`.
+Last updated: `2026-05-20T02:09:35-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -109,6 +109,10 @@ latest committed report.
 | `2026-05-20T01:14:58-07:00` PGN file mtime | 64-sim bad-action book plus strict root guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | H100 64-simulation search with the same book and strict root filters also lost both games. |
 | `2026-05-20T01:34:48-07:00` PGN file mtime | Top-3 broad73k confirmed-blunder repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Top-3 mining found `8,001` positions and `16,268` bad-action labels; repair reached the best disjoint holdout top-1 so far (`0.3452`) but still failed direct play. |
 | `2026-05-20T01:39:08-07:00` PGN file mtime | Top-3 bad-action book plus strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Applying the top-3 blocklist with strict root filters also lost both games. |
+| `2026-05-20T01:53:38-07:00` PGN file mtime | Fresh direct-loss full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | A 399-position latest-loss PV slice improved direct-loss bad-action loss from `2.9992` to `2.9056`, but broad holdout top-1 slipped to `0.3440` and direct play still failed. |
+| `2026-05-20T01:55:16-07:00` PGN file mtime | Fresh direct-loss full-network repair plus bad-action book and strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Adding the top-3 plus latest-loss blocklists and stricter tactical root filters did not recover the gate. |
+| `2026-05-20T02:00:27-07:00` PGN file mtime | Aggressive direct-loss policy-head repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Heavier latest-loss weighting improved that slice to top-1 `0.2256`, top-3 `0.4361`, and bad-action loss `2.7075`, but broad holdout regressed to `0.3428` and direct play still failed. |
+| `2026-05-20T02:03:04-07:00` PGN file mtime | Aggressive direct-loss policy-head repair plus bad-action book and strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | The stricter root filters and exact blocklists still lost both games, so the new replay did not transfer to direct Stockfish play. |
 
 Current practical status:
 
@@ -116,9 +120,10 @@ Current practical status:
   gate from the policy-head broad run. Earlier `0.5/2` and `0.5/1` direct
   smokes exist, but they did not confirm in follow-up checks.
 - Best direct-smoke checkpoint so far is still the policy-head broad run, but
-  it is not promotable. The strongest current supervised holdout parent is the
-  hard-negative broad/t05 branch, with later full-network confirmed-blunder
-  follow-ups only nudging holdout metrics and still failing direct play.
+  it is not promotable. The strongest current supervised holdout checkpoint is
+  the top-3 confirmed-blunder full-network repair (`0.3452` disjoint holdout
+  top-1), with latest direct-loss replay follow-ups regressing that holdout and
+  still failing direct play.
 - Latest diagnostics show both ranking and policy-confidence failures: many
   loss positions have the Stockfish target in the policy top-5, while recent
   direct losses also include high-confidence policy top-1 blunders. A focused
@@ -210,6 +215,10 @@ Current practical status:
   first broad73k blocklist checks still scored `0.0/2`; the current direct
   losses are not fixed by suppressing known mined FEN/action pairs, even with
   stricter root tactical filters and 64-simulation search layered on top.
+- A fresh direct-loss PV slice from the newest six failed Stockfish games
+  produced `399` positions and `57` Stockfish-confirmed bad played actions.
+  Full-network and aggressive policy-head repairs improved that narrow slice,
+  but both plain and bad-action-book-plus-strict gates remained `0.0/2`.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
