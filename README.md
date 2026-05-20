@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T08:32:20-07:00`.
+Last updated: `2026-05-20T08:39:07-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -140,6 +140,7 @@ latest committed report.
 | `2026-05-20T07:43:34-07:00` PGN file mtime | Material fallback preferred when both root guards find no safe move (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Removed the follow-up all-empty-fallback `...Nxf2` sacrifice, but the latest games still lost through broader material, king-safety, and passed-pawn failures. |
 | `2026-05-20T08:00:31-07:00` PGN file mtime | Conservative material-fallback direct-loss policy-head repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | A 70-position replay lowered new-slice bad-action loss from `0.3893` to `0.3811` while broad holdout top-1 nudged from `0.3383` to `0.3386`, but direct play still failed. |
 | `2026-05-20T08:32:20-07:00` PGN file mtime | Recent full-game legal-value replay (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | A 2,048-position full-game loss slice lowered bad-action loss from `0.3908` to `0.3806` and lifted top-3/top-5, but direct play still failed in new middlegame lines. |
+| `2026-05-20T08:39:07-07:00` PGN file mtime | Recent full-game replay at 64 simulations (`reports/2026-05-20_opening_loss_repair.md`). | N/A | 64-sim broad-good+bad book strict `0.0/2` | Deeper MCTS changed both games but still lost, so this candidate is not merely search-starved at 16 simulations. |
 
 Current practical status:
 
@@ -207,6 +208,9 @@ Current practical status:
   stronger middlegame signal than the tiny per-gate slices. It improves
   full-game bad-action loss and top-3/top-5 while preserving broad holdout, but
   still does not transfer to a nonzero direct score.
+- Raising the same broader replay checkpoint from 16 to 64 simulations also
+  scored `0.0/2`, so the current failure is not just insufficient MCTS visits
+  at the direct gate.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the

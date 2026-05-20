@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T08:32:20-07:00`
+Timestamp: `2026-05-20T08:39:07-07:00`
 
 ## Summary
 
@@ -64,6 +64,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-guardfallback-directloss-policyhead-v1/checkpoints/iter_0001` | material fallback preferred when both guards find no safe move | same checkpoint and books, with material fallback preferred over king-safety fallback when both threshold-safe sets are empty and the material fallback is not only king moves | N/A | removed the follow-up all-empty-fallback `...Nxf2` sacrifice; remaining games lost through broader material, king-safety, and passed-pawn failures | broad-good+bad book strict `0.0/2` (`reports/policyhead192_guardfallback_directloss_policyhead_broadgoodbooks_materialfallback_stockfish_gate.pgn`) |
 | `experiments/policyhead192-materialfallback-directloss-policyhead-v1/checkpoints/iter_0001` | best material-fallback bad-action loss, epoch `5` | policy head only from guard-fallback parent, LR `5e-7`, bad-action weight `0.6`, weights `0.34/0.22/0.14/0.14/0.16` over broad/legal-value/sac-guard/guard-fallback/material-fallback slices | broad holdout top-1 `0.3386`, top-3 `0.5360`, top-5 `0.6360` vs parent top-1 `0.3383`, top-3 `0.5365`, top-5 `0.6367` | material-fallback slice top-1 `0.3857`, top-3 `0.5857`, top-5 `0.7143`, bad-action loss `0.3811` vs parent `0.3893` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_materialfallback_directloss_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent80-fullgame-legalvalue-policyhead-v1/checkpoints/iter_0001` | best recent80 full-game bad-action loss, epoch `5` | policy head only from material-fallback parent, LR `7.5e-7`, bad-action weight `0.7`, weights `0.40/0.20/0.40` over broad/opening/full-game slices | broad holdout top-1 `0.3387`, top-3 `0.5353`, top-5 `0.6373` vs parent top-1 `0.3386`, top-3 `0.5360`, top-5 `0.6360` | recent80 full-game top-1 `0.3638`, top-3 `0.5952`, top-5 `0.7095`, bad-action loss `0.3806` vs parent top-1 `0.3652`, top-3 `0.5806`, top-5 `0.7041`, bad-action loss `0.3908` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent80_fullgame_legalvalue_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent80-fullgame-legalvalue-policyhead-v1/checkpoints/iter_0001` | 64-simulation direct search check | same checkpoint and books, same guards, `simulations=64` instead of `16` | N/A | deeper search changed both games but still found losing middlegame lines | 64-sim broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent80_fullgame_legalvalue_policyhead_broadgoodbooks_64sims_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -169,3 +170,7 @@ improved bad-action loss (`0.3908` to `0.3806`) and lifted top-3/top-5 while
 leaving broad holdout top-1 flat. The direct gate still scored `0.0/2`, so the
 current bottleneck is not just lack of exact middlegame labels; the policy and
 search still fail to convert those local labels into robust direct play.
+Raising that checkpoint's direct gate from 16 to 64 MCTS simulations also
+scored `0.0/2`. The game lines changed, but both still lost tactically, which
+argues against this candidate being one small search-budget increase away from
+the current Stockfish gate.
