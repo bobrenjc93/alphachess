@@ -165,6 +165,15 @@ top-1 `0.2155`, top-3 `0.4085`, top-5 `0.5238`, bad-action loss `2.9992`.
 | `experiments/policyhead192-top3-directloss-fullnet-v1/checkpoints/iter_0001` | best direct-loss bad-action loss, epoch `4` | full network, LR `5e-7`, bad-action weight `0.75`, weights `0.28/0.17/0.25/0.30` | top-1 `0.3440`, top-3 `0.5474`, top-5 `0.6454` | top-1 `0.2155`, top-3 `0.4236`, top-5 `0.5263`, bad-action loss `2.9056` | plain `0.0/2` (`reports/policyhead192_top3_directloss_fullnet_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_top3_directloss_fullnet_badbook_strictguards_stockfish_gate.pgn`) |
 | `experiments/policyhead192-top3-directloss-policyhead-v1/checkpoints/iter_0001` | best direct-loss bad-action loss, epoch `6` | policy head only, LR `2e-6`, bad-action weight `1.25`, weights `0.22/0.13/0.20/0.45` | top-1 `0.3428`, top-3 `0.5455`, top-5 `0.6431` | top-1 `0.2256`, top-3 `0.4361`, top-5 `0.5439`, bad-action loss `2.7075` | plain `0.0/2` (`reports/policyhead192_top3_directloss_policyhead_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_top3_directloss_policyhead_badbook_strictguards_stockfish_gate.pgn`) |
 
+I also expanded the same process to every tracked Stockfish PGN available on
+the H100 checkout. This produced `4,096` positions from `86` games with `780`
+Stockfish-confirmed bad played actions in
+`data/teacher/alpha_all_directloss_pv_v1`.
+
+| Run | Selection | Key settings | Disjoint holdout | All-history direct-loss slice | Latest direct-loss slice | Direct gates |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| `experiments/policyhead192-all-directloss-fullnet-v1/checkpoints/iter_0001` | best all-history direct-loss bad-action loss, epoch `4` | full network, LR `7.5e-7`, bad-action weight `0.85`, weights `0.25/0.15/0.25/0.35` | top-1 `0.3430`, top-3 `0.5436`, top-5 `0.6437` | top-1 `0.2925`, top-3 `0.5066`, top-5 `0.6299`, bad-action loss `1.7075` | top-1 `0.2130`, top-3 `0.4135`, top-5 `0.5138`, bad-action loss `2.9852` | plain `0.0/2` (`reports/policyhead192_all_directloss_fullnet_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_all_directloss_fullnet_badbook_strictguards_stockfish_gate.pgn`) |
+
 ## Read
 
 Stockfish-confirmed model-blunder mining is useful because it separates true
@@ -195,3 +204,7 @@ diagnostics, especially with an aggressive policy-head-only repair, but it
 regressed the disjoint broad holdout and still scored `0.0/2` in both plain and
 book-plus-strict direct Stockfish gates. The current blocker is therefore not
 solved by a small replay of the latest failure PGNs.
+Scaling that replay to all tracked Stockfish losses fit the broader historical
+failure slice much more strongly, but it did not improve the latest-loss slice
+and still scored `0.0/2`. Historical direct-loss replay is therefore not enough
+unless the sampling and objective are made more current-position specific.
