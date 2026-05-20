@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T07:43:34-07:00`
+Timestamp: `2026-05-20T08:00:31-07:00`
 
 ## Summary
 
@@ -38,6 +38,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `data/teacher/alpha_recent40_opening_legalvalue_v1` | `40` most recent Stockfish PGNs by mtime, AlphaChess score `0.0`, `max_ply=18`, all legal root moves scored by Stockfish, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.12` | `760` from `80` recent loss games | `5,656` | Dense value-policy targets plus bad-action labels for the latest opening failures. |
 | `data/teacher/alpha_sacguard_directloss_legalvalue_v1` | sac-guard direct-loss PGN, AlphaChess score `0.0`, `max_ply=70`, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `52` | `303` | Very small focused replay slice for the losses after the speculative checking-capture guard. |
 | `data/teacher/alpha_guardfallback_directloss_legalvalue_v1` | guard-fallback direct-loss PGN, AlphaChess score `0.0`, `max_ply=80`, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `59` | `307` | Focused replay slice for the losses after the independent root-guard fixes. |
+| `data/teacher/alpha_materialfallback_directloss_legalvalue_v1` | material-fallback direct-loss PGN, AlphaChess score `0.0`, `max_ply=80`, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `70` | `274` | Focused replay slice for the losses after the all-empty root-guard fallback fix. |
 
 ## Runs
 
@@ -60,6 +61,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | material fallback vetoes disjoint king-safe sacrifices | same checkpoint and books, with material fallback preferred when material has no threshold-safe move and the fallback is not only king moves | N/A | removed the `...Rxg4+` disjoint-safe-set exchange sacrifice; remaining games lost through broader attacking and promotion lines | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_guardfallback_stockfish_gate.pgn`) |
 | `experiments/policyhead192-guardfallback-directloss-policyhead-v1/checkpoints/iter_0001` | best guard-fallback bad-action loss, epoch `3` | policy head only from sac-guard parent, LR `1.0e-6`, bad-action weight `1.0`, weights `0.18/0.22/0.22/0.38` over broad/legal-value/sac-guard/guard-fallback slices | broad holdout top-1 `0.3324`, top-3 `0.5317`, top-5 `0.6334` | guard-fallback slice top-1 `0.4068`, top-3 `0.5085`, top-5 `0.6441`, bad-action loss `0.6428` vs parent `0.6754` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_guardfallback_directloss_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
 | `experiments/policyhead192-guardfallback-directloss-policyhead-v1/checkpoints/iter_0001` | material fallback preferred when both guards find no safe move | same checkpoint and books, with material fallback preferred over king-safety fallback when both threshold-safe sets are empty and the material fallback is not only king moves | N/A | removed the follow-up all-empty-fallback `...Nxf2` sacrifice; remaining games lost through broader material, king-safety, and passed-pawn failures | broad-good+bad book strict `0.0/2` (`reports/policyhead192_guardfallback_directloss_policyhead_broadgoodbooks_materialfallback_stockfish_gate.pgn`) |
+| `experiments/policyhead192-materialfallback-directloss-policyhead-v1/checkpoints/iter_0001` | best material-fallback bad-action loss, epoch `5` | policy head only from guard-fallback parent, LR `5e-7`, bad-action weight `0.6`, weights `0.34/0.22/0.14/0.14/0.16` over broad/legal-value/sac-guard/guard-fallback/material-fallback slices | broad holdout top-1 `0.3386`, top-3 `0.5360`, top-5 `0.6360` vs parent top-1 `0.3383`, top-3 `0.5365`, top-5 `0.6367` | material-fallback slice top-1 `0.3857`, top-3 `0.5857`, top-5 `0.7143`, bad-action loss `0.3811` vs parent `0.3893` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_materialfallback_directloss_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -151,3 +153,10 @@ all-empty case removed the repeated `...Nxf2` family from the latest direct
 gate, while still allowing king-only material fallbacks to preserve the earlier
 `...Kd7` fix. The comparable Stockfish gate remained `0.0/2`; the new games
 shifted to broader exchange, king-safety, and passed-pawn failures.
+Mining the material-fallback losses produced a 70-position dense legal-value
+slice with 274 bad-action labels. A deliberately lower-pressure policy-head
+repair improved that slice's bad-action loss from `0.3893` to `0.3811` and kept
+the broad holdout essentially flat-to-slightly-up (`0.3383` to `0.3386`
+top-1). That still did not transfer to direct play: the next gate scored
+`0.0/2`, with losses moving to new `Rxb2`, passed-pawn, and king-attack
+families rather than the exact `...Nxf2` root fallback.
