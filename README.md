@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T01:15:44-07:00`.
+Last updated: `2026-05-20T01:40:28-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -107,6 +107,8 @@ latest committed report.
 | `2026-05-20T01:04:09-07:00` PGN file mtime | Exact bad-action book on broad73k repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Applying the same exact-position blocklist to the repaired checkpoint also lost both direct games. |
 | `2026-05-20T01:07:29-07:00` PGN file mtime | Bad-action book plus strict root guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Combining the exact-position blocklist with stricter mate/material/king-safety root filters still failed. |
 | `2026-05-20T01:14:58-07:00` PGN file mtime | 64-sim bad-action book plus strict root guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | H100 64-simulation search with the same book and strict root filters also lost both games. |
+| `2026-05-20T01:34:48-07:00` PGN file mtime | Top-3 broad73k confirmed-blunder repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Top-3 mining found `8,001` positions and `16,268` bad-action labels; repair reached the best disjoint holdout top-1 so far (`0.3452`) but still failed direct play. |
+| `2026-05-20T01:39:08-07:00` PGN file mtime | Top-3 bad-action book plus strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Applying the top-3 blocklist with strict root filters also lost both games. |
 
 Current practical status:
 
@@ -201,7 +203,8 @@ Current practical status:
   top-1 at `0.0` on that mined slice and scored `0.0/2` against Stockfish.
 - Full-network H100 follow-ups on the same confirmed-blunder slice got mined
   target top-1 off zero, but only to about `2%`; a broader 73k mining pass
-  raised the larger slice to `3.65%` top-1. All variants still scored `0.0/2`
+  raised the larger slice to `3.65%` top-1, and top-3 confirmed-blunder mining
+  pushed disjoint holdout top-1 to `0.3452`. All variants still scored `0.0/2`
   against Stockfish.
 - Exact-position bad-action filtering is now available at eval time, but the
   first broad73k blocklist checks still scored `0.0/2`; the current direct
