@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T09:02:22-07:00`
+Timestamp: `2026-05-20T09:07:55-07:00`
 
 ## Summary
 
@@ -67,6 +67,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-recent80-fullgame-legalvalue-policyhead-v1/checkpoints/iter_0001` | 64-simulation direct search check | same checkpoint and books, same guards, `simulations=64` instead of `16` | N/A | deeper search changed both games but still found losing middlegame lines | 64-sim broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent80_fullgame_legalvalue_policyhead_broadgoodbooks_64sims_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent80-fullgame-legalvalue-fullnet-v1/checkpoints/iter_0001` | best recent80 full-game bad-action loss, epoch `4` | full network from recent80 policy-head parent, LR `2e-7`, bad-action weight `0.5`, weights `0.45/0.15/0.40` over broad/opening/full-game slices | broad holdout top-1 `0.3395`, top-3 `0.5370`, top-5 `0.6407` | recent80 full-game top-1 `0.3701`, top-3 `0.6016`, top-5 `0.7129`, bad-action loss `0.3730` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent80_fullgame_legalvalue_fullnet_broadgoodbooks_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent80-fullgame-legalvalue-fullnet-v1/checkpoints/iter_0001` | king-recapturable quiet-check guard | same full-network checkpoint and books, with speculative root-check filtering generalized from checking captures to all non-pawn checks that the king can immediately capture | N/A | removed the latest non-capturing `Bh7+` root-filter failure; replacement games still lost through nearby attacking lines | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent80_fullgame_legalvalue_fullnet_quietcheckguard_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent80-fullgame-legalvalue-fullnet-v1/checkpoints/iter_0001` | full-game exact good-action book diagnostic | same full-network checkpoint and quiet-check guard, with `alpha_recent80_fullgame_legalvalue_v1` added to both exact good-action and bad-action books | N/A | exact teacher moves changed the openings, but the model still collapsed tactically after uncovered positions | broad+full-game good book strict `0.0/2` (`reports/policyhead192_recent80_fullgame_legalvalue_fullnet_fullgoodbook_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -188,3 +189,8 @@ king-recapturable checking captures to all non-pawn checking moves that are
 king-recapturable, and added a regression test for that FEN. This removes the
 exact `Bh7+` line, but the comparable direct gate stayed `0.0/2`; the losses
 shifted to adjacent attacking sacrifices such as `Bxh6` and queen/rook attacks.
+Adding the broader recent80 full-game slice to the exact good-action books also
+failed `0.0/2`. It changed the opening choices, which confirms the exact table
+is active, but the games still collapsed after moving outside covered positions.
+That reinforces the current read: exact books and local labels can steer known
+positions, but they are not producing tactical generalization yet.
