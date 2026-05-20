@@ -1,6 +1,6 @@
 # Guarded Composite Selector Probe
 
-Timestamp: `2026-05-20T13:34:42-07:00`
+Timestamp: `2026-05-20T13:36:45-07:00`
 
 ## Summary
 
@@ -179,3 +179,34 @@ Sicilian line where AlphaChess accepted early queenside material and then lost
 to a forcing attack ending in `Qa3#`. So the broad top-k guard and small blend
 step produce a better supervised candidate, but still do not solve the direct
 tactical reliability problem.
+
+## First-Blunder Mining
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn reports/policyhead192_guarded_blend_broad_epoch3_w010_stockfish_gate.pgn \
+  --out data/teacher/guarded_blend_gate_firstblunders_v1 \
+  --engine-path tools/stockfish/bin/stockfish \
+  --player-name AlphaChess \
+  --position-stride 1 \
+  --min-value-delta 0.08 \
+  --multipv 4 \
+  --policy-temperature-cp 180 \
+  --first-blunder-only \
+  --pv-plies 4 \
+  --game-line-plies 2 \
+  --chunk-size 256
+```
+
+Result: `14` positions from both games.
+
+| Game | First confirmed mistake | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Re1` | `Na3` | `0.4704` | `1rbqr1k1/p1p1bppp/5n2/3p2B1/8/2PB4/PP1Q1PPP/RN3RK1 w - - 1 12` |
+| 2 | `...Nxa2+` | `...Rf8` | `0.3231` | `rnbqk2r/pp1p1pQp/4p3/4P3/1b1N4/2n5/PPP2PPP/R1B1KB1R b KQkq - 0 8` |
+
+The first mistake in game 1 is not the final passed-pawn tactic itself; it is a
+quiet rook move that lets the later sequence become forcing. The second mistake
+is a speculative material grab in the Sicilian. This suggests the next repair
+should focus on first-blunder lead-up states, not only the final mate/promotion
+positions.
