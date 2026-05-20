@@ -16,7 +16,8 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T16:41:04-07:00`.
+Latest committed refresh: `2026-05-20T16:42:37-07:00` (`33ec60a`).
+Latest result timestamp: `2026-05-20T16:41:04-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -37,12 +38,13 @@ capability line over real, non-evenly-spaced result timestamps. For each direct
 Stockfish check in the backfilled history, it uses `score / max(games, 4)` and
 converts that conservative score rate to a local Elo proxy against this exact
 gate. Scoreless gates have no finite Elo, so they are drawn at an explicit
-`<= -800` floor. The current best proxy is `12.5%`, about `-338` Elo against
-this local gate.
+`<= -800` floor. The current best proxy is still `12.5%`, about `-338` Elo
+against this local gate.
 
 Timestamps are real `git log --date=iso-strict` commit times unless marked as a
-PGN file mtime or report timestamp, where the result was generated after the
-latest committed report.
+PGN file mtime, report timestamp, teacher summary mtime, or checkpoint mtime.
+Those marked rows use the artifact timestamp because the run happened before the
+next documentation commit.
 
 | Timestamp | Milestone | Parent/internal score | Direct Stockfish score | Strength read |
 | --- | --- | ---: | ---: | --- |
@@ -192,10 +194,10 @@ Current practical status:
   gate from the policy-head broad run. Earlier `0.5/2` and `0.5/1` direct
   smokes exist, but they did not confirm in follow-up checks.
 - Best direct-smoke checkpoint so far is still the policy-head broad run, but
-  it is not promotable. The strongest current supervised holdout checkpoint is
-  the top-3 confirmed-blunder full-network repair (`0.3452` disjoint holdout
-  top-1), with latest direct-loss replay follow-ups regressing that holdout and
-  still failing direct play.
+  it is not promotable. The strongest current supervised holdout reads are from
+  the broad/opening/context blend family: up to `0.3459` disjoint holdout top-1,
+  with the best top-3 read at `0.5448`. Those checkpoints still fail the direct
+  Stockfish gate.
 - Latest diagnostics show both ranking and policy-confidence failures: many
   loss positions have the Stockfish target in the policy top-5, while recent
   direct losses also include high-confidence policy top-1 blunders. A focused

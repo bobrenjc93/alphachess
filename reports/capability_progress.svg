@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="940" height="390" viewBox="0 0 940 390" role="img" aria-labelledby="title desc">
   <title id="title">AlphaChess Capability Progress</title>
-  <desc id="desc">Simple line chart of AlphaChess capability over real result timestamps, similar to an AlphaGo rating-over-time graph. The y axis is a best-so-far local Elo proxy derived from the conservative direct Stockfish score-rate proxy: score divided by max(games, 4), converted with 400 times log10(p divided by 1-p). Scoreless gates are drawn at a floor of less than or equal to -800 Elo because their logit is otherwise undefined. The plotted direct Stockfish checks follow the README progress table from 2026-05-18T09:14:04-07:00 through 2026-05-20T16:41:04-07:00. The 0 Elo line marks the local Stockfish promotion gate.</desc>
+  <desc id="desc">Simple line chart of AlphaChess capability over real result timestamps, similar to an AlphaGo rating-over-time graph. The y axis is a best-so-far local Elo proxy derived from the conservative direct Stockfish score-rate proxy: score divided by max(games, 4), converted with 400 times log10(p divided by 1-p). Scoreless gates are drawn at a floor of less than or equal to -800 Elo because their logit is otherwise undefined. The plotted direct Stockfish checks follow the README progress table from 2026-05-18T09:14:04-07:00 through 2026-05-20T16:41:04-07:00. Commit-derived rows use git log --date=iso-strict times; marked PGN/report/teacher/checkpoint rows use artifact mtimes. The 0 Elo line marks the local Stockfish promotion gate.</desc>
   <!-- Key source timestamps:
        2026-05-18T09:14:04-07:00: first direct gate, 0.0/2, x=92.0
        2026-05-18T16:03:41-07:00: material-prior smoke, 0.5/2, x=185.3
@@ -9,7 +9,7 @@
   <rect width="940" height="390" fill="#fbfbf8"/>
 
   <text x="92" y="34" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#202124">AlphaChess capability progress</text>
-  <text x="92" y="56" font-family="Arial, sans-serif" font-size="12" fill="#5f6368">Best-so-far conservative direct-Stockfish Elo proxy from real result timestamps. Not calibrated chess Elo.</text>
+  <text x="92" y="56" font-family="Arial, sans-serif" font-size="12" fill="#5f6368">Best-so-far conservative direct-Stockfish Elo proxy from real commit/artifact timestamps. Not calibrated chess Elo.</text>
 
   <g font-family="Arial, sans-serif" font-size="11" fill="#5f6368">
     <line x1="92" y1="68" x2="92" y2="310" stroke="#5f6368" stroke-width="1"/>
