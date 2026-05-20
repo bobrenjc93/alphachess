@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T09:41:24-07:00`
+Timestamp: `2026-05-20T09:55:41-07:00`
 
 ## Summary
 
@@ -71,6 +71,8 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-recent80-fullgame-legalvalue-fullnet-v1/checkpoints/iter_0001` | full-game exact good-action book diagnostic | same full-network checkpoint and quiet-check guard, with `alpha_recent80_fullgame_legalvalue_v1` added to both exact good-action and bad-action books | N/A | exact teacher moves changed the openings, but the model still collapsed tactically after uncovered positions | broad+full-game good book strict `0.0/2` (`reports/policyhead192_recent80_fullgame_legalvalue_fullnet_fullgoodbook_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent120-fullgame-legalvalue-policyhead-v1/checkpoints/iter_0001` | best v2 bad-action loss, epoch `5` | policy head only from recent80 fullnet parent, LR `7.5e-7`, bad-action weight `0.7`, weights `0.45/0.15/0.40` over broad/opening/v2 full-game slices | broad holdout top-1 `0.3373`, top-3 `0.5370`, top-5 `0.6399` vs parent top-1 `0.3395`, top-3 `0.5370`, top-5 `0.6407` | v2 full-game top-1 `0.3799`, top-3 `0.6121`, top-5 `0.7109`, bad-action loss `0.3775` vs parent top-1 `0.3784`, top-3 `0.6118`, top-5 `0.7112`, bad-action loss `0.3846` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent120_fullgame_legalvalue_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent120-fullgame-legalvalue-fullnet-v1/checkpoints/iter_0001` | best v2 bad-action loss, epoch `4` | full network from recent80 fullnet parent, LR `1.5e-7`, bad-action weight `0.5`, weights `0.45/0.15/0.40` over broad/opening/v2 full-game slices | broad holdout top-1 `0.3374`, top-3 `0.5387`, top-5 `0.6395` vs parent top-1 `0.3395`, top-3 `0.5370`, top-5 `0.6407` | v2 full-game top-1 `0.3767`, top-3 `0.6172`, top-5 `0.7139`, bad-action loss `0.3790` vs parent top-1 `0.3784`, top-3 `0.6118`, top-5 `0.7112`, bad-action loss `0.3846` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent120_fullgame_legalvalue_fullnet_broadgoodbooks_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent120-fullgame-policyacc-fullnet-v1/checkpoints/iter_0001` | best v2 policy accuracy | full network from recent80 fullnet parent, LR `1e-7`, bad-action weight `0.25`, weights `0.35/0.15/0.50` over broad/opening/v2 full-game slices | broad holdout top-1 `0.3376`, top-3 `0.5372`, top-5 `0.6375` vs parent top-1 `0.3395`, top-3 `0.5370`, top-5 `0.6407` | v2 full-game top-1 `0.3774`, top-3 `0.6177`, top-5 `0.7129`, bad-action loss `0.3812` vs parent top-1 `0.3784`, top-3 `0.6118`, top-5 `0.7112`, bad-action loss `0.3846` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent120_fullgame_policyacc_fullnet_broadgoodbooks_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent120-fullgame-policyacc-policyhead-v1/checkpoints/iter_0001` | best v2 policy accuracy | policy head only from recent80 fullnet parent, LR `1e-6`, bad-action weight `0.3`, weights `0.35/0.15/0.50` over broad/opening/v2 full-game slices | broad holdout top-1 `0.3370`, top-3 `0.5366`, top-5 `0.6378` vs parent top-1 `0.3395`, top-3 `0.5370`, top-5 `0.6407` | v2 full-game top-1 `0.3809`, top-3 `0.6135`, top-5 `0.7153`, bad-action loss `0.3757` vs parent top-1 `0.3784`, top-3 `0.6118`, top-5 `0.7112`, bad-action loss `0.3846` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent120_fullgame_policyacc_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -205,3 +207,10 @@ top-1 to about `0.337`, and both direct Stockfish gates stayed `0.0/2`. The new
 direct losses include fast king attacks and queen-side opening collapses, so
 the next step needs a stronger generalization signal than simply increasing the
 same full-game legal-value replay slice.
+Selecting on v2 policy accuracy instead of bad-action loss shifted the fixed
+metrics but not the result. The policy-head variant reached the best v2 top-1
+so far (`0.3809`) and the lowest v2 bad-action loss in this batch (`0.3757`),
+but broad holdout top-1 still fell to `0.3370` and the direct gate stayed
+`0.0/2`. The PGNs repeated the same opening-collapse families: White
+overextended with `dxc6`, while Black again failed in the open Ruy Lopez
+`...Nxe4`/`...Na5` stem.
