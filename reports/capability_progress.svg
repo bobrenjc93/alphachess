@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="940" height="390" viewBox="0 0 940 390" role="img" aria-labelledby="title desc">
   <title id="title">AlphaChess Capability Progress</title>
-  <desc id="desc">Line chart of AlphaChess capability over real timestamps. The y axis is a conservative direct Stockfish score-rate proxy: score divided by max(games, 4), with the best value seen so far plotted over time. Data points include 2026-05-18T09:14:04-07:00 0.0/2 at 0 percent, 2026-05-18T13:18:35-07:00 0.0/2 at 0 percent, 2026-05-18T16:03:41-07:00 0.5/2 at 12.5 percent, 2026-05-18T23:13:16-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T00:04:01-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T10:31:47-07:00 0.5/4 at 12.5 percent, 2026-05-19T13:57:45-07:00 0.5/2 at 12.5 percent after conservative scaling, 2026-05-19T18:01:50-07:00 0.5/2 at 12.5 percent after conservative scaling, and 2026-05-19T18:48:42-07:00 0.0/2 at 0 percent. The 50 percent line marks the local Stockfish promotion gate.</desc>
+  <desc id="desc">Line chart of AlphaChess capability over real timestamps. The y axis is a conservative direct Stockfish score-rate proxy: score divided by max(games, 4), with the best value seen so far plotted over time. Data points include 2026-05-18T09:14:04-07:00 0.0/2 at 0 percent, 2026-05-18T13:18:35-07:00 0.0/2 at 0 percent, 2026-05-18T16:03:41-07:00 0.5/2 at 12.5 percent, 2026-05-18T23:13:16-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T00:04:01-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T10:31:47-07:00 0.5/4 at 12.5 percent, 2026-05-19T13:57:45-07:00 0.5/2 at 12.5 percent after conservative scaling, 2026-05-19T18:01:50-07:00 0.5/2 at 12.5 percent after conservative scaling, 2026-05-19T18:48:42-07:00 0.0/2 at 0 percent, and 2026-05-19T19:11:04-07:00 0.0/2 guarded check at 0 percent. The 50 percent line marks the local Stockfish promotion gate.</desc>
   <rect width="940" height="390" fill="#fbfbf8"/>
 
   <text x="92" y="34" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#202124">AlphaChess capability progress</text>
@@ -24,31 +24,32 @@
     <text x="858" y="72" fill="#a23b31">promotion gate</text>
 
     <text x="92" y="335" text-anchor="middle">05-18 09:14</text>
-    <text x="246.1" y="335" text-anchor="middle">05-18 16:03</text>
-    <text x="407.7" y="335" text-anchor="middle">05-18 23:13</text>
-    <text x="663" y="335" text-anchor="middle">05-19 10:31</text>
-    <text x="850" y="335" text-anchor="middle">05-19 18:48</text>
+    <text x="244.4" y="335" text-anchor="middle">05-18 16:03</text>
+    <text x="404.3" y="335" text-anchor="middle">05-18 23:13</text>
+    <text x="656.8" y="335" text-anchor="middle">05-19 10:31</text>
+    <text x="850" y="335" text-anchor="middle">05-19 19:11</text>
   </g>
 
-  <path d="M 92 310 L 246.1 310 L 246.1 249.5 L 850 249.5" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 92 310 L 244.4 310 L 244.4 249.5 L 850 249.5" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
 
   <g fill="#9aa0a6" stroke="#fbfbf8" stroke-width="2">
     <circle cx="92" cy="310" r="4"/>
-    <circle cx="184" cy="310" r="4"/>
+    <circle cx="183" cy="310" r="4"/>
+    <circle cx="841.7" cy="310" r="4"/>
     <circle cx="850" cy="310" r="4"/>
   </g>
 
   <g fill="#1f6f8b" stroke="#fbfbf8" stroke-width="2">
-    <circle cx="246.1" cy="249.5" r="5"/>
-    <circle cx="663" cy="249.5" r="5"/>
-    <circle cx="832.4" cy="249.5" r="5"/>
+    <circle cx="244.4" cy="249.5" r="5"/>
+    <circle cx="656.8" cy="249.5" r="5"/>
+    <circle cx="824.2" cy="249.5" r="5"/>
   </g>
 
   <g fill="#ffffff" stroke="#d9822b" stroke-width="2">
-    <circle cx="407.7" cy="249.5" r="4"/>
-    <circle cx="426.8" cy="249.5" r="4"/>
-    <circle cx="740.5" cy="249.5" r="4"/>
-    <circle cx="832.4" cy="249.5" r="6"/>
+    <circle cx="404.3" cy="249.5" r="4"/>
+    <circle cx="423.2" cy="249.5" r="4"/>
+    <circle cx="733.4" cy="249.5" r="4"/>
+    <circle cx="824.2" cy="249.5" r="6"/>
   </g>
 
   <g font-family="Arial, sans-serif" font-size="12" fill="#202124">

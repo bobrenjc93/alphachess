@@ -361,8 +361,88 @@ Direct checks:
 | --- | ---: | --- |
 | parent/internal vs selected broad32k parent | `6.0/8` | N/A |
 | Stockfish gate | `0.0/2` | `reports/policyhead_broad32k_hardlabels_selectbest_stockfish_gate.pgn` |
+| root-material plus root-king guards | `0.0/2` | `reports/policyhead_broad32k_hardlabels_selectbest_rootguards_stockfish.pgn` |
 
 Hard-label broad32k tuning produced the best broad32k source-0 top-1 so far
 and beat the selected broad32k parent internally, but both direct Stockfish
 games were losses. This remains diagnostic progress rather than a promotion
 candidate.
+
+## Hard-Label Loss-Repair Probe
+
+Timestamp: `2026-05-19T19:11:04-07:00`
+
+I generated a new hard-negative replay from the hard-label direct losses and
+the hard-label root-guard losses:
+
+```text
+data/teacher/hardlabel_broad32k_lossblunders_v1
+```
+
+Generation inputs:
+
+- `reports/policyhead_broad32k_hardlabels_selectbest_stockfish_gate.pgn`
+- `reports/policyhead_broad32k_hardlabels_selectbest_rootguards_stockfish.pgn`
+
+Generation settings: `engine_time=0.05`, `multipv=8`,
+`policy_temperature_cp=180`, `min_value_delta=0.08`, `position_stride=1`,
+`pv_plies=4`, `game_line_plies=2`, `player_name=AlphaChess`.
+
+The dataset has `154` positions and `22` bad-action labels. Baseline validation
+on this new slice:
+
+| Checkpoint | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| selected broad32k parent | `0.2597` | `0.4935` | `0.5974` | `2.7201` |
+| hard-label broad32k parent | `0.2727` | `0.4610` | `0.5974` | `2.7629` |
+
+Repair run:
+
+```text
+experiments/policyhead-broad32k-hardlabel-lossrepair-v1
+```
+
+Config highlights:
+
+- GPU: A100 reservation `5fbf85b2`
+- checkpoint: `experiments/policyhead-broad32k-hardlabels-selectbest-v1/checkpoints/iter_0001/latest.pt`
+- `policy_head_only=true`
+- `prefer_action_labels=true`
+- `epochs=4`
+- `lr=0.0000006`
+- `bad_action_weight=0.15`
+- `select_best_by=val_source_3_bad_action_loss`
+- replay weights: broad32k `0.70`, all-loss bad actions `0.10`,
+  selected-loss blunders `0.10`, hard-label loss blunders `0.10`
+
+The selector chose epoch 1:
+
+| Epoch | `val_source_3_bad_action_loss` | Saved as `latest.pt` |
+| --- | ---: | --- |
+| `1` | `0.9546` | yes |
+| `2` | `0.9584` | no |
+| `3` | `0.9578` | no |
+| `4` | `0.9600` | no |
+
+External validation of the selected repair:
+
+| Dataset | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| broad32k hard labels | `0.3661` | `0.6192` | `0.7280` | N/A |
+| `alpha_loss_badactions_all_v1` | `0.2096` | `0.4533` | `0.5552` | `2.3616` |
+| `selectbest_broad32k_lossblunders_v1` | `0.2180` | `0.4286` | `0.5564` | `2.4833` |
+| `hardlabel_broad32k_lossblunders_v1` | `0.2597` | `0.4935` | `0.6104` | `2.6606` |
+
+Direct checks:
+
+| Check | Score | PGN |
+| --- | ---: | --- |
+| parent/internal vs hard-label broad32k parent | `8.0/8` | N/A |
+| Stockfish gate | `0.0/2` | `reports/policyhead_broad32k_hardlabel_lossrepair_stockfish_gate.pgn` |
+| `material_value_weight=0.15` | `0.0/2` | `reports/policyhead_broad32k_hardlabel_lossrepair_material015_stockfish.pgn` |
+| root-material plus root-king guards | `0.0/2` | `reports/policyhead_broad32k_hardlabel_lossrepair_rootguards_stockfish.pgn` |
+
+This is the best broad32k hard-label top-1 checkpoint so far and it cleanly
+beats its parent internally, but direct Stockfish still wins tactically under
+the plain gate, material blending, and root guards. The direct-play blocker is
+therefore still not solved by small policy-head loss replay.
