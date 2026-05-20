@@ -21,6 +21,7 @@ class HardNegativeConfig:
     out: str
     batch_size: int = 256
     chunk_size: int = 1024
+    bad_actions_per_position: int = 1
     prefer_action_labels: bool = True
     device: str = "auto"
 
@@ -48,6 +49,7 @@ def mine_hard_negatives(config: HardNegativeConfig) -> list[Path]:
     writer = _HardNegativeWriter(out_dir, max(1, int(config.chunk_size)))
     positions = 0
     hard_negatives = 0
+    hard_negative_actions = 0
 
     with torch.no_grad():
         for batch in loader:
@@ -66,8 +68,18 @@ def mine_hard_negatives(config: HardNegativeConfig) -> list[Path]:
                 raise ValueError("hard-negative mining received an illegal target action")
 
             masked_logits = policy_logits.masked_fill(~legal_mask, -1e9)
-            bad_actions = _top_wrong_predictions(masked_logits, targets)
-            hard_negatives += int((bad_actions >= 0).sum().item())
+            bad_actions = _top_wrong_predictions(
+                masked_logits,
+                targets,
+                max_bad_actions=config.bad_actions_per_position,
+            )
+            hard_negative_mask = bad_actions >= 0
+            if hard_negative_mask.ndim > 1:
+                hard_negative_positions = hard_negative_mask.any(dim=1)
+            else:
+                hard_negative_positions = hard_negative_mask
+            hard_negatives += int(hard_negative_positions.sum().item())
+            hard_negative_actions += int(hard_negative_mask.sum().item())
             positions += int(targets.numel())
 
             writer.add_batch(
@@ -84,6 +96,8 @@ def mine_hard_negatives(config: HardNegativeConfig) -> list[Path]:
         f"data={config.data}",
         f"positions={positions}",
         f"hard_negative_positions={hard_negatives}",
+        f"hard_negative_actions={hard_negative_actions}",
+        f"bad_actions_per_position={config.bad_actions_per_position}",
         f"top1_error_rate={hard_negatives / positions if positions else 0.0:.6f}",
         f"chunks={len(paths)}",
     ]
@@ -102,11 +116,33 @@ def _target_actions(batch: dict[str, torch.Tensor | list[str]]) -> torch.Tensor:
 def _top_wrong_predictions(
     masked_logits: torch.Tensor,
     target_action: torch.Tensor,
+    max_bad_actions: int = 1,
 ) -> torch.Tensor:
+    max_bad_actions = max(1, int(max_bad_actions))
     top_actions = masked_logits.argmax(dim=-1)
-    bad_actions = torch.full_like(target_action.long(), -1)
-    wrong = top_actions != target_action.long()
-    bad_actions[wrong] = top_actions[wrong]
+    wrong_top = top_actions != target_action.long()
+
+    if max_bad_actions == 1:
+        bad_actions = torch.full_like(target_action.long(), -1)
+        bad_actions[wrong_top] = top_actions[wrong_top]
+        return bad_actions
+
+    width = int(masked_logits.shape[1])
+    candidate_count = min(width, max_bad_actions + 1)
+    ranked_actions = torch.topk(masked_logits, k=candidate_count, dim=-1).indices
+    bad_actions = torch.full(
+        (target_action.shape[0], max_bad_actions),
+        -1,
+        dtype=torch.long,
+        device=target_action.device,
+    )
+    for row in range(target_action.shape[0]):
+        if not bool(wrong_top[row].item()):
+            continue
+        wrong_candidates = ranked_actions[row][ranked_actions[row] != target_action[row]]
+        count = min(max_bad_actions, int(wrong_candidates.numel()))
+        if count:
+            bad_actions[row, :count] = wrong_candidates[:count]
     return bad_actions
 
 

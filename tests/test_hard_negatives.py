@@ -22,6 +22,20 @@ def test_top_wrong_predictions_marks_only_wrong_top_action() -> None:
     assert bad_actions.tolist() == [3, -1]
 
 
+def test_top_wrong_predictions_can_return_multiple_wrong_actions() -> None:
+    logits = torch.full((2, 7), -10.0)
+    logits[0, 3] = 5.0
+    logits[0, 1] = 4.0
+    logits[0, 5] = 3.0
+    logits[1, 4] = 5.0
+    logits[1, 2] = 4.0
+    targets = torch.tensor([1, 4])
+
+    bad_actions = _top_wrong_predictions(logits, targets, max_bad_actions=2)
+
+    assert bad_actions.tolist() == [[3, 5], [-1, -1]]
+
+
 def test_mine_hard_negatives_writes_model_top_wrong_move(tmp_path) -> None:
     board = chess.Board()
     target = move_to_action(chess.Move.from_uci("e2e4"), board)

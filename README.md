@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T22:33:45-07:00`.
+Last updated: `2026-05-19T23:33:20-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -95,6 +95,8 @@ latest committed report.
 | `2026-05-19T22:01:55-07:00` report timestamp | Latest-loss replay follow-up (`reports/2026-05-19_stockfish_holdout_probe.md`). | N/A | `0.0/2` | New 49-position loss replay reduced targeted bad-action losses, but broad holdout top-1 regressed to `0.3416` and direct play still failed. |
 | `2026-05-19T22:07:00-07:00` PGN file mtime | Strict root-guard check (`reports/2026-05-19_t05_teacher_probe.md`). | N/A | `0.0/2` | Existing root mate/material/king-safety guards still lost through deeper attacking sequences. |
 | `2026-05-19T22:33:45-07:00` report timestamp | Higher-time Stockfish teacher probe (`reports/2026-05-19_t05_teacher_probe.md`). | N/A | `0.0/2` | `0.05s` broad labels improved t05 and loss-slice metrics, but disjoint holdout top-1 regressed to `0.3420` and direct play still failed. |
+| `2026-05-19T23:13:05-07:00` PGN file mtime | Broad/t05 top-1 hard-negative repair (`reports/2026-05-19_hard_negative_topk_repair.md`). | N/A | `0.0/2` | Mined `11,290` top-wrong broad/t05 positions and nudged disjoint holdout top-1 to `0.3442`, but direct play still failed. |
+| `2026-05-19T23:33:20-07:00` PGN file mtime | Top-3 hard-negative repair (`reports/2026-05-19_hard_negative_topk_repair.md`). | N/A | `0.0/2` | New vector bad-action training reduced top-3 hard-negative loss, but disjoint holdout top-1 regressed to `0.3436` and direct play still failed. |
 
 Current practical status:
 
@@ -172,6 +174,10 @@ Current practical status:
 - Existing strict root guards and higher-time broad Stockfish labels both fail
   to move the direct gate so far; deeper attacking collapses remain the current
   blocker.
+- Broader model-mined hard negatives can still improve supervised holdout
+  metrics slightly: the best disjoint broad holdout top-1 so far is `0.3442`.
+  But both the top-1 and top-3 hard-negative repairs scored `0.0/2` against
+  Stockfish.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 

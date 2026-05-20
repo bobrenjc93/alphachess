@@ -177,10 +177,22 @@ class SelfPlayDataset(Dataset):
                 else str(data["fens"][local_index])
             )
         if "bad_actions" in data:
-            bad_action = int(data["bad_actions"][local_index])
-            if bad_action >= 0 and mirrored_board is not None and board is not None:
-                bad_action = color_mirror_action(bad_action, board)
-            sample["bad_action"] = torch.tensor(bad_action, dtype=torch.long)
+            bad_action_values = np.asarray(data["bad_actions"][local_index])
+            if bad_action_values.ndim == 0:
+                bad_actions = [int(bad_action_values)]
+                scalar_bad_action = True
+            else:
+                bad_actions = [int(action) for action in bad_action_values.tolist()]
+                scalar_bad_action = False
+            if mirrored_board is not None and board is not None:
+                bad_actions = [
+                    color_mirror_action(action, board) if action >= 0 else action
+                    for action in bad_actions
+                ]
+            sample["bad_action"] = torch.tensor(
+                bad_actions[0] if scalar_bad_action else bad_actions,
+                dtype=torch.long,
+            )
         return sample
 
     def write_index(self, path: str | Path | None = None) -> Path:
@@ -232,13 +244,30 @@ def collate_samples(samples: list[Sample]) -> dict[str, torch.Tensor | list[str]
         batch["fen"] = [str(sample["fen"]) for sample in samples]
 
     if any("bad_action" in sample for sample in samples):
-        batch["bad_action"] = torch.stack(
-            [
-                sample["bad_action"]
-                if "bad_action" in sample
-                else torch.tensor(-1, dtype=torch.long)
-                for sample in samples
-            ]
+        bad_actions: list[torch.Tensor] = []
+        max_bad_actions = 1
+        for sample in samples:
+            if "bad_action" in sample:
+                bad_action = sample["bad_action"]
+                if not isinstance(bad_action, torch.Tensor):
+                    raise TypeError("bad_action sample field must be a tensor")
+                bad_action = bad_action.long().reshape(-1)
+            else:
+                bad_action = torch.tensor([-1], dtype=torch.long)
+            bad_actions.append(bad_action)
+            max_bad_actions = max(max_bad_actions, int(bad_action.numel()))
+
+        padded_bad_actions = torch.full(
+            (len(samples), max_bad_actions),
+            -1,
+            dtype=torch.long,
+        )
+        for row, bad_action in enumerate(bad_actions):
+            padded_bad_actions[row, : bad_action.numel()] = bad_action
+        batch["bad_action"] = (
+            padded_bad_actions.squeeze(1)
+            if max_bad_actions == 1
+            else padded_bad_actions
         )
 
     return batch

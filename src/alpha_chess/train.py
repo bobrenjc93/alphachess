@@ -655,13 +655,20 @@ def _bad_action_margin_loss(
         return policy_logits.new_zeros(())
 
     bad_action = _batch_tensor(batch, "bad_action").to(device).long()
-    valid = (bad_action >= 0) & (bad_action != target_action)
+    if bad_action.ndim == 1:
+        bad_action = bad_action.unsqueeze(1)
+    if bad_action.ndim != 2:
+        raise ValueError("bad_action must be a 1D or 2D tensor")
+
+    target_action = target_action.long()
+    valid = (bad_action >= 0) & (bad_action != target_action.unsqueeze(1))
     if not bool(valid.any().item()):
         return policy_logits.new_zeros(())
 
-    target_logits = policy_logits.gather(1, target_action.unsqueeze(1)).squeeze(1)
-    bad_logits = policy_logits.gather(1, bad_action.clamp_min(0).unsqueeze(1)).squeeze(1)
-    return F.softplus(bad_logits[valid] - target_logits[valid] + margin).mean()
+    target_logits = policy_logits.gather(1, target_action.unsqueeze(1))
+    bad_logits = policy_logits.gather(1, bad_action.clamp_min(0))
+    margin_violations = bad_logits[valid] - target_logits.expand_as(bad_logits)[valid] + margin
+    return F.softplus(margin_violations).mean()
 
 
 def _source_weight_vector(

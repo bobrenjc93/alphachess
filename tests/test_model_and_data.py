@@ -107,6 +107,28 @@ def test_dataset_collates_fens_for_legal_policy_loss(tmp_path) -> None:
     assert int(batch["bad_action"][0]) == move_to_action(bad_move, board)
 
 
+def test_dataset_collates_multiple_bad_actions(tmp_path) -> None:
+    board = chess.Board()
+    move = chess.Move.from_uci("e2e4")
+    bad_moves = [chess.Move.from_uci("d2d4"), chess.Move.from_uci("g1f3")]
+    bad_actions = [move_to_action(bad_move, board) for bad_move in bad_moves]
+    np.savez_compressed(
+        tmp_path / "fen.npz",
+        boards=np.asarray([encode_board(board)], dtype=np.float32),
+        actions=np.asarray([move_to_action(move, board)], dtype=np.int64),
+        bad_actions=np.asarray([bad_actions], dtype=np.int64),
+        values=np.asarray([0.0], dtype=np.float32),
+        fens=np.asarray([board.fen()]),
+    )
+
+    sample = SelfPlayDataset(tmp_path, in_memory=True)[0]
+    batch = collate_samples([sample])
+
+    assert sample["bad_action"].tolist() == bad_actions
+    assert batch["bad_action"].shape == (1, 2)
+    assert batch["bad_action"][0].tolist() == bad_actions
+
+
 def test_dataset_color_mirror_augmentation_maps_labels(tmp_path) -> None:
     board = chess.Board()
     move = chess.Move.from_uci("g1f3")
@@ -231,6 +253,36 @@ def test_bad_action_margin_loss_is_reported() -> None:
         "board": torch.from_numpy(np.asarray([encode_board(board)], dtype=np.float32)),
         "action": torch.tensor([target], dtype=torch.long),
         "bad_action": torch.tensor([bad], dtype=torch.long),
+        "value": torch.zeros(1),
+        "fen": [board.fen()],
+    }
+
+    loss, parts = _compute_batch_loss(
+        model,
+        batch,
+        torch.device("cpu"),
+        value_weight=1.0,
+        legal_policy_loss=True,
+        bad_action_weight=0.5,
+    )
+
+    assert loss.ndim == 0
+    assert "bad_action_loss" in parts
+    assert float(parts["bad_action_loss"]) >= 0.0
+
+
+def test_bad_action_margin_loss_accepts_multiple_bad_actions() -> None:
+    board = chess.Board()
+    target = move_to_action(chess.Move.from_uci("e2e4"), board)
+    bad_actions = [
+        move_to_action(chess.Move.from_uci("d2d4"), board),
+        move_to_action(chess.Move.from_uci("g1f3"), board),
+    ]
+    model = ChessNet(ChessNetConfig(channels=8, blocks=1))
+    batch = {
+        "board": torch.from_numpy(np.asarray([encode_board(board)], dtype=np.float32)),
+        "action": torch.tensor([target], dtype=torch.long),
+        "bad_action": torch.tensor([bad_actions], dtype=torch.long),
         "value": torch.zeros(1),
         "fen": [board.fen()],
     }
