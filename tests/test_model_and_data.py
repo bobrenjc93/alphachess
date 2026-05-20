@@ -22,6 +22,7 @@ from alpha_chess.train import (
     _compute_batch_loss,
     _evaluate_loss,
     _legal_action_mask_from_fens,
+    _metric_improved,
     train,
     validate,
 )
@@ -348,6 +349,94 @@ def test_validate_checkpoint_reports_metrics(tmp_path) -> None:
     assert metrics["val_source_1_examples"] == 5.0
     assert "val_policy_top3_acc" in metrics
     assert "val_policy_top5_acc" in metrics
+
+
+def test_metric_improved_uses_loss_and_accuracy_direction() -> None:
+    assert _metric_improved("val_policy_acc", 0.7, 0.6)
+    assert not _metric_improved("val_policy_acc", 0.6, 0.7)
+    assert _metric_improved("val_policy_loss", 1.2, 1.3)
+    assert not _metric_improved("val_policy_loss", 1.4, 1.3)
+
+    with pytest.raises(ValueError, match="ambiguous"):
+        _metric_improved("val_examples", 2.0, 1.0)
+
+
+def test_train_select_best_by_keeps_best_validation_epoch(monkeypatch, tmp_path) -> None:
+    data_dir = tmp_path / "data"
+    out_dir = tmp_path / "out"
+    data_dir.mkdir()
+    _write_sparse_npz(data_dir / "game.npz", positions=12)
+
+    eval_calls = []
+
+    def fake_evaluate_loss(*_args, **_kwargs):
+        eval_calls.append(None)
+        if len(eval_calls) == 1:
+            return {"val_loss": 2.0, "val_policy_acc": 0.9}
+        return {"val_loss": 1.0, "val_policy_acc": 0.1}
+
+    monkeypatch.setattr("alpha_chess.train._evaluate_loss", fake_evaluate_loss)
+
+    train(
+        TrainConfig(
+            data=str(data_dir),
+            out=str(out_dir),
+            epochs=2,
+            batch_size=4,
+            channels=8,
+            blocks=1,
+            lr=0.01,
+            value_weight=0.0,
+            weight_decay=0.0,
+            select_best_by="val_policy_acc",
+            device="cpu",
+        )
+    )
+
+    assert len(eval_calls) == 2
+    latest = torch.load(out_dir / "latest.pt", map_location="cpu")
+    epoch1 = torch.load(out_dir / "epoch_0001.pt", map_location="cpu")
+    epoch2 = torch.load(out_dir / "epoch_0002.pt", map_location="cpu")
+
+    assert latest["metrics"]["selected_by"] == "val_policy_acc"
+    assert latest["metrics"]["selected_metric_value"] == pytest.approx(0.9)
+    assert latest["metrics"]["selected_epoch"] == 1
+    assert latest["metrics"]["selected_checkpoint"] == "epoch_0001.pt"
+
+    for key, tensor in epoch1["model_state"].items():
+        assert torch.equal(latest["model_state"][key], tensor), key
+
+    assert any(
+        not torch.equal(latest["model_state"][key], tensor)
+        for key, tensor in epoch2["model_state"].items()
+        if torch.is_floating_point(tensor)
+    )
+
+
+def test_train_select_best_by_rejects_missing_metric(monkeypatch, tmp_path) -> None:
+    data_dir = tmp_path / "data"
+    out_dir = tmp_path / "out"
+    data_dir.mkdir()
+    _write_sparse_npz(data_dir / "game.npz", positions=12)
+
+    monkeypatch.setattr(
+        "alpha_chess.train._evaluate_loss",
+        lambda *_args, **_kwargs: {"val_loss": 1.0},
+    )
+
+    with pytest.raises(ValueError, match="val_policy_acc"):
+        train(
+            TrainConfig(
+                data=str(data_dir),
+                out=str(out_dir),
+                epochs=1,
+                batch_size=4,
+                channels=8,
+                blocks=1,
+                select_best_by="val_policy_acc",
+                device="cpu",
+            )
+        )
 
 
 def test_train_policy_head_only_freezes_body_and_value_head(tmp_path) -> None:

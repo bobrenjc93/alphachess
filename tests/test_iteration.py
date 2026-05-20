@@ -167,6 +167,7 @@ def test_iteration_uses_checkpoint_self_play_workers(monkeypatch, tmp_path) -> N
         prefer_action_labels=True,
         policy_head_only=True,
         value_head_only=False,
+        select_best_by="val_policy_acc",
     )
 
     league_path = run_iterations(config)
@@ -190,6 +191,7 @@ def test_iteration_uses_checkpoint_self_play_workers(monkeypatch, tmp_path) -> N
     assert train_calls[0].prefer_action_labels is True
     assert train_calls[0].policy_head_only is True
     assert train_calls[0].value_head_only is False
+    assert train_calls[0].select_best_by == "val_policy_acc"
 
 
 def test_iteration_stockfish_gate_can_block_promotion(monkeypatch, tmp_path) -> None:

@@ -43,6 +43,7 @@ class IterationConfig:
     prefer_action_labels: bool = False
     policy_head_only: bool = False
     value_head_only: bool = False
+    select_best_by: str | None = None
     material_value_weight: float = 0.0
     material_value_search_plies: int = 0
     leaf_material_value_weight: float = 0.0
@@ -154,6 +155,7 @@ def run_iterations(config: IterationConfig) -> Path:
                 prefer_action_labels=config.prefer_action_labels,
                 policy_head_only=config.policy_head_only,
                 value_head_only=config.value_head_only,
+                select_best_by=config.select_best_by,
                 channels=config.channels,
                 blocks=config.blocks,
                 seed=iter_seed,

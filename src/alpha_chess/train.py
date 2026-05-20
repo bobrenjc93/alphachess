@@ -35,6 +35,7 @@ class TrainConfig:
     prefer_action_labels: bool = False
     policy_head_only: bool = False
     value_head_only: bool = False
+    select_best_by: str | None = None
     channels: int = 128
     blocks: int = 6
     seed: int = 0
@@ -126,6 +127,7 @@ def train(config: TrainConfig) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     step = 0
     latest_metrics: dict[str, float] = {}
+    best_metric_value: float | None = None
 
     for epoch in range(config.epochs):
         _set_train_mode(
@@ -175,10 +177,77 @@ def train(config: TrainConfig) -> Path:
                 )
             )
 
-        save_checkpoint(out_dir / f"epoch_{epoch + 1:04d}.pt", model, optimizer, step, latest_metrics)
-        save_checkpoint(out_dir / "latest.pt", model, optimizer, step, latest_metrics)
+        epoch_path = out_dir / f"epoch_{epoch + 1:04d}.pt"
+        epoch_metrics = dict(latest_metrics)
+        if config.select_best_by is not None:
+            selected_value = _selected_metric_value(epoch_metrics, config.select_best_by)
+            improved = _metric_improved(
+                config.select_best_by,
+                selected_value,
+                best_metric_value,
+            )
+            epoch_metrics.update(
+                {
+                    "selected_by": config.select_best_by,
+                    "selected_metric_value": selected_value,
+                    "selected_as_latest": improved,
+                }
+            )
+        else:
+            improved = True
+
+        save_checkpoint(epoch_path, model, optimizer, step, epoch_metrics)
+        if config.select_best_by is None:
+            save_checkpoint(out_dir / "latest.pt", model, optimizer, step, epoch_metrics)
+        elif improved:
+            best_metric_value = selected_value
+            latest_metrics = dict(epoch_metrics)
+            latest_metrics.update(
+                {
+                    "selected_epoch": epoch + 1,
+                    "selected_checkpoint": epoch_path.name,
+                }
+            )
+            save_checkpoint(out_dir / "latest.pt", model, optimizer, step, latest_metrics)
 
     return out_dir / "latest.pt"
+
+
+def _selected_metric_value(metrics: dict[str, float], metric_name: str) -> float:
+    if metric_name not in metrics:
+        available = ", ".join(sorted(metrics))
+        raise ValueError(
+            f"select_best_by metric {metric_name!r} was not produced; "
+            f"available metrics: {available}"
+        )
+    value = float(metrics[metric_name])
+    if not math.isfinite(value):
+        raise ValueError(f"select_best_by metric {metric_name!r} is not finite: {value}")
+    _metric_higher_is_better(metric_name)
+    return value
+
+
+def _metric_higher_is_better(metric_name: str) -> bool:
+    if metric_name.endswith("_acc") or metric_name == "policy_acc":
+        return True
+    if metric_name.endswith("_loss") or metric_name in {"loss", "epoch_loss"}:
+        return False
+    raise ValueError(
+        f"select_best_by metric {metric_name!r} is ambiguous; "
+        "use a metric ending in _acc or _loss"
+    )
+
+
+def _metric_improved(
+    metric_name: str,
+    current_value: float,
+    best_value: float | None,
+) -> bool:
+    if best_value is None:
+        return True
+    if _metric_higher_is_better(metric_name):
+        return current_value > best_value
+    return current_value < best_value
 
 
 def _freeze_except_policy_head(model: ChessNet) -> None:

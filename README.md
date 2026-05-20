@@ -237,6 +237,18 @@ uv run alpha-chess train \
   --out checkpoints/bad_action_repair
 ```
 
+When a run spans multiple epochs, keep the best validation epoch as `latest.pt`
+instead of blindly using the final epoch:
+
+```bash
+uv run alpha-chess train \
+  --checkpoint checkpoints/current/latest.pt \
+  --data data/teacher/stockfish_sample \
+  --legal-policy-loss \
+  --select-best-by val_policy_acc \
+  --out checkpoints/selected_best
+```
+
 To repair policy ranking directly, mine the checkpoint's current top legal
 wrong move on Stockfish-labeled replay and use that as `bad_actions`:
 
