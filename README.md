@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T10:57:06-07:00`.
+Result data through: `2026-05-20T12:53:06-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -160,6 +160,7 @@ latest committed report.
 | `2026-05-20T10:49:03-07:00` report timestamp | Engine self-play trajectory policy-head probe (`reports/2026-05-20_engine_selfplay_trajectory_probe.md`). | N/A | not gated | A 4,096-position Stockfish self-play trajectory source lowered losses but regressed top-1 on broad holdout (`0.3395` to `0.3390`), engine-game labels (`0.2480` to `0.2473`), and recent120 v2 (`0.3652` to `0.3645`). |
 | `2026-05-20T10:53:16-07:00` report timestamp | Engine self-play low-weight ablation (`reports/2026-05-20_engine_selfplay_trajectory_probe.md`). | N/A | not gated | Reducing the engine trajectory source from `35%` to `10%` still regressed broad holdout top-1 (`0.3395` to `0.3387`) and engine-game top-1 (`0.2480` to `0.2458`), despite improving recent120 v2 top-1 to `0.3669`. |
 | `2026-05-20T10:57:06-07:00` PGN file mtime | Engine self-play low-weight direct gate (`reports/policyhead192_enginegames_lowweight_stockfish_gate.pgn`). | N/A | book+strict `0.0/2` | The lower-weight engine-trajectory checkpoint still lost both direct games, including a rook-invasion mate as White and a kingside attack collapse as Black. |
+| `2026-05-20T12:53:06-07:00` checkpoint mtime | Guarded composite broad65k selector probe (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | The new `top1+top3` selector with broad holdout floors rejected all epochs: top-1 stayed near baseline, but top-3 fell from `0.5421` to `0.5381-0.5388` despite lower policy loss. |
 
 Current practical status:
 
@@ -265,6 +266,10 @@ Current practical status:
   but its initial policy-head mix lowered losses without improving top-1
   ranking. A lower-weight variant still regressed broad and engine-game top-1,
   and its follow-up direct gate also lost both games.
+- Guarded composite checkpoint selection is now available. A first broad-only
+  continuation selected by holdout top-1 plus top-3 correctly rejected every
+  epoch because top-3 regressed while policy loss improved, so no Stockfish gate
+  was spent on that checkpoint.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the
