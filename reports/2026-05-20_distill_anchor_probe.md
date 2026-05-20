@@ -191,3 +191,47 @@ gate found different lead-up mistakes:
 
 So exact context coverage is useful as a diagnostic, but it is still just
 moving the failure surface. The direct gate remains scoreless.
+
+## Second Context-Book Iteration
+
+I added the first context-book gate's newly mined context positions as a second
+exact good-action book and reran the same direct gate:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/guarded_blend_gate_firstblunders_context_v1 data/teacher/guarded_blend_contextbook_firstblunders_context_v1 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_guarded_blend_contextbook_v2_stockfish_gate.pgn
+```
+
+Result: `{'games': 2.0, 'score': 0.0, 'score_rate': 0.0, 'wins': 0.0,
+'draws': 0.0, 'losses': 2.0}`.
+
+PGN file mtime: `2026-05-20T14:40:48-07:00`.
+
+The added exact coverage again shifted the games but not the score. New
+first-blunder mining found:
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Be3` | `b3` | `0.4835` | `r1bq1rk1/p3bppp/5n2/2pp4/8/2NB3P/PPP2PP1/R1BQ1RK1 w - - 0 11` |
+| 2 | `...e5` | `...d6` | `0.0866` | `r1bq1rk1/pp2bppp/2nppn2/8/3NP3/2N1B3/PPPQBPPP/2KR3R b - - 8 9` |
+
+This confirms that exact books can steer away from known losing choices, but the
+current policy/search stack still exposes new adjacent tactical weaknesses
+immediately. The next useful data step is to aggregate several of these
+first-blunder contexts into a broader opening-stability source before trying
+more supervised repair.
