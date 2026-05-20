@@ -11,6 +11,7 @@ from alpha_chess.mcts import (
     Node,
     SearchResult,
     _material_tactical_moves,
+    _side_to_move_can_force_mate,
     advance_root,
 )
 
@@ -239,6 +240,25 @@ def test_mcts_root_prunes_moves_allowing_mate_in_one() -> None:
 
     assert blunder_action not in result.root.children
     assert result.visits[blunder_action] == 0
+
+
+def test_mate_search_follows_capture_starting_forced_mate_from_gate_loss() -> None:
+    board = chess.Board("3r4/2p4p/1p2k2P/2p1p3/p7/1R2p3/1P3P2/1K4n1 b - - 0 39")
+
+    assert _side_to_move_can_force_mate(board, 5, {})
+
+
+def test_mcts_root_prunes_deeper_capture_forced_mate_from_gate_loss() -> None:
+    board = chess.Board("3r4/2p4p/1p2k2P/2p1p3/p1N2p2/Rb6/1P3P2/1K4n1 w - - 0 38")
+    blunder_action = move_to_action(chess.Move.from_uci("c4e3"), board)
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(simulations=0, root_mate_search_plies=7),
+    )
+    result = search.run(board)
+
+    assert blunder_action not in result.root.children
 
 
 def test_mcts_root_prunes_large_material_blunder() -> None:

@@ -646,6 +646,21 @@ def _material_tactical_moves(board: chess.Board) -> list[chess.Move]:
     return moves[:TACTICAL_MATERIAL_CANDIDATE_LIMIT]
 
 
+def _mate_forcing_moves(board: chess.Board) -> list[chess.Move]:
+    checks: list[chess.Move] = []
+    captures: list[chess.Move] = []
+    for move in board.legal_moves:
+        if board.gives_check(move):
+            checks.append(move)
+        elif board.is_capture(move) or move.promotion:
+            captures.append(move)
+
+    checks.sort(key=lambda move: _move_material_priority(board, move), reverse=True)
+    captures.sort(key=lambda move: _move_material_priority(board, move), reverse=True)
+    slots = max(0, TACTICAL_MATERIAL_CANDIDATE_LIMIT - len(checks))
+    return checks + captures[:slots]
+
+
 def _move_material_priority(board: chess.Board, move: chess.Move) -> int:
     captured_value = _captured_piece_value(board, move)
     promotion_value = PIECE_VALUES.get(move.promotion, 0) if move.promotion else 0
@@ -852,14 +867,13 @@ def _side_to_move_can_force_mate(
     if key in cache:
         return cache[key]
 
-    for move in board.legal_moves:
-        gives_check = board.gives_check(move)
+    for move in _mate_forcing_moves(board):
         child = board.copy(stack=False)
         child.push(move)
         if child.is_checkmate():
             cache[key] = True
             return True
-        if plies > 1 and gives_check and _all_replies_allow_mate(child, plies - 1, cache):
+        if plies > 1 and _all_replies_allow_mate(child, plies - 1, cache):
             cache[key] = True
             return True
 
