@@ -1,0 +1,193 @@
+# Policy Distillation Anchor Probe
+
+Timestamp: `2026-05-20T14:33:37-07:00`
+
+## Summary
+
+I used the new policy-distillation training anchor on the guarded-blend failure
+slice. The code path works, but the first repair settings did not produce a
+promotable candidate: every trained checkpoint missed the broad holdout guard.
+Adding the mined context positions as an exact good-action book changed the
+direct games, but the direct Stockfish score stayed `0.0/2`.
+
+## Recreated Anchor
+
+The transient guarded-blend checkpoint was not present in the local checkout, so
+I recreated the reported `10%` blend from the committed parent:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-stockfish-confirmed-broad73k-top3-fullnet-v1/checkpoints/iter_0001/latest.pt \
+  --data data/teacher/stockfish_multipv_elo1800_65536_t005 \
+  --holdout-data data/teacher/stockfish_multipv_elo1800_holdout8192_t005_skip65536 \
+  --out experiments/policyhead192-distill-anchor-v1/checkpoints/broad_recreate \
+  --epochs 3 \
+  --batch-size 512 \
+  --lr 1e-7 \
+  --weight-decay 1e-4 \
+  --value-weight 0.05 \
+  --bad-action-weight 0.3 \
+  --bad-action-margin 1.0 \
+  --legal-policy-loss \
+  --policy-head-only \
+  --device cuda
+```
+
+Broad epoch 3 reproduced the rejected broad-only metrics:
+
+| Checkpoint | Holdout top-1 | Holdout top-3 | Holdout top-5 | Holdout policy loss |
+| --- | ---: | ---: | ---: | ---: |
+| broad epoch 3 | `0.3395` | `0.5386` | `0.6404` | `3.6365` |
+
+Then I blended it back into the parent:
+
+```bash
+uv run alpha-chess blend-checkpoints \
+  --checkpoint-a experiments/policyhead192-stockfish-confirmed-broad73k-top3-fullnet-v1/checkpoints/iter_0001/latest.pt \
+  --checkpoint-b experiments/policyhead192-distill-anchor-v1/checkpoints/broad_recreate/epoch_0003.pt \
+  --weight-b 0.10 \
+  --out experiments/policyhead192-distill-anchor-v1/checkpoints/broad_epoch3_w0.10.pt
+```
+
+The recreated blend also matched the earlier guard-passing metrics:
+
+| Checkpoint | Holdout top-1 | Holdout top-3 | Holdout top-5 | Holdout policy loss |
+| --- | ---: | ---: | ---: | ---: |
+| broad epoch 3, `w=0.10` | `0.3401` | `0.5426` | `0.6422` | `3.7688` |
+
+## Distillation Repairs
+
+I regenerated the 18-position first-blunder context slice from the committed
+guarded-blend PGN:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn reports/policyhead192_guarded_blend_broad_epoch3_w010_stockfish_gate.pgn \
+  --out data/teacher/guarded_blend_gate_firstblunders_context_v1 \
+  --engine-path tools/stockfish/bin/stockfish \
+  --player-name AlphaChess \
+  --position-stride 1 \
+  --min-value-delta 0.08 \
+  --multipv 4 \
+  --policy-temperature-cp 180 \
+  --first-blunder-only \
+  --blunder-context-plies 2 \
+  --pv-plies 4 \
+  --game-line-plies 2 \
+  --chunk-size 256
+```
+
+Result: `18` positions.
+
+The first anchored repair used only the 18 context positions:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --distill-checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --policy-distill-weight 1.0 \
+  --data data/teacher/guarded_blend_gate_firstblunders_context_v1 \
+  --holdout-data data/teacher/stockfish_multipv_elo1800_holdout8192_t005_skip65536 \
+  --out experiments/policyhead192-distill-anchor-v1/checkpoints/contextonly_distill_w1_lr5e8 \
+  --epochs 5 \
+  --batch-size 18 \
+  --lr 5e-8 \
+  --weight-decay 1e-4 \
+  --value-weight 0.05 \
+  --bad-action-weight 0.3 \
+  --bad-action-margin 1.0 \
+  --legal-policy-loss \
+  --policy-head-only \
+  --select-best-by holdout_policy_acc+holdout_policy_top3_acc \
+  --select-best-require 'holdout_policy_acc>=0.3400' 'holdout_policy_top3_acc>=0.5420' \
+  --device cuda
+```
+
+No epoch satisfied the guard. The best top-3 epoch reached `0.5424`, but top-1
+fell to `0.3381`.
+
+I then sampled broad positions for the distillation anchor while applying
+supervised policy pressure only to the context source:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --distill-checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --policy-distill-weight 5.0 \
+  --data data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/guarded_blend_gate_firstblunders_context_v1 \
+  --holdout-data data/teacher/stockfish_multipv_elo1800_holdout8192_t005_skip65536 \
+  --out experiments/policyhead192-distill-anchor-v1/checkpoints/broadanchor_context_spw100_distill5_lr5e8 \
+  --epochs 5 \
+  --batch-size 512 \
+  --lr 5e-8 \
+  --weight-decay 1e-4 \
+  --value-weight 0.05 \
+  --bad-action-weight 0.3 \
+  --bad-action-margin 1.0 \
+  --data-weights 0.95 0.05 \
+  --max-source-repeat 5 \
+  --source-policy-weights 0.0 100.0 \
+  --legal-policy-loss \
+  --policy-head-only \
+  --select-best-by holdout_policy_acc+holdout_policy_top3_acc \
+  --select-best-require 'holdout_policy_acc>=0.3400' 'holdout_policy_top3_acc>=0.5420' \
+  --device cuda
+```
+
+That also missed the guard: top-3 stayed in the rejected `0.5382-0.5386` band,
+although context policy loss improved from `4.2763` to `4.0638` by epoch 2.
+
+A stronger anchor and lower context policy multiplier behaved similarly:
+
+| Run | Best holdout top-1 | Best holdout top-3 | Best context policy loss | Read |
+| --- | ---: | ---: | ---: | --- |
+| context-only, distill `1`, lr `5e-8` | `0.3391` | `0.5424` | `4.2830` | broad top-1 below guard |
+| broad anchor, context policy `100`, distill `5` | `0.3394` | `0.5386` | `4.0638` | broad top-3 collapsed |
+| broad anchor, context policy `10`, distill `100` | `0.3391` | `0.5386` | `4.0286` | broad top-3 collapsed |
+
+The practical read is that batch-local policy KL is not enough by itself here.
+It can reduce the tiny context loss, but it does not preserve the broad ranking
+signal under this kind of narrow update. A useful follow-up would need either a
+larger and more representative repair source or a selector-aware objective that
+directly penalizes broad top-k regressions.
+
+## Context-Book Gate
+
+I also tested the recreated guard-passing blend with the first-blunder context
+slice added as an exact good-action book:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/guarded_blend_gate_firstblunders_context_v1 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_guarded_blend_contextbook_stockfish_gate.pgn
+```
+
+Result: `{'games': 2.0, 'score': 0.0, 'score_rate': 0.0, 'wins': 0.0,
+'draws': 0.0, 'losses': 2.0}`.
+
+PGN file mtime: `2026-05-20T14:33:37-07:00`.
+
+The exact context book did change the games. New first-blunder mining from that
+gate found different lead-up mistakes:
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `h4` | `Bf4` | `0.5182` | `r1bq1rk1/p1p1bpp1/5n1p/3p2B1/8/3B4/PPP2PPP/RN1QR1K1 w - - 0 11` |
+| 2 | `...Qb6` | `...a6` | `0.1967` | `rnbqkb1r/pp1pnppp/4p3/8/3NP3/2N5/PPP2PPP/R1BQKB1R b KQkq - 0 5` |
+
+So exact context coverage is useful as a diagnostic, but it is still just
+moving the failure surface. The direct gate remains scoreless.

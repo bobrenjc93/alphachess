@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T14:07:54-07:00`.
+Result data through: `2026-05-20T14:33:37-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -170,6 +170,7 @@ latest committed report.
 | `2026-05-20T14:03:57-07:00` checkpoint mtime | Source-repeat-capped context repair (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | `--max-source-repeat 5` limits tiny-slice replay pressure, but continuing broad/context training still regressed broad top-3 to `0.5381-0.5386`; all epochs were rejected. |
 | `2026-05-20T14:04:52-07:00` checkpoint mtime | Context-only tiny repair (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | A single `1e-8` pass over only the 18 context positions was nearly neutral but still missed the broad guard with top-1 `0.3395` and top-3 `0.5420`. |
 | `2026-05-20T14:07:54-07:00` checkpoint mtime | Context-only interpolation check (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | Blending the tiny context-only repair back into the original blend recovered top-3 near `0.5421`, but top-1 stayed below the guard, so no direct gate was run. |
+| `2026-05-20T14:33:37-07:00` PGN file mtime | Policy-distillation anchor and context-book diagnostic (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_guarded_blend_contextbook_stockfish_gate.pgn`). | N/A | context-book gate `0.0/2` | The new distillation-anchor repair variants all missed the broad guard; adding the mined context positions as an exact good-action book shifted the first failures to `h4` vs `Bf4` and `...Qb6` vs `...a6`, but direct play stayed scoreless. |
 
 Current practical status:
 
@@ -204,6 +205,10 @@ Current practical status:
 - Combining broader exact teacher books also failed, so exact-position opening
   coverage is not enough without stronger tactical generalization after the
   book ends.
+- The first policy-distillation anchor probes did not preserve the broad
+  ranking guard under tiny first-blunder context pressure. Adding those context
+  positions as exact good-action coverage changed the direct games, but the
+  gate still lost both games.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.
