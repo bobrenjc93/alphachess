@@ -27,6 +27,8 @@ class StockfishTeacherConfig:
     min_initial_seconds: int | None = None
     min_value_delta: float | None = None
     player_name: str | None = None
+    player_score_min: float | None = None
+    player_score_max: float | None = None
     multipv: int = 1
     policy_temperature_cp: float = 200.0
     position_stride: int = 4
@@ -43,6 +45,10 @@ class StockfishTeacherConfig:
 def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     if config.blunder_context_plies > 0 and config.min_value_delta is None:
         raise ValueError("blunder_context_plies requires min_value_delta")
+    if (config.player_score_min is not None or config.player_score_max is not None) and (
+        config.player_name is None
+    ):
+        raise ValueError("player_score_min/player_score_max require player_name")
 
     out_dir = Path(config.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -241,6 +247,13 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                     games_seen += 1
                     if not _passes_filters(game, filter_config):
                         continue
+                    if not _passes_player_score_filter(
+                        game,
+                        config.player_name,
+                        config.player_score_min,
+                        config.player_score_max,
+                    ):
+                        continue
 
                     board = game.board()
                     mainline_moves = list(game.mainline_moves())
@@ -348,6 +361,8 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"files={len(written)}",
                 f"min_value_delta={config.min_value_delta}",
                 f"player_name={config.player_name}",
+                f"player_score_min={config.player_score_min}",
+                f"player_score_max={config.player_score_max}",
                 f"multipv={config.multipv}",
                 f"policy_temperature_cp={config.policy_temperature_cp}",
                 f"min_ply={config.min_ply}",
@@ -412,6 +427,57 @@ def _score_to_value(score: chess.engine.PovScore | None, turn: chess.Color) -> f
 def _matches_player_to_move(game: chess.pgn.Game, board: chess.Board, player_name: str) -> bool:
     header = "White" if board.turn == chess.WHITE else "Black"
     return game.headers.get(header, "").strip().casefold() == player_name.strip().casefold()
+
+
+def _player_score(game: chess.pgn.Game, player_name: str) -> float | None:
+    score_header = f"{player_name}Score"
+    if score_header in game.headers:
+        try:
+            return float(game.headers[score_header])
+        except ValueError:
+            return None
+
+    normalized_score_header = score_header.casefold()
+    for key, value in game.headers.items():
+        if key.casefold() != normalized_score_header:
+            continue
+        try:
+            return float(value)
+        except ValueError:
+            return None
+
+    result = game.headers.get("Result", "*")
+    if result not in {"1-0", "0-1", "1/2-1/2"}:
+        return None
+
+    player = player_name.strip().casefold()
+    white = game.headers.get("White", "").strip().casefold()
+    black = game.headers.get("Black", "").strip().casefold()
+    if white == player:
+        return {"1-0": 1.0, "1/2-1/2": 0.5, "0-1": 0.0}[result]
+    if black == player:
+        return {"1-0": 0.0, "1/2-1/2": 0.5, "0-1": 1.0}[result]
+    return None
+
+
+def _passes_player_score_filter(
+    game: chess.pgn.Game,
+    player_name: str | None,
+    score_min: float | None,
+    score_max: float | None,
+) -> bool:
+    if score_min is None and score_max is None:
+        return True
+    if player_name is None:
+        return False
+    score = _player_score(game, player_name)
+    if score is None:
+        return False
+    if score_min is not None and score < score_min:
+        return False
+    if score_max is not None and score > score_max:
+        return False
+    return True
 
 
 def _policy_from_multipv(

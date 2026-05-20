@@ -9,7 +9,9 @@ from alpha_chess.chess_env import move_to_action
 from alpha_chess.stockfish_teacher import (
     StockfishTeacherConfig,
     _matches_player_to_move,
+    _passes_player_score_filter,
     _policy_from_multipv,
+    _player_score,
     _resolve_pgn_paths,
     _score_to_value,
     _value_drop_after_move,
@@ -40,6 +42,28 @@ def test_matches_player_to_move_uses_pgn_headers() -> None:
     board.push(chess.Move.from_uci("e2e4"))
     assert not _matches_player_to_move(game, board, "AlphaChess")
     assert _matches_player_to_move(game, board, "Stockfish")
+
+
+def test_player_score_prefers_explicit_eval_header() -> None:
+    game = chess.pgn.Game()
+    game.headers["White"] = "AlphaChess"
+    game.headers["Black"] = "Stockfish"
+    game.headers["Result"] = "1-0"
+    game.headers["AlphaChessScore"] = "0.0"
+
+    assert _player_score(game, "AlphaChess") == 0.0
+    assert _passes_player_score_filter(game, "AlphaChess", None, 0.0)
+    assert not _passes_player_score_filter(game, "AlphaChess", 0.5, None)
+
+
+def test_player_score_falls_back_to_result_and_color() -> None:
+    game = chess.pgn.Game()
+    game.headers["White"] = "Stockfish"
+    game.headers["Black"] = "AlphaChess"
+    game.headers["Result"] = "0-1"
+
+    assert _player_score(game, "AlphaChess") == 1.0
+    assert _player_score(game, "Stockfish") == 0.0
 
 
 def test_resolve_pgn_paths_accepts_one_or_many() -> None:
@@ -310,6 +334,77 @@ def test_stockfish_teacher_stores_played_bad_action(monkeypatch, tmp_path) -> No
     assert data["moves"].tolist() == ["e2e4"]
     assert data["played_moves"].tolist() == ["d2d4"]
     assert int(data["bad_actions"][0]) == move_to_action(chess.Move.from_uci("d2d4"), board)
+
+
+def test_stockfish_teacher_can_filter_by_player_score(monkeypatch, tmp_path) -> None:
+    pgn_path = tmp_path / "games.pgn"
+    pgn_path.write_text(
+        "\n".join(
+            [
+                '[Event "?"]',
+                '[White "AlphaChess"]',
+                '[Black "Stockfish"]',
+                '[Result "1-0"]',
+                '[AlphaChessScore "1.0"]',
+                "",
+                "1. d4 *",
+                "",
+                '[Event "?"]',
+                '[White "AlphaChess"]',
+                '[Black "Stockfish"]',
+                '[Result "0-1"]',
+                '[AlphaChessScore "0.0"]',
+                "",
+                "1. d4 *",
+                "",
+            ]
+        )
+    )
+
+    class FakeEngine:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def analyse(self, board, _limit, multipv=None):
+            if board.ply() == 0:
+                move = chess.Move.from_uci("e2e4")
+            else:
+                move = next(iter(board.legal_moves))
+            info = {
+                "pv": [move],
+                "score": chess.engine.PovScore(chess.engine.Cp(300), board.turn),
+            }
+            return [info] if multipv and multipv > 1 else info
+
+        def play(self, board, _limit):
+            return SimpleNamespace(move=next(iter(board.legal_moves)))
+
+    monkeypatch.setattr(chess.engine.SimpleEngine, "popen_uci", lambda _path: FakeEngine())
+
+    paths = generate_stockfish_teacher(
+        StockfishTeacherConfig(
+            pgn=str(pgn_path),
+            out=str(tmp_path / "teacher-score-filter"),
+            engine_path="fake-stockfish",
+            max_positions=10,
+            min_value_delta=0.1,
+            player_name="AlphaChess",
+            player_score_max=0.0,
+            position_stride=1,
+        )
+    )
+
+    data = np.load(paths[0])
+    summary = (tmp_path / "teacher-score-filter" / "teacher_summary.txt").read_text()
+
+    assert data["fens"].shape[0] == 1
+    assert data["moves"].tolist() == ["e2e4"]
+    assert "games_seen=2" in summary
+    assert "games_used=1" in summary
+    assert "player_score_max=0.0" in summary
 
 
 def test_stockfish_teacher_can_backfill_blunder_context(monkeypatch, tmp_path) -> None:

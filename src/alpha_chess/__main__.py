@@ -178,6 +178,8 @@ def main(argv: list[str] | None = None) -> None:
     teacher_parser.add_argument("--min-initial-seconds", type=int)
     teacher_parser.add_argument("--min-value-delta", type=float)
     teacher_parser.add_argument("--player-name")
+    teacher_parser.add_argument("--player-score-min", type=float)
+    teacher_parser.add_argument("--player-score-max", type=float)
     teacher_parser.add_argument("--multipv", type=int, default=1)
     teacher_parser.add_argument("--policy-temperature-cp", type=float, default=200.0)
     teacher_parser.add_argument("--position-stride", type=int, default=4)
