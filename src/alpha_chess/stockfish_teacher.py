@@ -39,12 +39,23 @@ class StockfishTeacherConfig:
     game_line_plies: int = 0
     blunder_context_plies: int = 0
     first_blunder_only: bool = False
+    legal_bad_actions_per_position: int = 0
+    legal_bad_action_min_delta: float | None = None
     chunk_size: int = 1024
 
 
 def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     if config.blunder_context_plies > 0 and config.min_value_delta is None:
         raise ValueError("blunder_context_plies requires min_value_delta")
+    if (
+        config.legal_bad_actions_per_position > 0
+        and config.legal_bad_action_min_delta is None
+        and config.min_value_delta is None
+    ):
+        raise ValueError(
+            "legal_bad_actions_per_position requires legal_bad_action_min_delta "
+            "or min_value_delta"
+        )
     if (config.player_score_min is not None or config.player_score_max is not None) and (
         config.player_name is None
     ):
@@ -62,17 +73,21 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     value_deltas: list[float] = []
     fens: list[str] = []
     best_moves: list[str] = []
-    bad_actions: list[int] = []
+    bad_actions: list[list[int]] = []
+    bad_action_deltas: list[list[float]] = []
     played_moves: list[str] = []
     written: list[Path] = []
     games_seen = 0
     games_used = 0
     positions = 0
     skipped_positions = 0
+    legal_bad_action_rows = 0
+    legal_bad_action_labels = 0
+    legal_bad_action_candidates_evaluated = 0
 
     def flush_chunk(source: str) -> None:
         nonlocal boards, actions, policies, values, value_deltas, fens, best_moves
-        nonlocal bad_actions, played_moves
+        nonlocal bad_actions, bad_action_deltas, played_moves
         if not boards:
             return
         written.append(
@@ -86,6 +101,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 fens,
                 best_moves,
                 bad_actions,
+                bad_action_deltas,
                 played_moves,
                 source=source,
                 policies=policies if policies else None,
@@ -93,7 +109,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
         )
         boards, actions, policies, values = [], [], [], []
         value_deltas, fens, best_moves = [], [], []
-        bad_actions, played_moves = [], []
+        bad_actions, bad_action_deltas, played_moves = [], [], []
 
     def append_teacher_sample(
         source: str,
@@ -103,6 +119,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
         value: float,
         value_delta: float,
         bad_move: chess.Move | None = None,
+        legal_bad_moves: list[tuple[chess.Move, float]] | None = None,
     ) -> None:
         nonlocal positions
         boards.append(encode_board(sample_board))
@@ -120,12 +137,34 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
         value_deltas.append(value_delta)
         fens.append(sample_board.fen())
         best_moves.append(best_move.uci())
+        bad_action_row: list[int] = []
+        bad_delta_row: list[float] = []
         if bad_move is not None and bad_move in sample_board.legal_moves and bad_move != best_move:
-            bad_actions.append(move_to_action(bad_move, sample_board))
+            bad_action_row.append(move_to_action(bad_move, sample_board))
+            bad_delta_row.append(float(value_delta))
             played_moves.append(bad_move.uci())
         else:
-            bad_actions.append(-1)
             played_moves.append("")
+        max_bad_actions = (
+            max(1, int(config.legal_bad_actions_per_position))
+            if config.legal_bad_actions_per_position > 0
+            else None
+        )
+        for move, delta in legal_bad_moves or []:
+            if max_bad_actions is not None and len(bad_action_row) >= max_bad_actions:
+                break
+            if move not in sample_board.legal_moves or move == best_move:
+                continue
+            action = move_to_action(move, sample_board)
+            if action in bad_action_row:
+                continue
+            bad_action_row.append(action)
+            bad_delta_row.append(float(delta))
+        if not bad_action_row:
+            bad_action_row.append(-1)
+            bad_delta_row.append(0.0)
+        bad_actions.append(bad_action_row)
+        bad_action_deltas.append(bad_delta_row)
         positions += 1
         if len(boards) >= config.chunk_size:
             flush_chunk(source)
@@ -292,6 +331,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                 value = _score_to_value(score, board.turn)
                                 value_delta = 0.0
                                 should_append = True
+                                legal_bad_moves: list[tuple[chess.Move, float]] = []
                                 if config.min_value_delta is not None:
                                     after_board = board.copy(stack=False)
                                     after_board.push(move)
@@ -309,6 +349,30 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                     and value_delta > 0.0
                                     else None
                                 )
+                                if config.legal_bad_actions_per_position > 0:
+                                    (
+                                        legal_bad_moves,
+                                        candidates_evaluated,
+                                    ) = _legal_bad_moves(
+                                        engine=engine,
+                                        board=board,
+                                        best_move=best_move,
+                                        best_value=value,
+                                        limit=limit,
+                                        min_value_delta=(
+                                            config.legal_bad_action_min_delta
+                                            if config.legal_bad_action_min_delta is not None
+                                            else float(config.min_value_delta)
+                                        ),
+                                        max_bad_actions=config.legal_bad_actions_per_position,
+                                    )
+                                    legal_bad_action_candidates_evaluated += candidates_evaluated
+                                    if legal_bad_moves:
+                                        should_append = True
+                                        legal_bad_action_rows += 1
+                                        legal_bad_action_labels += len(legal_bad_moves)
+                                    elif config.min_value_delta is None:
+                                        should_append = False
                                 if should_append:
                                     append_teacher_sample(
                                         source,
@@ -318,6 +382,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                         value,
                                         value_delta,
                                         bad_move=bad_move,
+                                        legal_bad_moves=legal_bad_moves,
                                     )
                                     if bad_move is not None and positions < config.max_positions:
                                         append_blunder_context_samples(source, context_boards)
@@ -371,6 +436,11 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"game_line_plies={config.game_line_plies}",
                 f"blunder_context_plies={config.blunder_context_plies}",
                 f"first_blunder_only={config.first_blunder_only}",
+                f"legal_bad_actions_per_position={config.legal_bad_actions_per_position}",
+                f"legal_bad_action_min_delta={config.legal_bad_action_min_delta}",
+                f"legal_bad_action_rows={legal_bad_action_rows}",
+                f"legal_bad_action_labels={legal_bad_action_labels}",
+                f"legal_bad_action_candidates_evaluated={legal_bad_action_candidates_evaluated}",
                 f"config={asdict(config)}",
             ]
         )
@@ -536,6 +606,63 @@ def _value_drop_after_move(
     return best_value - original_value_after_game_move
 
 
+def _legal_bad_moves(
+    engine: chess.engine.SimpleEngine,
+    board: chess.Board,
+    best_move: chess.Move,
+    best_value: float,
+    limit: chess.engine.Limit,
+    min_value_delta: float,
+    max_bad_actions: int,
+) -> tuple[list[tuple[chess.Move, float]], int]:
+    bad_moves: list[tuple[chess.Move, float]] = []
+    candidates_evaluated = 0
+    for candidate in board.legal_moves:
+        if candidate == best_move:
+            continue
+        candidates_evaluated += 1
+        after_board = board.copy(stack=False)
+        after_board.push(candidate)
+        after_info = engine.analyse(after_board, limit)
+        value_delta = _value_drop_after_move(
+            best_value=best_value,
+            after_score=after_info.get("score"),
+            after_turn=after_board.turn,
+        )
+        if value_delta < min_value_delta:
+            continue
+        bad_moves.append((candidate, float(value_delta)))
+
+    bad_moves.sort(key=lambda item: item[1], reverse=True)
+    return bad_moves[: max(1, int(max_bad_actions))], candidates_evaluated
+
+
+def _pad_bad_action_rows(rows: list[list[int]], fill: int = -1) -> np.ndarray:
+    if not rows:
+        return np.empty((0,), dtype=np.int64)
+    max_width = max(len(row) for row in rows)
+    if max_width <= 1:
+        return np.asarray([row[0] if row else fill for row in rows], dtype=np.int64)
+    padded = np.full((len(rows), max_width), fill, dtype=np.int64)
+    for row_index, row in enumerate(rows):
+        if row:
+            padded[row_index, : len(row)] = row
+    return padded
+
+
+def _pad_bad_action_delta_rows(rows: list[list[float]]) -> np.ndarray:
+    if not rows:
+        return np.empty((0,), dtype=np.float32)
+    max_width = max(len(row) for row in rows)
+    if max_width <= 1:
+        return np.asarray([row[0] if row else 0.0 for row in rows], dtype=np.float32)
+    padded = np.zeros((len(rows), max_width), dtype=np.float32)
+    for row_index, row in enumerate(rows):
+        if row:
+            padded[row_index, : len(row)] = row
+    return padded
+
+
 def _write_teacher_chunk(
     out_dir: Path,
     chunk_index: int,
@@ -545,7 +672,8 @@ def _write_teacher_chunk(
     value_deltas: list[float],
     fens: list[str],
     best_moves: list[str],
-    bad_actions: list[int],
+    bad_actions: list[list[int]],
+    bad_action_deltas: list[list[float]],
     played_moves: list[str],
     source: str,
     policies: list[np.ndarray] | None = None,
@@ -558,7 +686,8 @@ def _write_teacher_chunk(
         "value_deltas": np.asarray(value_deltas, dtype=np.float32),
         "fens": np.asarray(fens),
         "moves": np.asarray(best_moves),
-        "bad_actions": np.asarray(bad_actions, dtype=np.int64),
+        "bad_actions": _pad_bad_action_rows(bad_actions),
+        "bad_action_deltas": _pad_bad_action_delta_rows(bad_action_deltas),
         "played_moves": np.asarray(played_moves),
         "source": np.asarray(source),
     }

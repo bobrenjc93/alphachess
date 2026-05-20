@@ -336,6 +336,74 @@ def test_stockfish_teacher_stores_played_bad_action(monkeypatch, tmp_path) -> No
     assert int(data["bad_actions"][0]) == move_to_action(chess.Move.from_uci("d2d4"), board)
 
 
+def test_stockfish_teacher_can_store_multiple_legal_bad_actions(monkeypatch, tmp_path) -> None:
+    pgn_path = tmp_path / "game.pgn"
+    pgn_path.write_text(
+        "\n".join(
+            [
+                '[Event "?"]',
+                '[White "AlphaChess"]',
+                '[Black "Stockfish"]',
+                '[Result "*"]',
+                "",
+                "1. d4 *",
+                "",
+            ]
+        )
+    )
+
+    class FakeEngine:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def analyse(self, board, _limit, multipv=None):
+            if not board.move_stack:
+                move = chess.Move.from_uci("e2e4")
+                info = {
+                    "pv": [move],
+                    "score": chess.engine.PovScore(chess.engine.Cp(300), board.turn),
+                }
+                return [info] if multipv and multipv > 1 else info
+
+            last_move = board.peek()
+            cp = 300 if last_move.uci() in {"d2d4", "g1f3"} else -300
+            return {
+                "pv": [next(iter(board.legal_moves))],
+                "score": chess.engine.PovScore(chess.engine.Cp(cp), board.turn),
+            }
+
+        def play(self, board, _limit):
+            return SimpleNamespace(move=chess.Move.from_uci("e2e4"))
+
+    monkeypatch.setattr(chess.engine.SimpleEngine, "popen_uci", lambda _path: FakeEngine())
+
+    paths = generate_stockfish_teacher(
+        StockfishTeacherConfig(
+            pgn=str(pgn_path),
+            out=str(tmp_path / "teacher-legal-bad"),
+            engine_path="fake-stockfish",
+            max_positions=1,
+            min_value_delta=0.2,
+            legal_bad_actions_per_position=2,
+        )
+    )
+
+    data = np.load(paths[0])
+    board = chess.Board()
+    d4_action = move_to_action(chess.Move.from_uci("d2d4"), board)
+    nf3_action = move_to_action(chess.Move.from_uci("g1f3"), board)
+
+    assert data["bad_actions"].shape == (1, 2)
+    assert set(data["bad_actions"][0].tolist()) == {d4_action, nf3_action}
+    assert data["bad_action_deltas"].shape == (1, 2)
+    assert "legal_bad_action_labels=2" in (
+        tmp_path / "teacher-legal-bad" / "teacher_summary.txt"
+    ).read_text()
+
+
 def test_stockfish_teacher_can_filter_by_player_score(monkeypatch, tmp_path) -> None:
     pgn_path = tmp_path / "games.pgn"
     pgn_path.write_text(
