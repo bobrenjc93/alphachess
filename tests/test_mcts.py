@@ -2,7 +2,11 @@ import chess
 import numpy as np
 
 from alpha_chess.chess_env import ACTION_SIZE, action_to_move, legal_actions, move_to_action
-from alpha_chess.bad_action_book import load_bad_action_book, position_key
+from alpha_chess.bad_action_book import (
+    load_bad_action_book,
+    load_good_action_book,
+    position_key,
+)
 from alpha_chess.evaluator import UniformEvaluator
 from alpha_chess.mcts import (
     TACTICAL_MATERIAL_CANDIDATE_LIMIT,
@@ -108,6 +112,28 @@ def test_mcts_filters_exact_position_bad_action() -> None:
     assert result.select_action(temperature=0.0, rng=search.rng) == good_action
 
 
+def test_mcts_filters_exact_position_good_action_before_root_guards() -> None:
+    board = chess.Board()
+    teacher_action = move_to_action(chess.Move.from_uci("e2e4"), board)
+    alternative_action = move_to_action(chess.Move.from_uci("g1f3"), board)
+    evaluator = SparsePolicyEvaluator({"g1f3": 0.9, "e2e4": 0.1})
+
+    search = AlphaZeroMCTS(
+        evaluator,
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_king_safety_search_plies=1,
+            root_king_safety_max_loss_cp=100,
+            root_good_action_book={position_key(board): frozenset({teacher_action})},
+        ),
+    )
+    result = search.run(board)
+
+    assert set(result.root.children) == {teacher_action}
+    assert alternative_action not in result.root.children
+
+
 def test_bad_action_book_ignores_move_counters(tmp_path) -> None:
     board = chess.Board()
     bad_action = move_to_action(chess.Move.from_uci("e2e4"), board)
@@ -123,6 +149,35 @@ def test_bad_action_book_ignores_move_counters(tmp_path) -> None:
 
     assert book is not None
     assert bad_action in book[position_key(same_position)]
+
+
+def test_good_action_book_loads_actions_and_policy_top_k(tmp_path) -> None:
+    board = chess.Board()
+    e4_action = move_to_action(chess.Move.from_uci("e2e4"), board)
+    d4_action = move_to_action(chess.Move.from_uci("d2d4"), board)
+    policy = np.zeros((1, ACTION_SIZE), dtype=np.float32)
+    policy[0, d4_action] = 0.7
+    policy[0, e4_action] = 0.3
+    action_path = tmp_path / "actions.npz"
+    policy_path = tmp_path / "policy.npz"
+    np.savez_compressed(
+        action_path,
+        fens=np.asarray([board.fen()]),
+        actions=np.asarray([e4_action], dtype=np.int64),
+    )
+    np.savez_compressed(
+        policy_path,
+        fens=np.asarray([board.fen()]),
+        policies=policy,
+    )
+
+    action_book = load_good_action_book(str(action_path))
+    policy_book = load_good_action_book(str(policy_path), policy_top_k=1)
+
+    assert action_book is not None
+    assert policy_book is not None
+    assert action_book[position_key(board)] == frozenset({e4_action})
+    assert policy_book[position_key(board)] == frozenset({d4_action})
 
 
 def test_mcts_policy_prior_temperature_flattens_priors() -> None:

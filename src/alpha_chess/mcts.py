@@ -8,7 +8,12 @@ import chess
 import numpy as np
 
 from alpha_chess.chess_env import ACTION_SIZE, action_to_move, legal_actions, terminal_value
-from alpha_chess.bad_action_book import BadActionBook, filter_bad_actions
+from alpha_chess.bad_action_book import (
+    BadActionBook,
+    GoodActionBook,
+    filter_bad_actions,
+    filter_good_actions,
+)
 from alpha_chess.evaluator import PIECE_VALUES, Evaluator
 
 MATE_SCORE_CP = 100_000
@@ -37,6 +42,7 @@ class MCTSConfig:
     root_king_safety_max_loss_cp: int = 250
     leaf_material_value_weight: float = 0.0
     leaf_material_search_plies: int = 0
+    root_good_action_book: GoodActionBook | None = None
     root_bad_action_book: BadActionBook | None = None
 
     def __post_init__(self) -> None:
@@ -77,6 +83,7 @@ class Node:
         material_max_loss_cp: int = 250,
         king_safety_filter_plies: int = 0,
         king_safety_max_loss_cp: int = 250,
+        good_action_book: GoodActionBook | None = None,
         bad_action_book: BadActionBook | None = None,
     ) -> None:
         actions = legal_actions(board)
@@ -85,14 +92,17 @@ class Node:
             actions, forced_mate_found = _filter_root_tactics(
                 board, actions, tactical_filter_plies
             )
-        if material_filter_plies > 0 and not forced_mate_found:
+        teacher_actions = filter_good_actions(board, actions, good_action_book)
+        teacher_hit = len(teacher_actions) < len(actions)
+        actions = teacher_actions
+        if material_filter_plies > 0 and not forced_mate_found and not teacher_hit:
             actions = _filter_root_material(
                 board,
                 actions,
                 material_filter_plies,
                 material_max_loss_cp,
             )
-        if king_safety_filter_plies > 0 and not forced_mate_found:
+        if king_safety_filter_plies > 0 and not forced_mate_found and not teacher_hit:
             actions = _filter_root_king_safety(
                 board,
                 actions,
@@ -217,6 +227,7 @@ class AlphaZeroMCTS:
                     material_max_loss_cp=self.config.root_material_max_loss_cp,
                     king_safety_filter_plies=self.config.root_king_safety_search_plies,
                     king_safety_max_loss_cp=self.config.root_king_safety_max_loss_cp,
+                    good_action_book=self.config.root_good_action_book,
                     bad_action_book=self.config.root_bad_action_book,
                 )
             else:
@@ -268,14 +279,29 @@ class AlphaZeroMCTS:
                 actions,
                 self.config.root_mate_search_plies,
             )
-        if self.config.root_material_search_plies > 0 and not forced_mate_found:
+        teacher_actions = filter_good_actions(
+            board,
+            actions,
+            self.config.root_good_action_book,
+        )
+        teacher_hit = len(teacher_actions) < len(actions)
+        actions = teacher_actions
+        if (
+            self.config.root_material_search_plies > 0
+            and not forced_mate_found
+            and not teacher_hit
+        ):
             actions = _filter_root_material(
                 board,
                 actions,
                 self.config.root_material_search_plies,
                 self.config.root_material_max_loss_cp,
             )
-        if self.config.root_king_safety_search_plies > 0 and not forced_mate_found:
+        if (
+            self.config.root_king_safety_search_plies > 0
+            and not forced_mate_found
+            and not teacher_hit
+        ):
             actions = _filter_root_king_safety(
                 board,
                 actions,
