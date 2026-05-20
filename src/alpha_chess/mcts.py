@@ -20,7 +20,7 @@ MATE_SCORE_CP = 100_000
 TACTICAL_MATERIAL_CANDIDATE_LIMIT = 16
 QUIET_MATERIAL_CANDIDATE_LIMIT = 8
 ROOT_TACTICAL_FALLBACK_BAND_CP = 100
-SPECULATIVE_CHECKING_CAPTURE_PENALTY_CP = 300
+SPECULATIVE_CHECKING_MOVE_PENALTY_CP = 300
 BOARD_SIZE = 8
 KING_SHELTER_NEAR_PAWN_CP = 80
 KING_SHELTER_FAR_PAWN_CP = 25
@@ -374,7 +374,7 @@ def _filter_root_material(
     max_loss_cp = max(0, max_loss_cp)
     if material_search_plies <= 0:
         return actions
-    actions = _filter_speculative_checking_captures(board, actions)
+    actions = _filter_speculative_checking_moves(board, actions)
 
     perspective = board.turn
     baseline = _material_score_cp(board, perspective)
@@ -397,8 +397,8 @@ def _filter_root_material(
             full_width_cache,
             quiescence_cache,
         )
-        if _is_speculative_checking_capture(board, move):
-            score -= SPECULATIVE_CHECKING_CAPTURE_PENALTY_CP
+        if _is_speculative_checking_move(board, move):
+            score -= SPECULATIVE_CHECKING_MOVE_PENALTY_CP
         scored_actions.append((action, score))
         if score >= min_allowed:
             safe_actions.append(action)
@@ -474,7 +474,7 @@ def _filter_root_guards(
     material_filter_plies = max(0, material_filter_plies)
     king_safety_filter_plies = max(0, king_safety_filter_plies)
     if material_filter_plies > 0:
-        actions = _filter_speculative_checking_captures(board, actions)
+        actions = _filter_speculative_checking_moves(board, actions)
 
     if material_filter_plies > 0 and king_safety_filter_plies > 0:
         material_safe = _filter_root_material(
@@ -546,7 +546,7 @@ def _material_fallback_actions(
 ) -> list[int]:
     best_score = max(score for _, score in scored_actions)
     best_actions = [action for action, score in scored_actions if score == best_score]
-    if not _has_best_checking_capture(board, best_actions):
+    if not _has_best_speculative_checking_move(board, best_actions):
         return best_actions if best_actions else [scored_actions[0][0]]
 
     min_score = best_score - ROOT_TACTICAL_FALLBACK_BAND_CP
@@ -560,10 +560,10 @@ def _best_scored_actions(scored_actions: list[tuple[int, int]]) -> list[int]:
     return best_actions if best_actions else [scored_actions[0][0]]
 
 
-def _has_best_checking_capture(board: chess.Board, actions: list[int]) -> bool:
+def _has_best_speculative_checking_move(board: chess.Board, actions: list[int]) -> bool:
     for action in actions:
         move = action_to_move(action, board)
-        if move is not None and board.gives_check(move) and board.is_capture(move):
+        if move is not None and _is_speculative_checking_move(board, move):
             return True
     return False
 
@@ -581,7 +581,7 @@ def _all_king_moves(board: chess.Board, actions: list[int]) -> bool:
     return True
 
 
-def _filter_speculative_checking_captures(
+def _filter_speculative_checking_moves(
     board: chess.Board,
     actions: list[int],
 ) -> list[int]:
@@ -589,7 +589,7 @@ def _filter_speculative_checking_captures(
     speculative_actions: list[int] = []
     for action in actions:
         move = action_to_move(action, board)
-        if move is not None and _is_speculative_checking_capture(board, move):
+        if move is not None and _is_speculative_checking_move(board, move):
             speculative_actions.append(action)
         else:
             kept_actions.append(action)
@@ -844,12 +844,11 @@ def _captured_piece_value(board: chess.Board, move: chess.Move) -> int:
     return PIECE_VALUES.get(captured.piece_type, 0) if captured else 0
 
 
-def _is_speculative_checking_capture(board: chess.Board, move: chess.Move) -> bool:
+def _is_speculative_checking_move(board: chess.Board, move: chess.Move) -> bool:
     moving_piece = board.piece_at(move.from_square)
     if (
         moving_piece is None
         or moving_piece.piece_type == chess.PAWN
-        or not board.is_capture(move)
         or not board.gives_check(move)
     ):
         return False

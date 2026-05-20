@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T08:49:33-07:00`.
+Last updated: `2026-05-20T09:02:22-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -142,6 +142,7 @@ latest committed report.
 | `2026-05-20T08:32:20-07:00` PGN file mtime | Recent full-game legal-value replay (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | A 2,048-position full-game loss slice lowered bad-action loss from `0.3908` to `0.3806` and lifted top-3/top-5, but direct play still failed in new middlegame lines. |
 | `2026-05-20T08:39:07-07:00` PGN file mtime | Recent full-game replay at 64 simulations (`reports/2026-05-20_opening_loss_repair.md`). | N/A | 64-sim broad-good+bad book strict `0.0/2` | Deeper MCTS changed both games but still lost, so this candidate is not merely search-starved at 16 simulations. |
 | `2026-05-20T08:49:33-07:00` PGN file mtime | Recent full-game full-network repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Low-LR trunk tuning improved broad and full-game validation metrics, but direct play still lost both games tactically. |
+| `2026-05-20T09:02:22-07:00` PGN file mtime | King-recapturable quiet-check guard (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | The guard now removes non-capturing checks like `Bh7+` when the king can immediately take the checking piece, but replacement attack lines still lost both games. |
 
 Current practical status:
 
@@ -215,6 +216,9 @@ Current practical status:
 - A low-LR full-network pass on the full-game slice improved broad holdout and
   full-game target metrics more than policy-head-only tuning, but the direct
   gate still stayed `0.0/2`.
+- The speculative-check guard now covers non-capturing king-recapturable checks,
+  not just checking captures. It fixed the latest `Bh7+` root choice, but the
+  direct score did not move.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the
