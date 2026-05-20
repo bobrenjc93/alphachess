@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="940" height="390" viewBox="0 0 940 390" role="img" aria-labelledby="title desc">
   <title id="title">AlphaChess Capability Progress</title>
-  <desc id="desc">Line chart of AlphaChess capability over real timestamps. The y axis is a conservative direct Stockfish score-rate proxy: score divided by max(games, 4), with the best value seen so far plotted over time. Data points include 2026-05-18T09:14:04-07:00 0.0/2 at 0 percent, 2026-05-18T13:18:35-07:00 0.0/2 at 0 percent, 2026-05-18T16:03:41-07:00 0.5/2 at 12.5 percent, 2026-05-18T23:13:16-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T00:04:01-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T10:31:47-07:00 0.5/4 at 12.5 percent, 2026-05-19T13:57:45-07:00 0.5/2 at 12.5 percent after conservative scaling, and 2026-05-19T17:18:35-07:00 current best 12.5 percent. The 50 percent line marks the local Stockfish promotion gate.</desc>
+  <desc id="desc">Line chart of AlphaChess capability over real timestamps. The y axis is a conservative direct Stockfish score-rate proxy: score divided by max(games, 4), with the best value seen so far plotted over time. Data points include 2026-05-18T09:14:04-07:00 0.0/2 at 0 percent, 2026-05-18T13:18:35-07:00 0.0/2 at 0 percent, 2026-05-18T16:03:41-07:00 0.5/2 at 12.5 percent, 2026-05-18T23:13:16-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T00:04:01-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T10:31:47-07:00 0.5/4 at 12.5 percent, 2026-05-19T13:57:45-07:00 0.5/2 at 12.5 percent after conservative scaling, and 2026-05-19T18:01:50-07:00 0.5/2 at 12.5 percent after conservative scaling. The 50 percent line marks the local Stockfish promotion gate.</desc>
   <rect width="940" height="390" fill="#fbfbf8"/>
 
   <text x="92" y="34" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#202124">AlphaChess capability progress</text>
@@ -24,37 +24,38 @@
     <text x="858" y="72" fill="#a23b31">promotion gate</text>
 
     <text x="92" y="335" text-anchor="middle">05-18 09:14</text>
-    <text x="253.3" y="335" text-anchor="middle">05-18 16:03</text>
-    <text x="422.5" y="335" text-anchor="middle">05-18 23:13</text>
-    <text x="689.8" y="335" text-anchor="middle">05-19 10:31</text>
-    <text x="850" y="335" text-anchor="middle">05-19 17:18</text>
+    <text x="249.8" y="335" text-anchor="middle">05-18 16:03</text>
+    <text x="415.3" y="335" text-anchor="middle">05-18 23:13</text>
+    <text x="676.6" y="335" text-anchor="middle">05-19 10:31</text>
+    <text x="850" y="335" text-anchor="middle">05-19 18:01</text>
   </g>
 
-  <path d="M 92 310 L 253.3 310 L 253.3 249.5 L 850 249.5" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 92 310 L 249.8 310 L 249.8 249.5 L 850 249.5" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
 
   <g fill="#9aa0a6" stroke="#fbfbf8" stroke-width="2">
     <circle cx="92" cy="310" r="4"/>
-    <circle cx="188.3" cy="310" r="4"/>
+    <circle cx="186.2" cy="310" r="4"/>
   </g>
 
   <g fill="#1f6f8b" stroke="#fbfbf8" stroke-width="2">
-    <circle cx="253.3" cy="249.5" r="5"/>
-    <circle cx="689.8" cy="249.5" r="5"/>
+    <circle cx="249.8" cy="249.5" r="5"/>
+    <circle cx="676.6" cy="249.5" r="5"/>
     <circle cx="850" cy="249.5" r="5"/>
   </g>
 
   <g fill="#ffffff" stroke="#d9822b" stroke-width="2">
-    <circle cx="422.5" cy="249.5" r="4"/>
-    <circle cx="442.5" cy="249.5" r="4"/>
-    <circle cx="770.9" cy="249.5" r="4"/>
+    <circle cx="415.3" cy="249.5" r="4"/>
+    <circle cx="434.8" cy="249.5" r="4"/>
+    <circle cx="756" cy="249.5" r="4"/>
+    <circle cx="850" cy="249.5" r="6"/>
   </g>
 
   <g font-family="Arial, sans-serif" font-size="12" fill="#202124">
-    <text x="262" y="237" font-weight="700" fill="#1f6f8b">0.5/2 material-prior smoke</text>
-    <text x="574" y="237" font-weight="700" fill="#1f6f8b">0.5/4 first 4-game draw</text>
-    <text x="696" y="268" fill="#1f6f8b">12.5% proxy, about -338 Elo vs gate</text>
+    <text x="258" y="237" font-weight="700" fill="#1f6f8b">0.5/2 material-prior smoke</text>
+    <text x="562" y="237" font-weight="700" fill="#1f6f8b">0.5/4 first 4-game draw</text>
+    <text x="684" y="268" fill="#1f6f8b">12.5% proxy, about -338 Elo vs gate</text>
     <text x="430" y="229" fill="#9a5b16">one-game PV-line draws</text>
-    <text x="765" y="229" fill="#9a5b16">0.5/2 smoke, not confirmed</text>
+    <text x="752" y="229" fill="#9a5b16">0.5/2 smokes, not confirmed</text>
   </g>
 
   <g font-family="Arial, sans-serif" font-size="11" fill="#5f6368">

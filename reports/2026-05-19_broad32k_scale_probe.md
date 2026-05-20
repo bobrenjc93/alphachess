@@ -178,3 +178,78 @@ guard and root king-safety guard:
 
 The guarded losses still collapse tactically, so this checkpoint needs a
 stronger policy/value training signal rather than only the current root filters.
+
+## Select-Loss Targeted Repair
+
+Timestamp: `2026-05-19T18:01:50-07:00`
+
+I mined the selected checkpoint's direct Stockfish failures into a new ignored
+teacher slice:
+
+```text
+data/teacher/selectbest_broad32k_lossblunders_v1
+```
+
+Inputs were:
+
+- `reports/policyhead_broad32k_selectbest_stockfish_gate.pgn`
+- `reports/policyhead_broad32k_selectbest_rootguards_stockfish.pgn`
+
+Generation settings: `engine_time=0.05`, `multipv=8`,
+`policy_temperature_cp=180`, `min_value_delta=0.08`, `position_stride=1`,
+`pv_plies=4`, `game_line_plies=2`, `player_name=AlphaChess`.
+
+The dataset has `133` positions and `19` bad-action labels. Baseline validation
+on this new slice:
+
+| Checkpoint | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| direct-loss mix parent | `0.2256` | `0.4361` | `0.5414` | `2.5665` |
+| selected broad32k parent | `0.2331` | `0.4436` | `0.5338` | `2.5458` |
+
+Repair run:
+
+```text
+experiments/policyhead-broad32k-selectloss-repair-v1
+```
+
+Config highlights:
+
+- GPU: A100 reservation `920cab41`
+- checkpoint: `experiments/policyhead-broad32k-allloss-directmix-selectbest-v1/checkpoints/iter_0001/latest.pt`
+- `policy_head_only=true`
+- `epochs=4`
+- `lr=0.000001`
+- `bad_action_weight=0.15`
+- `select_best_by=val_source_2_bad_action_loss`
+- replay weights: broad32k `0.70`, all-loss bad actions `0.15`,
+  selected-loss blunders `0.15`
+
+The selector chose epoch 2:
+
+| Epoch | `val_source_2_bad_action_loss` | Saved as `latest.pt` |
+| --- | ---: | --- |
+| `1` | `1.7405` | yes |
+| `2` | `1.6819` | yes |
+| `3` | `1.7839` | no |
+| `4` | `1.6942` | no |
+
+External validation of the selected repair:
+
+| Dataset | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| broad32k | `0.3596` | `0.6129` | `0.7224` | N/A |
+| `alpha_loss_badactions_all_v1` | `0.2040` | `0.4518` | `0.5637` | `2.3883` |
+| `selectbest_broad32k_lossblunders_v1` | `0.2331` | `0.4361` | `0.5489` | `2.4860` |
+
+Direct checks:
+
+| Check | Score | PGN |
+| --- | ---: | --- |
+| parent/internal vs selected broad32k parent | `2.0/8` | N/A |
+| first Stockfish smoke | `0.5/2` | `reports/policyhead_broad32k_selectloss_repair_stockfish_gate.pgn` |
+| 4-game Stockfish confirmation | `0.0/4` | `reports/policyhead_broad32k_selectloss_repair_stockfish_confirm.pgn` |
+
+This targeted replay produced another small direct draw and the best broad32k
+fixed top-1 so far, but it regressed the parent match and the direct draw did
+not confirm over four games. It is not a promotion candidate.
