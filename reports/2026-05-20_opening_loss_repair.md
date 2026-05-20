@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T07:10:26-07:00`
+Timestamp: `2026-05-20T07:19:53-07:00`
 
 ## Summary
 
@@ -56,6 +56,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | king-safety before material fallback | same checkpoint and books, with king-safety run before material fallback | N/A | removed the `...Kd7` king-walk failure, but king-safety then collapsed one white root to `Qxh7+` before material could veto it | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_kingfirst_stockfish_gate.pgn`) |
 | `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | speculative-capture veto plus king-first guard order | same checkpoint and books, with speculative checking captures vetoed before both guards and king-safety run before material fallback | N/A | removed the `Bxh7+`, `Qxh7+`, and `...Kd7` root-filter failures, but the latest games still lost through nearby opening tactics | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_sacfilter2_stockfish_gate.pgn`) |
 | `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | independent material and king-safety safe sets | same checkpoint and books, with material and king-safety each evaluated on the pre-fallback root set before combining safe actions | N/A | removed the latest `...Nxf2` singleton-guard failure; remaining games lost through broader tactical exchanges and promotion pressure | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_independentguards_stockfish_gate.pgn`) |
+| `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | material fallback vetoes disjoint king-safe sacrifices | same checkpoint and books, with material fallback preferred when material has no threshold-safe move and the fallback is not only king moves | N/A | removed the `...Rxg4+` disjoint-safe-set exchange sacrifice; remaining games lost through broader attacking and promotion lines | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_guardfallback_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -127,3 +128,10 @@ king-safety each produce safe actions from the same pre-fallback root set, then
 intersect or fall back to whichever guard has real safe actions. That removed
 the `...Nxf2` failure, but the comparable direct gate remained `0.0/2`; the
 losses shifted to broader tactical exchanges and passed-pawn/promotion pressure.
+The following comparison showed that returning the union of disjoint material
+and king-safety safe sets was still too permissive: a king-safe but
+material-losing `...Rxg4+` survived. I changed that disagreement case to prefer
+material's fallback unless the fallback is only king moves, preserving the
+`...Kd7` fix while vetoing the exchange sacrifice. The direct gate still scored
+`0.0/2`; the new losses are broader attacking and promotion failures, not the
+specific singleton-root guard bugs fixed here.

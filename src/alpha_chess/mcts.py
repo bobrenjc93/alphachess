@@ -501,12 +501,16 @@ def _filter_root_guards(
             ]
             if intersection:
                 return intersection
-            return [
-                action
-                for action in actions
-                if action in material_set or action in king_set
-            ]
+            return material_safe
         if king_safe:
+            material_fallback = _filter_root_material(
+                board,
+                actions,
+                material_filter_plies,
+                material_max_loss_cp,
+            )
+            if material_fallback and not _all_king_moves(board, material_fallback):
+                return material_fallback
             return king_safe
         if material_safe:
             return material_safe
@@ -554,6 +558,19 @@ def _has_best_checking_capture(board: chess.Board, actions: list[int]) -> bool:
         if move is not None and board.gives_check(move) and board.is_capture(move):
             return True
     return False
+
+
+def _all_king_moves(board: chess.Board, actions: list[int]) -> bool:
+    if not actions:
+        return False
+    for action in actions:
+        move = action_to_move(action, board)
+        if move is None:
+            return False
+        moving_piece = board.piece_at(move.from_square)
+        if moving_piece is None or moving_piece.piece_type != chess.KING:
+            return False
+    return True
 
 
 def _filter_speculative_checking_captures(

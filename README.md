@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T07:10:26-07:00`.
+Last updated: `2026-05-20T07:19:53-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -135,6 +135,7 @@ latest committed report.
 | `2026-05-20T06:36:28-07:00` PGN file mtime | Sac-guard direct-loss policy-head repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | A focused legal-value replay lowered the targeted sac-guard bad-action loss from `0.3309` to `0.3012`, but broad holdout top-1 slipped from `0.3356` to `0.3336` and the direct gate still failed. |
 | `2026-05-20T06:59:22-07:00` PGN file mtime | Speculative-capture veto before root guards plus king-first guard order (`reports/2026-05-20_opening_loss_repair.md`). | N/A | three comparable checks at `0.0/2` | Removed concrete `Bxh7+`, `Qxh7+`, and `...Kd7` root-filter failures, but the latest gate still lost through adjacent opening tactics. |
 | `2026-05-20T07:10:26-07:00` PGN file mtime | Independent material and king-safety root guard safe sets (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Material and king-safety now both evaluate the original root set before fallback; this removed the `...Nxf2` singleton-guard failure, but direct play still lost. |
+| `2026-05-20T07:19:53-07:00` PGN file mtime | Material fallback can veto disjoint king-safe sacrifices (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Removed the `...Rxg4+` disjoint-safe-set failure, but the direct losses shifted to broader attacking and promotion lines. |
 
 Current practical status:
 
@@ -184,6 +185,9 @@ Current practical status:
   fallback, preventing either guard from starving the other on the latest
   `...Nxf2` style sacrifice. The direct gate still fails after the bad root
   choices shift.
+- When material and king-safety disagree, material fallback can now veto
+  disjoint king-safe checking sacrifices such as `...Rxg4+`. This fixed another
+  concrete root choice but did not move the direct score.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the
