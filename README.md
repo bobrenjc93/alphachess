@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T18:01:50-07:00`.
+Last updated: `2026-05-19T18:14:27-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -81,6 +81,7 @@ latest committed report.
 | `2026-05-19T17:18:35-07:00` report timestamp | Broad32k epoch-1 follow-up (`reports/2026-05-19_broad32k_scale_probe.md`). | `6.0/8` vs direct-loss mix parent | `0.0/2` | The first epoch improved broad32k validation and parent play before epoch 2 collapsed, but direct Stockfish still failed. |
 | `2026-05-19T17:39:49-07:00` report timestamp | Validation-selected broad32k follow-up (`e4e3199`, `reports/2026-05-19_broad32k_scale_probe.md`). | `4.0/8` vs direct-loss mix parent | `0.0/2` | `--select-best-by val_source_0_policy_acc` kept epoch 1 as `latest.pt`, avoiding final-epoch collapse, but direct Stockfish still failed. |
 | `2026-05-19T18:01:50-07:00` report timestamp | Select-loss targeted broad32k repair (`reports/2026-05-19_broad32k_scale_probe.md`). | `2.0/8` vs selected broad32k parent | first smoke `0.5/2`; confirmation `0.0/4` | New selected-loss replay raised broad32k top-1 to `0.3596` and found one draw, but it regressed parent play and did not confirm direct strength. |
+| `2026-05-19T18:14:27-07:00` report timestamp | Full-network selected-loss repair (`reports/2026-05-19_broad32k_scale_probe.md`). | `2.0/8` vs selected broad32k parent | `0.0/2` | Unfreezing the trunk reduced targeted bad-action loss but regressed broad32k top-1 to `0.3383` and still failed direct Stockfish. |
 
 Current practical status:
 
@@ -124,6 +125,8 @@ Current practical status:
 - Targeted replay from the selected broad32k losses can produce another small
   direct draw and the best broad32k fixed top-1 so far, but its 4-game
   confirmation failed and the parent match regressed.
+- Full-network selected-loss repair reduced targeted bad-action loss but
+  regressed broad32k policy accuracy and still failed direct Stockfish.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 

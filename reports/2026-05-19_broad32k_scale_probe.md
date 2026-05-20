@@ -253,3 +253,55 @@ Direct checks:
 This targeted replay produced another small direct draw and the best broad32k
 fixed top-1 so far, but it regressed the parent match and the direct draw did
 not confirm over four games. It is not a promotion candidate.
+
+## Full-Network Select-Loss Repair
+
+Timestamp: `2026-05-19T18:14:27-07:00`
+
+I reran the selected-loss repair as a low-learning-rate full-network update
+rather than policy-head-only:
+
+```text
+experiments/fullnet-broad32k-selectloss-repair-v1
+```
+
+Config highlights:
+
+- GPU: A100 reservation `2d03ce86`
+- checkpoint: `experiments/policyhead-broad32k-allloss-directmix-selectbest-v1/checkpoints/iter_0001/latest.pt`
+- `policy_head_only=false`
+- `epochs=3`
+- `lr=0.0000005`
+- `value_weight=0.05`
+- `bad_action_weight=0.15`
+- `select_best_by=val_source_2_bad_action_loss`
+- replay weights: broad32k `0.75`, all-loss bad actions `0.10`,
+  selected-loss blunders `0.15`
+
+The selector chose epoch 3:
+
+| Epoch | `val_source_2_bad_action_loss` | Saved as `latest.pt` |
+| --- | ---: | --- |
+| `1` | `1.9683` | yes |
+| `2` | `1.9225` | yes |
+| `3` | `1.8879` | yes |
+
+External validation of the selected checkpoint:
+
+| Dataset | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| broad32k | `0.3383` | `0.5987` | `0.7145` | N/A |
+| `alpha_loss_badactions_all_v1` | `0.1742` | `0.4405` | `0.5751` | `2.2300` |
+| `selectbest_broad32k_lossblunders_v1` | `0.2180` | `0.4436` | `0.5263` | `2.3502` |
+
+Direct checks:
+
+| Check | Score | PGN |
+| --- | ---: | --- |
+| parent/internal vs selected broad32k parent | `2.0/8` | N/A |
+| Stockfish gate | `0.0/2` | `reports/fullnet_broad32k_selectloss_repair_stockfish_gate.pgn` |
+
+Unfreezing the trunk reduced bad-action loss on the all-loss and selected-loss
+slices, but it regressed broad32k policy accuracy and failed both direct
+Stockfish games. The policy-head-only targeted repair remains a better
+diagnostic checkpoint, though neither branch confirmed direct strength.
