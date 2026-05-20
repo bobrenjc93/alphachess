@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T00:22:48-07:00`.
+Last updated: `2026-05-20T00:26:09-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -29,13 +29,13 @@ uses the closest honest equivalent:
 - **Elo proxy**: `400 * log10(score_rate / (1 - score_rate))` against that
   exact Stockfish gate. It is only a local gate proxy, not calibrated chess Elo.
 
-![Capability progress: conservative direct Stockfish score-rate proxy over time](reports/capability_progress.svg)
+![Capability progress: conservative direct Stockfish score-rate proxy over real timestamps](reports/capability_progress.svg)
 
-The graph tracks a conservative Stockfish capability proxy: for each direct
-Stockfish check, use `score / max(games, 4)`, then plot the best value seen so
-far. That keeps one- and two-game draws visible without letting tiny samples
-look like 50% strength. The current best proxy is `12.5%`, about `-338` Elo
-against this local gate.
+The graph is the compact AlphaGo-style view of the table: a single capability
+line over real timestamps. For each direct Stockfish check, it uses
+`score / max(games, 4)`, then plots the best value seen so far. That keeps
+short draws visible without letting tiny samples look like 50% strength.
+The current best proxy is `12.5%`, about `-338` Elo against this local gate.
 
 Timestamps are real `git log --date=iso-strict` commit times unless marked as a
 PGN file mtime or report timestamp, where the result was generated after the
