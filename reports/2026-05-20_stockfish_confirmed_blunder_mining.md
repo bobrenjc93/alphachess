@@ -173,11 +173,17 @@ Because that run filled its cap from alphabetically early PGNs, I then repeated
 the mining from the `80` most recent local PGN mtimes. That recency-biased set
 produced `4,096` positions from `93` games with `772` bad played actions in
 `data/teacher/alpha_recent80_directloss_pv_v1`.
+After adding `stockfish-teacher --blunder-context-plies`, I repeated the
+recency-biased run with two lead-up AlphaChess decision positions attached to
+each confirmed blunder. That context set produced `4,096` positions from `70`
+games with `550` bad played actions in
+`data/teacher/alpha_recent80_directloss_context_v1`.
 
 | Run | Selection | Key settings | Disjoint holdout | All-history direct-loss slice | Latest direct-loss slice | Direct gates |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
 | `experiments/policyhead192-all-directloss-fullnet-v1/checkpoints/iter_0001` | best all-history direct-loss bad-action loss, epoch `4` | full network, LR `7.5e-7`, bad-action weight `0.85`, weights `0.25/0.15/0.25/0.35` | top-1 `0.3430`, top-3 `0.5436`, top-5 `0.6437` | top-1 `0.2925`, top-3 `0.5066`, top-5 `0.6299`, bad-action loss `1.7075` | top-1 `0.2130`, top-3 `0.4135`, top-5 `0.5138`, bad-action loss `2.9852` | plain `0.0/2` (`reports/policyhead192_all_directloss_fullnet_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_all_directloss_fullnet_badbook_strictguards_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent-directloss-fullnet-v1/checkpoints/iter_0001` | best recent direct-loss bad-action loss, epoch `4` | full network, LR `7.5e-7`, bad-action weight `0.85`, weights `0.25/0.15/0.25/0.35` | top-1 `0.3420`, top-3 `0.5424`, top-5 `0.6439` | top-1 `0.2451`, top-3 `0.4661`, top-5 `0.5854`, bad-action loss `2.6682` | top-1 `0.2130`, top-3 `0.4160`, top-5 `0.5163`, bad-action loss `2.9265` | plain `0.0/2` (`reports/policyhead192_recent_directloss_fullnet_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_recent_directloss_fullnet_badbook_strictguards_stockfish_gate.pgn`) |
+| `experiments/policyhead192-context-directloss-fullnet-v1/checkpoints/iter_0001` | best context direct-loss bad-action loss, epoch `4` | full network, LR `7.5e-7`, bad-action weight `0.85`, weights `0.25/0.15/0.25/0.35`, `blunder_context_plies=2` | top-1 `0.3420`, top-3 `0.5444`, top-5 `0.6438` | context slice top-1 `0.2761`, top-3 `0.5015`, top-5 `0.6157`, bad-action loss `2.8421`; recent80 slice top-1 `0.2449`, top-3 `0.4675`, top-5 `0.5815`, bad-action loss `2.6712` | top-1 `0.2105`, top-3 `0.4135`, top-5 `0.5163`, bad-action loss `2.9300` | plain `0.0/2` (`reports/policyhead192_context_directloss_fullnet_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_context_directloss_fullnet_badbook_strictguards_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -217,3 +223,8 @@ Recency-biased sampling improved the current slice slightly more than the
 alphabetic all-history run, but still regressed broad holdout and did not move
 direct play. The next useful direction is likely a stronger search/labeling
 change around the forcing tactical sequences, not more small supervised replay.
+Backfilling lead-up context positions made the replay data less narrowly tied to
+only the final blunder, but it still did not transfer to direct Stockfish play.
+The failure is therefore not just missing the previous two AlphaChess decisions
+around each logged mistake; the policy/search stack still needs stronger
+tactical credit assignment or a materially better search target.

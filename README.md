@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T02:45:46-07:00`.
+Last updated: `2026-05-20T03:06:18-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -117,6 +117,8 @@ latest committed report.
 | `2026-05-20T02:31:10-07:00` PGN file mtime | All-history direct-loss repair plus bad-action books and strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Combining the all-history blocklist, latest-loss blocklist, top-3 blocklist, and strict root guards still failed both Stockfish games. |
 | `2026-05-20T02:43:05-07:00` PGN file mtime | Recent-PGN direct-loss full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Re-mining from the 80 most recent PGN mtimes produced `4,096` positions and `772` bad actions; the repair nudged the latest-loss bad-action loss to `2.9265`, but broad holdout fell to `0.3420` and direct play still failed. |
 | `2026-05-20T02:44:39-07:00` PGN file mtime | Recent-PGN direct-loss repair plus bad-action books and strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Recency-biased replay plus exact blocklists and strict root filters also lost both games. |
+| `2026-05-20T03:02:04-07:00` PGN file mtime | Context direct-loss full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | `--blunder-context-plies 2` backfilled lead-up decisions around recent losses, producing `4,096` positions and `550` bad actions; the selected epoch kept broad holdout at `0.3420` and context top-1 at `0.2761`, but direct play still failed. |
+| `2026-05-20T03:05:53-07:00` PGN file mtime | Context direct-loss repair plus bad-action books and strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Context replay plus exact blocklists and strict root filters still lost both Stockfish games. |
 
 Current practical status:
 
@@ -229,6 +231,9 @@ Current practical status:
 - Repeating that mining with the 80 most recent PGN mtimes produced another
   `4,096`-position slice and moved the latest-loss bad-action loss only
   slightly; direct gates still stayed `0.0/2`.
+- Adding lead-up context positions around recent direct-loss blunders improved
+  the new context slice fit, but did not move either plain or strict direct
+  Stockfish gates.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
