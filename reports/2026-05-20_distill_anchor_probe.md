@@ -802,3 +802,44 @@ First-blunder mining found:
 The higher-time opening source improves validation and changes the Black game,
 but it still does not transfer to a nonzero direct result. The White
 `Bd3`/`Bd4` motif persisted across the 180-source and 16k-opening branches.
+
+## Material Depth-4 Check
+
+The existing root material guard at depth 3 did not filter the repeated
+`Bd3`/`Bd4` failure, but an offline diagnostic showed depth 4 would remove
+`Bd3` while preserving `Bd4`. I reran the opening16k/stability `75%` blend with
+`--root-material-search-plies 4`:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_hardlabels_cap20_lr2e6_blend_0.75.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 4 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --good-action-book-top-k 3 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_opening16k_stability180_blend075_mat4_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. PGN file mtime: `2026-05-20T16:41:04-07:00`.
+
+First-blunder mining found:
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `e5` | `exd5` | `0.0833` | `r1bqkb1r/p1p2ppp/2p2n2/3p4/4P3/3B4/PPP2PPP/RNBQK2R w KQkq - 0 7` |
+| 2 | `...Na5` | `...Nxe5` | `0.1151` | `r1bq1rk1/2p1bppp/p1n5/1p1nN3/8/1BP5/PP1P1PPP/RNBQR1K1 b - - 0 10` |
+
+Depth 4 fixes that one repeated motif, but it is too slow and still does not
+produce a direct score. The failure surface moves to fresh early opening
+choices.
