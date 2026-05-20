@@ -84,3 +84,29 @@ Rejected. Simply doubling the broad Stockfish teacher scale and fine-tuning the
 policy head from the direct-loss mix parent did not improve robustness. It
 regressed the new broad32k validation, collapsed the parent match, and still
 failed direct Stockfish.
+
+## Epoch 1 Follow-Up
+
+Timestamp: `2026-05-19T17:18:35-07:00`
+
+The final checkpoint collapsed, but the saved first epoch had a better
+validation profile:
+
+| Dataset | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| broad32k | `0.3563` | `0.6105` | `0.7209` | N/A |
+| `alpha_loss_badactions_all_v1` | `0.1856` | `0.4504` | `0.5609` | `2.3612` |
+| `policyhead_hardneg_lossblunders_v1` | `0.1300` | `0.3700` | `0.5300` | `2.6850` |
+
+Direct checks on
+`experiments/policyhead-broad32k-allloss-directmix-v1/checkpoints/iter_0001/epoch_0001.pt`:
+
+| Check | Score | PGN |
+| --- | ---: | --- |
+| parent/internal vs direct-loss mix parent | `6.0/8` | `reports/policyhead_broad32k_epoch1_vs_directmix_parent.pgn` |
+| Stockfish gate | `0.0/2` | `reports/policyhead_broad32k_epoch1_stockfish_gate.pgn` |
+
+Epoch 1 is a better checkpoint than epoch 2 and shows that the larger broad set
+can improve fixed diagnostics before overtraining. It still fails direct
+Stockfish, so future broad-scale runs need explicit validation/early stopping
+and a direct-play gate rather than trusting the last epoch.

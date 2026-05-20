@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="360" viewBox="0 0 900 360" role="img" aria-labelledby="title desc">
   <title id="title">AlphaChess Capability Progress</title>
-  <desc id="desc">Line chart of best 4-game-or-larger direct Stockfish smoke-gate score rate over real timestamps. Data points: 2026-05-18T09:14:04-07:00 0 percent; 2026-05-18T13:18:35-07:00 0 percent; 2026-05-18T18:22:01-07:00 0 percent; 2026-05-19T03:39:01-07:00 0 percent; 2026-05-19T10:31:47-07:00 12.5 percent; 2026-05-19T17:07:29-07:00 12.5 percent. The 50 percent line marks the Stockfish promotion gate.</desc>
+  <desc id="desc">Line chart of best 4-game-or-larger direct Stockfish smoke-gate score rate over real timestamps. Data points: 2026-05-18T09:14:04-07:00 0 percent; 2026-05-18T13:18:35-07:00 0 percent; 2026-05-18T18:22:01-07:00 0 percent; 2026-05-19T03:39:01-07:00 0 percent; 2026-05-19T10:31:47-07:00 12.5 percent; 2026-05-19T17:18:35-07:00 12.5 percent. The 50 percent line marks the Stockfish promotion gate.</desc>
   <rect width="900" height="360" fill="#fbfbf8"/>
   <text x="90" y="32" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#202124">AlphaChess capability progress</text>
   <text x="90" y="54" font-family="Arial, sans-serif" font-size="12" fill="#5f6368">Best 4-game-or-larger direct Stockfish smoke-gate score rate. Not calibrated Elo.</text>
@@ -23,21 +23,21 @@
     <text x="856" y="176.5" fill="#a23b31">promotion gate</text>
 
     <text x="90" y="316" text-anchor="middle">05-18 09:14</text>
-    <text x="308" y="316" text-anchor="middle">05-18 18:22</text>
-    <text x="529" y="316" text-anchor="middle">05-19 03:39</text>
-    <text x="693" y="316" text-anchor="middle">05-19 10:31</text>
-    <text x="850" y="316" text-anchor="middle">05-19 17:07</text>
+    <text x="306" y="316" text-anchor="middle">05-18 18:22</text>
+    <text x="526" y="316" text-anchor="middle">05-19 03:39</text>
+    <text x="689" y="316" text-anchor="middle">05-19 10:31</text>
+    <text x="850" y="316" text-anchor="middle">05-19 17:18</text>
   </g>
 
-  <path d="M 90 290 L 529 290 L 693 290 L 693 260.625 L 850 260.625" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 90 290 L 526 290 L 689 290 L 689 260.625 L 850 260.625" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
   <g fill="#1f6f8b" stroke="#fbfbf8" stroke-width="2">
     <circle cx="90" cy="290" r="5"/>
     <circle cx="187" cy="290" r="5"/>
-    <circle cx="308" cy="290" r="5"/>
-    <circle cx="529" cy="290" r="5"/>
-    <circle cx="693" cy="260.625" r="5"/>
+    <circle cx="306" cy="290" r="5"/>
+    <circle cx="526" cy="290" r="5"/>
+    <circle cx="689" cy="260.625" r="5"/>
     <circle cx="850" cy="260.625" r="5"/>
   </g>
-  <text x="705" y="250" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#1f6f8b">12.5%</text>
+  <text x="701" y="250" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#1f6f8b">12.5%</text>
   <text x="90" y="342" font-family="Arial, sans-serif" font-size="11" fill="#5f6368">Uses real timestamps from the progress table and reports. The unconfirmed 0.5/2 hard-negative smoke is excluded because its 4-game confirmation was 0.0/4.</text>
 </svg>

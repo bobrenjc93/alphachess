@@ -1,0 +1,88 @@
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "1"]
+[White "AlphaChess"]
+[Black "experiments/policyhead-lossblunder-directmix-v1/checkpoints/iter_0001/latest.pt"]
+[Result "1-0"]
+[AlphaChessScore "1.0"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 d6 6. Be2 e5 7. Ndb5 Be7 8. Be3 a6 9. Na3 b5 10. O-O b4 11. Nd5 bxa3 12. bxa3 Nxe4 13. Bf3 Nf6 14. Nxf6+ Bxf6 15. Bxc6+ Ke7 16. Bxa8 Bd7 17. Qd5 Qxa8 18. Qxa8 Rxa8 19. Rab1 Bc6 20. Rfc1 Kd7 21. c4 Re8 22. c5 dxc5 23. Bxc5 e4 24. a4 Bxa4 25. Rb7+ Kc6 26. Rxf7 Re5 27. Rxf6+ gxf6 28. Bd4+ Kd5 29. Bxe5 Kxe5 30. g3 Bb5 31. Rc5+ Kd4 32. Rc1 h5 33. Rc8 Kd3 34. Rc5 Ke2 35. Rd5 Kf3 36. Rxh5 e3 37. fxe3 Kxe3 38. Rf5 Ke2 39. Rxf6 a5 40. Rf2+ Ke1 41. g4 Bc6 42. Rb2 Be4 43. g5 Kd1 44. g6 Kc1 45. g7 Kxb2 46. g8=Q Bd5 47. Qxd5 a4 48. h4 a3 49. h5 Kb1 50. h6 Ka1 51. h7 Kb2 52. h8=Q+ Kc2 53. Qc8+ Kb2 54. Qd1 Kxa2 55. Qcc2# 1-0
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "2"]
+[White "experiments/policyhead-lossblunder-directmix-v1/checkpoints/iter_0001/latest.pt"]
+[Black "AlphaChess"]
+[Result "1/2-1/2"]
+[AlphaChessScore "0.5"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 d6 6. Be2 e5 7. Ndb5 Be7 8. O-O O-O 9. a4 a6 10. Na3 Be6 11. f4 exf4 12. Bxf4 Nd7 13. Qd2 Nde5 14. Rad1 Bg4 15. Bxg4 Nxg4 16. Nd5 Bh4 17. h3 Nge5 18. c3 Nd7 19. Bxd6 Re8 20. Nc2 Rxe4 21. b4 Rc4 22. Rf3 Bg5 23. Qe2 b5 24. axb5 axb5 25. Rfd3 f5 26. Rf3 Nf6 27. Ne7+ Nxe7 28. Nd4 Qxd6 29. Nxb5 Qxd1+ 30. Qxd1 f4 31. Qd3 Rc6 32. Rf2 Ng6 33. Qf1 Ne4 34. Rf3 Nd2 35. Qf2 Nxf3+ 36. Qxf3 Ne5 37. Qd5+ Kh8 38. Qxe5 Rg6 39. Nc7 Rg8 40. Nd5 f3 41. gxf3 Bh4+ 42. Kh2 Rg3 43. Qxg3 Bxg3+ 44. Kxg3 Rc8 45. b5 Rc5 46. Ne3 Rxc3 47. Kf2 Rb3 48. Ke2 Rxb5 49. f4 Rb2+ 50. Kd3 Rb3+ 51. Kd4 g6 52. Nc4 Rxh3 53. Kc5 Rh4 54. Kd4 Rxf4+ 55. Kc5 Rxc4+ 56. Kxc4 h5 57. Kd3 h4 58. Ke3 h3 59. Kf2 h2 60. Kg2 h1=Q+ 61. Kxh1 g5 62. Kg2 Kg7 63. Kf3 Kf6 64. Kg4 Kg6 65. Kg3 Kh5 66. Kh3 g4+ 67. Kg3 Kg5 68. Kf2 Kf4 69. Kg2 Ke3 70. Kg3 Ke2 71. Kxg4 1/2-1/2
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "3"]
+[White "AlphaChess"]
+[Black "experiments/policyhead-lossblunder-directmix-v1/checkpoints/iter_0001/latest.pt"]
+[Result "1-0"]
+[AlphaChessScore "1.0"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 d6 6. Be2 e5 7. Ndb5 Be7 8. Be3 a6 9. Na3 b5 10. O-O b4 11. Nd5 bxa3 12. bxa3 Nxe4 13. Bf3 Nf6 14. Nxf6+ Bxf6 15. Bxc6+ Ke7 16. Bxa8 Bd7 17. Qd5 Qxa8 18. Qxa8 Rxa8 19. Rab1 Bc6 20. Rfc1 Kd7 21. c4 Re8 22. c5 dxc5 23. Bxc5 e4 24. a4 Bxa4 25. Rb7+ Kc6 26. Rxf7 Re5 27. Rxf6+ gxf6 28. Bd4+ Kd5 29. Bxe5 Kxe5 30. g3 Bb5 31. Rc5+ Kd4 32. Rc1 h5 33. Rc8 Kd3 34. Rc5 Ke2 35. Rd5 Kf3 36. Rxh5 e3 37. fxe3 Kxe3 38. Rf5 Ke2 39. Rxf6 a5 40. Rf2+ Ke1 41. g4 Bc6 42. Rb2 Be4 43. g5 Kd1 44. g6 Kc1 45. g7 Kxb2 46. g8=Q Bd5 47. Qxd5 a4 48. h4 a3 49. h5 Kb1 50. h6 Ka1 51. h7 Kb2 52. h8=Q+ Kc2 53. Qc8+ Kb2 54. Qd1 Kxa2 55. Qcc2# 1-0
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "4"]
+[White "experiments/policyhead-lossblunder-directmix-v1/checkpoints/iter_0001/latest.pt"]
+[Black "AlphaChess"]
+[Result "1/2-1/2"]
+[AlphaChessScore "0.5"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 d6 6. Be2 e5 7. Ndb5 Be7 8. O-O O-O 9. a4 a6 10. Na3 Be6 11. f4 exf4 12. Bxf4 Nd7 13. Qd2 Nde5 14. Rad1 Bg4 15. Bxg4 Nxg4 16. Nd5 Bh4 17. h3 Nge5 18. c3 Nd7 19. Bxd6 Re8 20. Nc2 Rxe4 21. b4 Rc4 22. Rf3 Bg5 23. Qe2 b5 24. axb5 axb5 25. Rfd3 f5 26. Rf3 Nf6 27. Ne7+ Nxe7 28. Nd4 Qxd6 29. Nxb5 Qxd1+ 30. Qxd1 f4 31. Qd3 Rc6 32. Rf2 Ng6 33. Qf1 Ne4 34. Rf3 Nd2 35. Qf2 Nxf3+ 36. Qxf3 Ne5 37. Qd5+ Kh8 38. Qxe5 Rg6 39. Nc7 Rg8 40. Nd5 f3 41. gxf3 Bh4+ 42. Kh2 Rg3 43. Qxg3 Bxg3+ 44. Kxg3 Rc8 45. b5 Rc5 46. Ne3 Rxc3 47. Kf2 Rb3 48. Ke2 Rxb5 49. f4 Rb2+ 50. Kd3 Rb3+ 51. Kd4 g6 52. Nc4 Rxh3 53. Kc5 Rh4 54. Kd4 Rxf4+ 55. Kc5 Rxc4+ 56. Kxc4 h5 57. Kd3 h4 58. Ke3 h3 59. Kf2 h2 60. Kg2 h1=Q+ 61. Kxh1 g5 62. Kg2 Kg7 63. Kf3 Kf6 64. Kg4 Kg6 65. Kg3 Kh5 66. Kh3 g4+ 67. Kg3 Kg5 68. Kf2 Kf4 69. Kg2 Ke3 70. Kg3 Ke2 71. Kxg4 1/2-1/2
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "5"]
+[White "AlphaChess"]
+[Black "experiments/policyhead-lossblunder-directmix-v1/checkpoints/iter_0001/latest.pt"]
+[Result "1-0"]
+[AlphaChessScore "1.0"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 d6 6. Be2 e5 7. Ndb5 Be7 8. Be3 a6 9. Na3 b5 10. O-O b4 11. Nd5 bxa3 12. bxa3 Nxe4 13. Bf3 Nf6 14. Nxf6+ Bxf6 15. Bxc6+ Ke7 16. Bxa8 Bd7 17. Qd5 Qxa8 18. Qxa8 Rxa8 19. Rab1 Bc6 20. Rfc1 Kd7 21. c4 Re8 22. c5 dxc5 23. Bxc5 e4 24. a4 Bxa4 25. Rb7+ Kc6 26. Rxf7 Re5 27. Rxf6+ gxf6 28. Bd4+ Kd5 29. Bxe5 Kxe5 30. g3 Bb5 31. Rc5+ Kd4 32. Rc1 h5 33. Rc8 Kd3 34. Rc5 Ke2 35. Rd5 Kf3 36. Rxh5 e3 37. fxe3 Kxe3 38. Rf5 Ke2 39. Rxf6 a5 40. Rf2+ Ke1 41. g4 Bc6 42. Rb2 Be4 43. g5 Kd1 44. g6 Kc1 45. g7 Kxb2 46. g8=Q Bd5 47. Qxd5 a4 48. h4 a3 49. h5 Kb1 50. h6 Ka1 51. h7 Kb2 52. h8=Q+ Kc2 53. Qc8+ Kb2 54. Qd1 Kxa2 55. Qcc2# 1-0
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "6"]
+[White "experiments/policyhead-lossblunder-directmix-v1/checkpoints/iter_0001/latest.pt"]
+[Black "AlphaChess"]
+[Result "1/2-1/2"]
+[AlphaChessScore "0.5"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 d6 6. Be2 e5 7. Ndb5 Be7 8. O-O O-O 9. a4 a6 10. Na3 Be6 11. f4 exf4 12. Bxf4 Nd7 13. Qd2 Nde5 14. Rad1 Bg4 15. Bxg4 Nxg4 16. Nd5 Bh4 17. h3 Nge5 18. c3 Nd7 19. Bxd6 Re8 20. Nc2 Rxe4 21. b4 Rc4 22. Rf3 Bg5 23. Qe2 b5 24. axb5 axb5 25. Rfd3 f5 26. Rf3 Nf6 27. Ne7+ Nxe7 28. Nd4 Qxd6 29. Nxb5 Qxd1+ 30. Qxd1 f4 31. Qd3 Rc6 32. Rf2 Ng6 33. Qf1 Ne4 34. Rf3 Nd2 35. Qf2 Nxf3+ 36. Qxf3 Ne5 37. Qd5+ Kh8 38. Qxe5 Rg6 39. Nc7 Rg8 40. Nd5 f3 41. gxf3 Bh4+ 42. Kh2 Rg3 43. Qxg3 Bxg3+ 44. Kxg3 Rc8 45. b5 Rc5 46. Ne3 Rxc3 47. Kf2 Rb3 48. Ke2 Rxb5 49. f4 Rb2+ 50. Kd3 Rb3+ 51. Kd4 g6 52. Nc4 Rxh3 53. Kc5 Rh4 54. Kd4 Rxf4+ 55. Kc5 Rxc4+ 56. Kxc4 h5 57. Kd3 h4 58. Ke3 h3 59. Kf2 h2 60. Kg2 h1=Q+ 61. Kxh1 g5 62. Kg2 Kg7 63. Kf3 Kf6 64. Kg4 Kg6 65. Kg3 Kh5 66. Kh3 g4+ 67. Kg3 Kg5 68. Kf2 Kf4 69. Kg2 Ke3 70. Kg3 Ke2 71. Kxg4 1/2-1/2
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "7"]
+[White "AlphaChess"]
+[Black "experiments/policyhead-lossblunder-directmix-v1/checkpoints/iter_0001/latest.pt"]
+[Result "1-0"]
+[AlphaChessScore "1.0"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 d6 6. Be2 e5 7. Ndb5 Be7 8. Be3 a6 9. Na3 b5 10. O-O b4 11. Nd5 bxa3 12. bxa3 Nxe4 13. Bf3 Nf6 14. Nxf6+ Bxf6 15. Bxc6+ Ke7 16. Bxa8 Bd7 17. Qd5 Qxa8 18. Qxa8 Rxa8 19. Rab1 Bc6 20. Rfc1 Kd7 21. c4 Re8 22. c5 dxc5 23. Bxc5 e4 24. a4 Bxa4 25. Rb7+ Kc6 26. Rxf7 Re5 27. Rxf6+ gxf6 28. Bd4+ Kd5 29. Bxe5 Kxe5 30. g3 Bb5 31. Rc5+ Kd4 32. Rc1 h5 33. Rc8 Kd3 34. Rc5 Ke2 35. Rd5 Kf3 36. Rxh5 e3 37. fxe3 Kxe3 38. Rf5 Ke2 39. Rxf6 a5 40. Rf2+ Ke1 41. g4 Bc6 42. Rb2 Be4 43. g5 Kd1 44. g6 Kc1 45. g7 Kxb2 46. g8=Q Bd5 47. Qxd5 a4 48. h4 a3 49. h5 Kb1 50. h6 Ka1 51. h7 Kb2 52. h8=Q+ Kc2 53. Qc8+ Kb2 54. Qd1 Kxa2 55. Qcc2# 1-0
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "8"]
+[White "experiments/policyhead-lossblunder-directmix-v1/checkpoints/iter_0001/latest.pt"]
+[Black "AlphaChess"]
+[Result "1/2-1/2"]
+[AlphaChessScore "0.5"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 d6 6. Be2 e5 7. Ndb5 Be7 8. O-O O-O 9. a4 a6 10. Na3 Be6 11. f4 exf4 12. Bxf4 Nd7 13. Qd2 Nde5 14. Rad1 Bg4 15. Bxg4 Nxg4 16. Nd5 Bh4 17. h3 Nge5 18. c3 Nd7 19. Bxd6 Re8 20. Nc2 Rxe4 21. b4 Rc4 22. Rf3 Bg5 23. Qe2 b5 24. axb5 axb5 25. Rfd3 f5 26. Rf3 Nf6 27. Ne7+ Nxe7 28. Nd4 Qxd6 29. Nxb5 Qxd1+ 30. Qxd1 f4 31. Qd3 Rc6 32. Rf2 Ng6 33. Qf1 Ne4 34. Rf3 Nd2 35. Qf2 Nxf3+ 36. Qxf3 Ne5 37. Qd5+ Kh8 38. Qxe5 Rg6 39. Nc7 Rg8 40. Nd5 f3 41. gxf3 Bh4+ 42. Kh2 Rg3 43. Qxg3 Bxg3+ 44. Kxg3 Rc8 45. b5 Rc5 46. Ne3 Rxc3 47. Kf2 Rb3 48. Ke2 Rxb5 49. f4 Rb2+ 50. Kd3 Rb3+ 51. Kd4 g6 52. Nc4 Rxh3 53. Kc5 Rh4 54. Kd4 Rxf4+ 55. Kc5 Rxc4+ 56. Kxc4 h5 57. Kd3 h4 58. Ke3 h3 59. Kf2 h2 60. Kg2 h1=Q+ 61. Kxh1 g5 62. Kg2 Kg7 63. Kf3 Kf6 64. Kg4 Kg6 65. Kg3 Kh5 66. Kh3 g4+ 67. Kg3 Kg5 68. Kf2 Kf4 69. Kg2 Ke3 70. Kg3 Ke2 71. Kxg4 1/2-1/2
+
