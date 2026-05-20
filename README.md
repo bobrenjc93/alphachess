@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T06:09:52-07:00`.
+Last updated: `2026-05-20T06:25:40-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -131,6 +131,7 @@ latest committed report.
 | `2026-05-20T05:50:15-07:00` PGN file mtime | Capture-starting mate-search guard (`reports/2026-05-20_opening_loss_repair.md`). | N/A | book+strict `0.0/2` | Root mate search now follows checking moves plus high-priority captures/promotions, catching a real `...axb3` forced-mate family from the latest gate; the comparable depth-5 Stockfish check still failed. |
 | `2026-05-20T06:02:44-07:00` PGN file mtime | Exact Stockfish good-action book (`reports/2026-05-20_opening_loss_repair.md`). | N/A | good+bad book strict `0.0/2` | Exact teacher best-move filtering restored the known `e4 e5 Nf3 Nc6 d4` opening line, but direct play still collapsed tactically after leaving the book. |
 | `2026-05-20T06:09:52-07:00` PGN file mtime | Broad exact teacher books (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Combining broad Stockfish, recent loss, legal-value, and top-3 confirmed-blunder exact books still failed both direct games. |
+| `2026-05-20T06:25:40-07:00` PGN file mtime | Speculative checking-capture guard (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Root material fallback no longer forces a single checking-capture sacrifice and now penalizes king-recapturable checking captures; it avoided the `Bxh7+` failure but the gate still lost. |
 
 Current practical status:
 
@@ -165,6 +166,9 @@ Current practical status:
 - Combining broader exact teacher books also failed, so exact-position opening
   coverage is not enough without stronger tactical generalization after the
   book ends.
+- The material guard no longer forces one speculative checking-capture
+  sacrifice when all root moves look bad, but the replacement line still loses
+  tactically.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the

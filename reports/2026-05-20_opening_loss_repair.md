@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T06:09:52-07:00`
+Timestamp: `2026-05-20T06:25:40-07:00`
 
 ## Summary
 
@@ -49,6 +49,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | capture-starting mate-search guard | same checkpoint, same legal-value bad-action book, strict guards, `root_mate_search_plies=5` with mate recursion over checks plus high-priority captures/promotions | N/A | root regression fixed: the latest gate's `...axb3 Kc1 Ne2+ Kb1 Rd1#` family is detected; a depth-7 root check prunes the earlier `Ne3` move but is too slow for full-game gates without more pruning | book+strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_badbook_capturemate5_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | exact Stockfish good-action book | same checkpoint, legal-value good-action book plus bad-action book, strict guards | N/A | restored the exact teacher opening `e4 e5 Nf3 Nc6 d4`, proving the book can override overzealous root heuristics at known positions | good+bad book strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_goodbadbook_strict_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | broad exact teacher books | same checkpoint, broad Stockfish good-action book plus recent loss/legal-value/top-3 exact books and strict guards | N/A | expanded exact-position coverage changed the mid-opening but still left uncovered tactical collapses | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_broadgoodbooks_strict_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | speculative checking-capture guard | same checkpoint and broad exact books, plus near-best material fallback for checking captures and a king-recapture penalty for speculative checking captures | N/A | avoided the previous `Bxh7+` line, but the replacement games still lost tactically | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_broadgoodbooks_sacguard_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -90,3 +91,10 @@ Combining broader exact books from the 65k Stockfish teacher, recent loss
 openings, legal-value data, and top-3 confirmed blunders also failed `0.0/2`.
 That makes exact-position table coverage a diagnostic aid, not a path to the
 current direct gate by itself.
+The root material guard previously forced the `Bxh7+` speculative sacrifice
+because every root move scored below the strict material threshold and the
+fallback kept only the single highest material score. I changed that fallback to
+keep a small near-best band only for checking-capture sacrifices and added a
+penalty when the opponent king can immediately recapture the attacker. This
+fixes the concrete `Bxh7+` root-filter failure, but the direct gate still lost
+both games through other tactics.

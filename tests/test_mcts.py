@@ -421,6 +421,26 @@ def test_mcts_root_material_filter_keeps_best_moves_when_all_moves_lose_material
     assert blunder_action not in result.root.children
 
 
+def test_mcts_root_material_prunes_speculative_checking_capture_from_gate_loss() -> None:
+    board = chess.Board("r2q1rk1/p1p2ppp/2P2n2/8/1b4b1/2NB4/PPP2PPP/R1BQK2R w KQ - 1 10")
+    sacrifice_action = move_to_action(chess.Move.from_uci("d3h7"), board)
+    quiet_action = move_to_action(chess.Move.from_uci("d1d2"), board)
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=3,
+            root_material_max_loss_cp=100,
+        ),
+    )
+    result = search.run(board)
+
+    assert sacrifice_action not in result.root.children
+    assert quiet_action in result.root.children
+
+
 def test_mcts_root_material_filter_uses_worst_shallow_depth() -> None:
     board = chess.Board(
         "rnb1kbnr/1p1p1ppp/p3p3/1N2q3/8/4BN2/PPP2PPP/R2QKB1R b KQkq - 1 8"

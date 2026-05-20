@@ -19,6 +19,8 @@ from alpha_chess.evaluator import PIECE_VALUES, Evaluator
 MATE_SCORE_CP = 100_000
 TACTICAL_MATERIAL_CANDIDATE_LIMIT = 16
 QUIET_MATERIAL_CANDIDATE_LIMIT = 8
+ROOT_TACTICAL_FALLBACK_BAND_CP = 100
+SPECULATIVE_CHECKING_CAPTURE_PENALTY_CP = 300
 BOARD_SIZE = 8
 KING_SHELTER_NEAR_PAWN_CP = 80
 KING_SHELTER_FAR_PAWN_CP = 25
@@ -410,6 +412,8 @@ def _filter_root_material(
             full_width_cache,
             quiescence_cache,
         )
+        if _is_speculative_checking_capture(board, move):
+            score -= SPECULATIVE_CHECKING_CAPTURE_PENALTY_CP
         scored_actions.append((action, score))
         if score >= min_allowed:
             safe_actions.append(action)
@@ -419,9 +423,7 @@ def _filter_root_material(
     if not scored_actions:
         return actions
 
-    best_score = max(score for _, score in scored_actions)
-    fallback_actions = [action for action, score in scored_actions if score == best_score]
-    return fallback_actions if fallback_actions else [scored_actions[0][0]]
+    return _material_fallback_actions(board, scored_actions)
 
 
 def _filter_root_king_safety(
@@ -467,9 +469,35 @@ def _filter_root_king_safety(
     if not scored_actions:
         return actions
 
+    return _best_scored_actions(scored_actions)
+
+
+def _material_fallback_actions(
+    board: chess.Board,
+    scored_actions: list[tuple[int, int]],
+) -> list[int]:
     best_score = max(score for _, score in scored_actions)
-    fallback_actions = [action for action, score in scored_actions if score == best_score]
-    return fallback_actions if fallback_actions else [scored_actions[0][0]]
+    best_actions = [action for action, score in scored_actions if score == best_score]
+    if not _has_best_checking_capture(board, best_actions):
+        return best_actions if best_actions else [scored_actions[0][0]]
+
+    min_score = best_score - ROOT_TACTICAL_FALLBACK_BAND_CP
+    fallback_actions = [action for action, score in scored_actions if score >= min_score]
+    return fallback_actions if fallback_actions else best_actions
+
+
+def _best_scored_actions(scored_actions: list[tuple[int, int]]) -> list[int]:
+    best_score = max(score for _, score in scored_actions)
+    best_actions = [action for action, score in scored_actions if score == best_score]
+    return best_actions if best_actions else [scored_actions[0][0]]
+
+
+def _has_best_checking_capture(board: chess.Board, actions: list[int]) -> bool:
+    for action in actions:
+        move = action_to_move(action, board)
+        if move is not None and board.gives_check(move) and board.is_capture(move):
+            return True
+    return False
 
 
 def _material_search_value(board: chess.Board, search_plies: int) -> float:
@@ -715,6 +743,23 @@ def _captured_piece_value(board: chess.Board, move: chess.Move) -> int:
         return PIECE_VALUES[chess.PAWN]
     captured = board.piece_at(move.to_square)
     return PIECE_VALUES.get(captured.piece_type, 0) if captured else 0
+
+
+def _is_speculative_checking_capture(board: chess.Board, move: chess.Move) -> bool:
+    moving_piece = board.piece_at(move.from_square)
+    if (
+        moving_piece is None
+        or moving_piece.piece_type == chess.PAWN
+        or not board.is_capture(move)
+        or not board.gives_check(move)
+    ):
+        return False
+    child = board.copy(stack=False)
+    child.push(move)
+    opponent_king = child.king(child.turn)
+    if opponent_king is None:
+        return False
+    return chess.Move(opponent_king, move.to_square) in child.legal_moves
 
 
 def _material_score_cp(board: chess.Board, perspective: chess.Color) -> int:
