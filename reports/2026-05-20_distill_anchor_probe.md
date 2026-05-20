@@ -507,3 +507,75 @@ I did not run a direct Stockfish gate for either checkpoint. The margin loss is
 not enough by itself: at guarded learning rates it does not move the targets,
 and at overfit learning rates it damages broad ranking before the new targets
 become plausible policy choices.
+
+## Full-Network Top-K Book Checks
+
+I also tested whether the `--good-action-book-top-k 3` fix helps the stronger
+top-3 confirmed-blunder full-network checkpoint directly:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-stockfish-confirmed-broad73k-top3-fullnet-v1/checkpoints/iter_0001/latest.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --good-action-book-top-k 3 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_top3_fullnet_top3book_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. PGN file mtime: `2026-05-20T15:35:02-07:00`.
+
+First-blunder mining found:
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Bxh6` | `Bf4` | `0.2089` | `r1bq1rk1/p1p1bpp1/5n1p/3p2B1/8/3B4/PPPQ1PPP/RN3RK1 w - - 0 11` |
+| 2 | `...Bb4` | `...Nc6` | `0.1181` | `rnbqkb1r/pp1p1ppp/4pn2/8/3NP3/2N5/PPP2PPP/R1BQKB1R b KQkq - 2 5` |
+
+Those overlap known guarded-blend context motifs, so I reran the full-network
+checkpoint with the merged guarded-blend context source included:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-stockfish-confirmed-broad73k-top3-fullnet-v1/checkpoints/iter_0001/latest.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/guarded_blend_all_contextbook_firstblunders_context_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --good-action-book-top-k 3 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_top3_fullnet_context_top3book_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. PGN file mtime: `2026-05-20T15:38:49-07:00`.
+
+First-blunder mining found:
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Na3` | `h3` | `0.0866` | `r1bq1rk1/p1p1bppp/5n2/3p4/8/3B4/PPP2PPP/RNBQR1K1 w - - 4 10` |
+| 2 | `...Qe8` | `...Qe7` | `0.1688` | `r1bq1rk1/ppBp1ppp/2n1pn2/1N6/1b2P3/2N5/PPP2PPP/R2QKB1R b KQ - 6 8` |
+
+The stronger holdout checkpoint has the same direct-transfer problem as the
+guarded blend. Exact coverage can redirect the games, but it still exposes new
+low-rank opening and early-middlegame decisions immediately.
