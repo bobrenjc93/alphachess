@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T09:07:55-07:00`.
+Result data through: `2026-05-20T09:41:24-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -145,6 +145,9 @@ latest committed report.
 | `2026-05-20T08:49:33-07:00` PGN file mtime | Recent full-game full-network repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Low-LR trunk tuning improved broad and full-game validation metrics, but direct play still lost both games tactically. |
 | `2026-05-20T09:02:22-07:00` PGN file mtime | King-recapturable quiet-check guard (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | The guard now removes non-capturing checks like `Bh7+` when the king can immediately take the checking piece, but replacement attack lines still lost both games. |
 | `2026-05-20T09:07:55-07:00` PGN file mtime | Recent full-game exact good-action book diagnostic (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad+full-game good book strict `0.0/2` | Adding the full-game legal-value slice as an exact good-action book changed the openings but still failed both games after book coverage ended. |
+| `2026-05-20T09:35:32-07:00` teacher summary mtime | Recent120 full-game legal-value replay dataset (`reports/2026-05-20_opening_loss_repair.md`). | N/A | N/A | Scaled the full-game loss slice to `4,096` positions from `153` loss games, with `19,204` dense bad-action labels. |
+| `2026-05-20T09:40:50-07:00` PGN file mtime | Recent120 full-game policy-head repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | V2 bad-action loss improved from `0.3846` to `0.3775`, but broad holdout top-1 slipped to `0.3373` and direct play still failed. |
+| `2026-05-20T09:41:24-07:00` PGN file mtime | Recent120 full-game full-network repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Low-LR trunk tuning improved v2 top-3/top-5 and bad-action loss to `0.3790`, but broad holdout top-1 slipped to `0.3374` and the gate stayed scoreless. |
 
 Current practical status:
 
@@ -224,6 +227,10 @@ Current practical status:
 - Promoting the recent full-game slice from bad-action coverage to exact
   good-action coverage also did not move the score, so exact table coverage is
   still only a diagnostic aid here.
+- Scaling the full-game replay to `4,096` positions and `19,204` bad-action
+  labels improved the new slice's bad-action loss for both policy-head and
+  full-network follow-ups, but both regressed broad holdout top-1 and both
+  direct Stockfish gates remained `0.0/2`.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the

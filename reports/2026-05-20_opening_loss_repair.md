@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T09:07:55-07:00`
+Timestamp: `2026-05-20T09:41:24-07:00`
 
 ## Summary
 
@@ -40,6 +40,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `data/teacher/alpha_guardfallback_directloss_legalvalue_v1` | guard-fallback direct-loss PGN, AlphaChess score `0.0`, `max_ply=80`, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `59` | `307` | Focused replay slice for the losses after the independent root-guard fixes. |
 | `data/teacher/alpha_materialfallback_directloss_legalvalue_v1` | material-fallback direct-loss PGN, AlphaChess score `0.0`, `max_ply=80`, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `70` | `274` | Focused replay slice for the losses after the all-empty root-guard fallback fix. |
 | `data/teacher/alpha_recent80_fullgame_legalvalue_v1` | `80` most recent Stockfish PGNs from git history, AlphaChess score `0.0`, `position_stride=2`, `max_ply=80`, all legal root moves scored by Stockfish, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `2,048` from `75` loss games | `9,497` | Broader full-game legal-value and bad-action replay covering middlegame failures, not only the opening root. |
+| `data/teacher/alpha_recent120_fullgame_legalvalue_v2` | two latest full-game direct-loss PGNs plus `120` recent Stockfish PGNs from git history, AlphaChess score `0.0`, `position_stride=1`, `max_ply=90`, all legal root moves scored by Stockfish, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `4,096` from `153` loss games | `19,204` | Larger full-game replay slice with denser recency coverage across opening and middlegame failures. |
 
 ## Runs
 
@@ -68,6 +69,8 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-recent80-fullgame-legalvalue-fullnet-v1/checkpoints/iter_0001` | best recent80 full-game bad-action loss, epoch `4` | full network from recent80 policy-head parent, LR `2e-7`, bad-action weight `0.5`, weights `0.45/0.15/0.40` over broad/opening/full-game slices | broad holdout top-1 `0.3395`, top-3 `0.5370`, top-5 `0.6407` | recent80 full-game top-1 `0.3701`, top-3 `0.6016`, top-5 `0.7129`, bad-action loss `0.3730` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent80_fullgame_legalvalue_fullnet_broadgoodbooks_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent80-fullgame-legalvalue-fullnet-v1/checkpoints/iter_0001` | king-recapturable quiet-check guard | same full-network checkpoint and books, with speculative root-check filtering generalized from checking captures to all non-pawn checks that the king can immediately capture | N/A | removed the latest non-capturing `Bh7+` root-filter failure; replacement games still lost through nearby attacking lines | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent80_fullgame_legalvalue_fullnet_quietcheckguard_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent80-fullgame-legalvalue-fullnet-v1/checkpoints/iter_0001` | full-game exact good-action book diagnostic | same full-network checkpoint and quiet-check guard, with `alpha_recent80_fullgame_legalvalue_v1` added to both exact good-action and bad-action books | N/A | exact teacher moves changed the openings, but the model still collapsed tactically after uncovered positions | broad+full-game good book strict `0.0/2` (`reports/policyhead192_recent80_fullgame_legalvalue_fullnet_fullgoodbook_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent120-fullgame-legalvalue-policyhead-v1/checkpoints/iter_0001` | best v2 bad-action loss, epoch `5` | policy head only from recent80 fullnet parent, LR `7.5e-7`, bad-action weight `0.7`, weights `0.45/0.15/0.40` over broad/opening/v2 full-game slices | broad holdout top-1 `0.3373`, top-3 `0.5370`, top-5 `0.6399` vs parent top-1 `0.3395`, top-3 `0.5370`, top-5 `0.6407` | v2 full-game top-1 `0.3799`, top-3 `0.6121`, top-5 `0.7109`, bad-action loss `0.3775` vs parent top-1 `0.3784`, top-3 `0.6118`, top-5 `0.7112`, bad-action loss `0.3846` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent120_fullgame_legalvalue_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent120-fullgame-legalvalue-fullnet-v1/checkpoints/iter_0001` | best v2 bad-action loss, epoch `4` | full network from recent80 fullnet parent, LR `1.5e-7`, bad-action weight `0.5`, weights `0.45/0.15/0.40` over broad/opening/v2 full-game slices | broad holdout top-1 `0.3374`, top-3 `0.5387`, top-5 `0.6395` vs parent top-1 `0.3395`, top-3 `0.5370`, top-5 `0.6407` | v2 full-game top-1 `0.3767`, top-3 `0.6172`, top-5 `0.7139`, bad-action loss `0.3790` vs parent top-1 `0.3784`, top-3 `0.6118`, top-5 `0.7112`, bad-action loss `0.3846` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent120_fullgame_legalvalue_fullnet_broadgoodbooks_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -194,3 +197,11 @@ failed `0.0/2`. It changed the opening choices, which confirms the exact table
 is active, but the games still collapsed after moving outside covered positions.
 That reinforces the current read: exact books and local labels can steer known
 positions, but they are not producing tactical generalization yet.
+Scaling that idea to a 4,096-position recent120 full-game slice with 19,204
+dense bad-action labels improved the new slice's bad-action loss for both
+policy-head-only (`0.3846` to `0.3775`) and full-network (`0.3846` to `0.3790`)
+tuning. It still did not transfer: both candidates regressed broad holdout
+top-1 to about `0.337`, and both direct Stockfish gates stayed `0.0/2`. The new
+direct losses include fast king attacks and queen-side opening collapses, so
+the next step needs a stronger generalization signal than simply increasing the
+same full-game legal-value replay slice.
