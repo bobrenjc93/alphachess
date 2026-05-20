@@ -32,12 +32,13 @@ uses the closest honest equivalent:
 
 ![Capability progress: local Stockfish Elo-proxy over real timestamps](reports/capability_progress.svg)
 
-The graph is the compact AlphaGo-style view of the table: a single capability
-line over real timestamps. For each direct Stockfish check, it uses
-`score / max(games, 4)` and converts that conservative score rate to a local
-Elo proxy against this exact gate. Scoreless gates have no finite Elo, so they
-are drawn at an explicit `<= -800` floor. The current best proxy is `12.5%`,
-about `-338` Elo against this local gate.
+The graph is the compact AlphaGo-style view of the table: a best-so-far
+capability line over real, non-evenly-spaced result timestamps. For each direct
+Stockfish check in the backfilled history, it uses `score / max(games, 4)` and
+converts that conservative score rate to a local Elo proxy against this exact
+gate. Scoreless gates have no finite Elo, so they are drawn at an explicit
+`<= -800` floor. The current best proxy is `12.5%`, about `-338` Elo against
+this local gate.
 
 Timestamps are real `git log --date=iso-strict` commit times unless marked as a
 PGN file mtime or report timestamp, where the result was generated after the
@@ -550,6 +551,22 @@ with a large broad teacher set. It caps the expected number of times each
 position from any source is sampled per epoch, which prevents a 10- or
 20-position loss slice from being replayed hundreds of times while still
 retaining the source's intended priority.
+
+Use `--distill-checkpoint` with `--policy-distill-weight` to anchor a repair run
+to a reference policy. This is useful when fitting a tiny loss slice causes
+broad holdout top-k to collapse:
+
+```bash
+uv run alpha-chess train \
+  --checkpoint checkpoints/current/latest.pt \
+  --distill-checkpoint checkpoints/current/latest.pt \
+  --policy-distill-weight 0.2 \
+  --data data/teacher/stockfish_sample data/teacher/alpha_loss_blunders \
+  --data-weights 0.99 0.01 \
+  --max-source-repeat 10 \
+  --legal-policy-loss \
+  --out checkpoints/anchored_repair
+```
 
 When a run spans multiple epochs, keep the best validation epoch as `latest.pt`
 instead of blindly using the final epoch. Use `--holdout-data` with a

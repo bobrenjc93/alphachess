@@ -32,6 +32,9 @@ class TrainConfig:
     data_weights: list[float] | None = None
     max_source_repeat: float | None = None
     source_policy_weights: list[float] | None = None
+    distill_checkpoint: str | None = None
+    policy_distill_weight: float = 0.0
+    distill_temperature: float = 1.0
     legal_policy_loss: bool = False
     color_mirror_augmentation: bool = False
     prefer_action_labels: bool = False
@@ -141,10 +144,23 @@ def train(config: TrainConfig) -> Path:
         raise ValueError("policy_head_only and value_head_only are mutually exclusive")
     if config.select_best_require is not None and config.select_best_by is None:
         raise ValueError("select_best_require requires select_best_by")
+    if config.policy_distill_weight < 0:
+        raise ValueError("policy_distill_weight must be non-negative")
+    if config.distill_temperature <= 0 or not math.isfinite(config.distill_temperature):
+        raise ValueError("distill_temperature must be a finite positive value")
+    if config.policy_distill_weight > 0 and config.distill_checkpoint is None:
+        raise ValueError("policy_distill_weight requires distill_checkpoint")
     if config.policy_head_only:
         _freeze_except_policy_head(model)
     if config.value_head_only:
         _freeze_except_value_head(model)
+    distill_model = None
+    if config.distill_checkpoint is not None:
+        distill_model = load_checkpoint(config.distill_checkpoint, map_location=device)
+        distill_model.to(device)
+        distill_model.eval()
+        for param in distill_model.parameters():
+            param.requires_grad_(False)
     trainable_parameters = [param for param in model.parameters() if param.requires_grad]
     if not trainable_parameters:
         raise ValueError("No trainable parameters are available")
@@ -177,6 +193,9 @@ def train(config: TrainConfig) -> Path:
                 bad_action_weight=config.bad_action_weight,
                 bad_action_margin=config.bad_action_margin,
                 source_policy_weights=config.source_policy_weights,
+                distill_model=distill_model,
+                policy_distill_weight=config.policy_distill_weight,
+                distill_temperature=config.distill_temperature,
             )
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -192,6 +211,10 @@ def train(config: TrainConfig) -> Path:
             }
             if "bad_action_loss" in parts:
                 latest_metrics["bad_action_loss"] = float(parts["bad_action_loss"].item())
+            if "policy_distill_loss" in parts:
+                latest_metrics["policy_distill_loss"] = float(
+                    parts["policy_distill_loss"].item()
+                )
 
         latest_metrics["epoch_loss"] = running_loss / max(1, len(loader))
         if val_loader is not None:
@@ -606,7 +629,18 @@ def _compute_batch_loss(
     bad_action_weight: float = 0.0,
     bad_action_margin: float = 1.0,
     source_policy_weights: list[float] | None = None,
+    distill_model: ChessNet | None = None,
+    policy_distill_weight: float = 0.0,
+    distill_temperature: float = 1.0,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    if policy_distill_weight < 0:
+        raise ValueError("policy_distill_weight must be non-negative")
+    if policy_distill_weight > 0 and distill_model is None:
+        raise ValueError("policy_distill_weight requires distill_model")
+    if policy_distill_weight > 0 and (
+        distill_temperature <= 0 or not math.isfinite(float(distill_temperature))
+    ):
+        raise ValueError("distill_temperature must be a finite positive value")
     boards = _batch_tensor(batch, "board").to(device)
     values = _batch_tensor(batch, "value").to(device)
     if legal_policy_loss:
@@ -620,6 +654,9 @@ def _compute_batch_loss(
             bad_action_weight,
             bad_action_margin,
             source_policy_weights=source_policy_weights,
+            distill_model=distill_model,
+            policy_distill_weight=policy_distill_weight,
+            distill_temperature=distill_temperature,
         )
     return _compute_unmasked_loss(
         model,
@@ -631,6 +668,9 @@ def _compute_batch_loss(
         bad_action_weight,
         bad_action_margin,
         source_policy_weights=source_policy_weights,
+        distill_model=distill_model,
+        policy_distill_weight=policy_distill_weight,
+        distill_temperature=distill_temperature,
     )
 
 
@@ -644,6 +684,9 @@ def _compute_legal_masked_loss(
     bad_action_weight: float = 0.0,
     bad_action_margin: float = 1.0,
     source_policy_weights: list[float] | None = None,
+    distill_model: ChessNet | None = None,
+    policy_distill_weight: float = 0.0,
+    distill_temperature: float = 1.0,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     if "fen" not in batch:
         raise ValueError("legal_policy_loss requires training NPZ files with stored FENs")
@@ -684,7 +727,21 @@ def _compute_legal_masked_loss(
         device,
         margin=bad_action_margin,
     )
-    loss = policy_loss + value_weight * value_loss + bad_action_weight * bad_action_loss
+    policy_distill_loss = policy_loss.new_tensor(0.0)
+    if policy_distill_weight > 0:
+        policy_distill_loss = _policy_distillation_loss(
+            masked_logits,
+            boards,
+            distill_model,
+            legal_mask=legal_mask,
+            temperature=distill_temperature,
+        )
+    loss = (
+        policy_loss
+        + value_weight * value_loss
+        + bad_action_weight * bad_action_loss
+        + policy_distill_weight * policy_distill_loss
+    )
     parts = {
         "policy_loss": policy_loss.detach(),
         "policy_acc": policy_acc.detach(),
@@ -693,6 +750,8 @@ def _compute_legal_masked_loss(
     parts.update(_policy_topk_metrics(masked_logits, target_action))
     if bad_action_weight > 0 and "bad_action" in batch:
         parts["bad_action_loss"] = bad_action_loss.detach()
+    if policy_distill_weight > 0:
+        parts["policy_distill_loss"] = policy_distill_loss.detach()
     return loss, parts
 
 
@@ -706,6 +765,9 @@ def _compute_unmasked_loss(
     bad_action_weight: float,
     bad_action_margin: float,
     source_policy_weights: list[float] | None = None,
+    distill_model: ChessNet | None = None,
+    policy_distill_weight: float = 0.0,
+    distill_temperature: float = 1.0,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     policy_logits, value = model(boards)
     if "policy" in batch:
@@ -733,7 +795,21 @@ def _compute_unmasked_loss(
         device,
         margin=bad_action_margin,
     )
-    loss = policy_loss + value_weight * value_loss + bad_action_weight * bad_action_loss
+    policy_distill_loss = policy_loss.new_tensor(0.0)
+    if policy_distill_weight > 0:
+        policy_distill_loss = _policy_distillation_loss(
+            policy_logits,
+            boards,
+            distill_model,
+            legal_mask=None,
+            temperature=distill_temperature,
+        )
+    loss = (
+        policy_loss
+        + value_weight * value_loss
+        + bad_action_weight * bad_action_loss
+        + policy_distill_weight * policy_distill_loss
+    )
     parts = {
         "policy_loss": policy_loss.detach(),
         "policy_acc": policy_acc.detach(),
@@ -742,7 +818,32 @@ def _compute_unmasked_loss(
     parts.update(_policy_topk_metrics(policy_logits, target_action))
     if bad_action_weight > 0 and "bad_action" in batch:
         parts["bad_action_loss"] = bad_action_loss.detach()
+    if policy_distill_weight > 0:
+        parts["policy_distill_loss"] = policy_distill_loss.detach()
     return loss, parts
+
+
+def _policy_distillation_loss(
+    student_logits: torch.Tensor,
+    boards: torch.Tensor,
+    distill_model: ChessNet | None,
+    *,
+    legal_mask: torch.Tensor | None,
+    temperature: float,
+) -> torch.Tensor:
+    if distill_model is None:
+        return student_logits.new_tensor(0.0)
+    if temperature <= 0 or not math.isfinite(float(temperature)):
+        raise ValueError("distill_temperature must be a finite positive value")
+    with torch.no_grad():
+        teacher_logits, _ = distill_model(boards)
+    if legal_mask is not None:
+        teacher_logits = teacher_logits.masked_fill(~legal_mask, -1e9)
+    teacher_probs = F.softmax(teacher_logits / temperature, dim=-1)
+    student_log_probs = F.log_softmax(student_logits / temperature, dim=-1)
+    return F.kl_div(student_log_probs, teacher_probs, reduction="batchmean") * (
+        temperature * temperature
+    )
 
 
 def _policy_topk_metrics(

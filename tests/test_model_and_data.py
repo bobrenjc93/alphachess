@@ -331,6 +331,43 @@ def test_bad_action_margin_loss_accepts_multiple_bad_actions() -> None:
     assert float(parts["bad_action_loss"]) >= 0.0
 
 
+def test_policy_distillation_loss_anchors_to_reference_model() -> None:
+    board = chess.Board()
+    move = chess.Move.from_uci("e2e4")
+    model = ChessNet(ChessNetConfig(channels=8, blocks=1))
+    teacher = ChessNet(ChessNetConfig(channels=8, blocks=1))
+    for param in teacher.parameters():
+        param.data.zero_()
+    teacher.eval()
+    batch = {
+        "board": torch.from_numpy(np.stack([encode_board(board)])).float(),
+        "action": torch.tensor([move_to_action(move, board)], dtype=torch.long),
+        "value": torch.tensor([0.0], dtype=torch.float32),
+        "fen": [board.fen()],
+    }
+
+    plain_loss, _plain_parts = _compute_batch_loss(
+        model,
+        batch,
+        torch.device("cpu"),
+        value_weight=0.0,
+        legal_policy_loss=True,
+    )
+    anchored_loss, anchored_parts = _compute_batch_loss(
+        model,
+        batch,
+        torch.device("cpu"),
+        value_weight=0.0,
+        legal_policy_loss=True,
+        distill_model=teacher,
+        policy_distill_weight=0.5,
+    )
+
+    assert "policy_distill_loss" in anchored_parts
+    assert anchored_parts["policy_distill_loss"].item() > 0.0
+    assert anchored_loss.detach().item() > plain_loss.detach().item()
+
+
 def test_source_policy_weights_scale_policy_loss() -> None:
     model = ChessNet(ChessNetConfig(channels=8, blocks=1))
     model.eval()
