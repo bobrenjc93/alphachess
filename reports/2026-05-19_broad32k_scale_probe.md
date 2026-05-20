@@ -442,9 +442,12 @@ Direct checks:
 | `material_value_weight=0.15` | `0.0/2` | `reports/policyhead_broad32k_hardlabel_lossrepair_material015_stockfish.pgn` |
 | root-material plus root-king guards | `0.0/2` | `reports/policyhead_broad32k_hardlabel_lossrepair_rootguards_stockfish.pgn` |
 | `root_mate_search_plies=5` | `0.0/2` | `reports/policyhead_broad32k_hardlabel_lossrepair_rootmate5_stockfish.pgn` |
+| 64 simulations | `0.0/2` | `reports/policyhead_broad32k_hardlabel_lossrepair_64sims_stockfish.pgn` |
+| strict material plus king guards | `0.0/2` | `reports/policyhead_broad32k_hardlabel_lossrepair_strictguards_stockfish.pgn` |
+| 64 simulations with leaf material value blend `0.25` | `0.0/2` | `reports/policyhead_broad32k_hardlabel_lossrepair_leafmat025_64sims_stockfish.pgn` |
 
 This is the best broad32k hard-label top-1 checkpoint so far and it cleanly
 beats its parent internally, but direct Stockfish still wins tactically under
-the plain gate, material blending, root guards, and a deeper root-mate guard.
-The direct-play blocker is therefore still not solved by small policy-head loss
-replay.
+the plain gate, material blending, root guards, a deeper root-mate guard, more
+search, strict root guards, and leaf material value blending. The direct-play
+blocker is therefore still not solved by small policy-head loss replay.

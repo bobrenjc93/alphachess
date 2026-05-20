@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T19:34:56-07:00`.
+Last updated: `2026-05-19T20:07:36-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -85,6 +85,7 @@ latest committed report.
 | `2026-05-19T18:48:42-07:00` report timestamp | Broad32k hard-label selector repair (`reports/2026-05-19_broad32k_scale_probe.md`, `reports/policyhead_broad32k_hardlabels_selectbest_stockfish_gate.pgn`). | `6.0/8` vs selected broad32k parent | `0.0/2` | Hard-label fine-tuning selected epoch 3 and lifted broad32k source-0 top-1 to `0.3605`, but direct Stockfish still failed. |
 | `2026-05-19T19:11:04-07:00` report timestamp | Hard-label loss-repair probe (`reports/2026-05-19_broad32k_scale_probe.md`). | `8.0/8` vs hard-label parent | gate `0.0/2`; material `0.0/2`; root guards `0.0/2` | New loss replay raised broad32k hard-label top-1 to `0.3661`, but the direct tactical failures persisted. |
 | `2026-05-19T19:34:49-07:00` report timestamp | Broad65k scale probe (`reports/2026-05-19_broad65k_scale_probe.md`). | `4.0/8` vs hard-label loss-repair parent | `0.0/2` | Doubling the broad teacher to 65k nudged validation but regressed parent play and did not move direct Stockfish. |
+| `2026-05-19T19:56:50-07:00` report timestamp | Broad65k expert-mix follow-up (`reports/2026-05-19_broad65k_scale_probe.md`). | `4.0/8` vs hard-label loss-repair parent | `0.0/2` | Mixing expert rapid games improved expert-move validation but regressed broad Stockfish validation and still failed direct play. |
 
 Current practical status:
 
@@ -139,6 +140,9 @@ Current practical status:
 - Doubling the broad teacher set to 65k positions only nudged fixed validation
   (`0.3488` top-1 on 65k, `0.3665` on the older 32k slice) and regressed the
   parent match to `4.0/8`; broader cheap labels alone are not enough.
+- Adding rapid expert games lifted expert top-1 to `0.4171`, but broad65k
+  top-1 fell to `0.3476`, the parent match stayed `4.0/8`, and direct Stockfish
+  remained `0.0/2`.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
