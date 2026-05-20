@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T10:22:05-07:00`
+Timestamp: `2026-05-20T10:27:20-07:00`
 
 ## Summary
 
@@ -77,6 +77,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-recent120-fullgame-policyacc-policyhead-v1/checkpoints/iter_0001` | newest exact-loss book diagnostic | same policy-accuracy policy-head checkpoint, with `alpha_recent120_policyacc_directloss_legalvalue_v1` added to both exact good-action and bad-action books | N/A | exact table from the four newest failed gates changed both openings, avoiding the immediate `dxc6` and `...Nxe4` repeats, but adjacent attacking lines still won | broad+new-loss good book strict `0.0/2` (`reports/policyhead192_recent120_policyacc_policyhead_newlossbook_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent120-fullgame-policyacc-policyhead-v1/checkpoints/iter_0001` | 64-simulation newest exact-loss book diagnostic | same policy-accuracy policy-head checkpoint and newest exact-loss books, `simulations=64` instead of `16` | N/A | deeper MCTS changed both games but still allowed losing middlegame and passed-pawn lines | 64-sim broad+new-loss good book strict `0.0/2` (`reports/policyhead192_recent120_policyacc_policyhead_newlossbook_64sims_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent120-fullgame-valuecal-policyacc-v1/checkpoints/iter_0001` | best v2 value loss | value head only from policy-accuracy policy-head parent, LR `5e-5`, value weight `1.0`, weights `0.35/0.15/0.40/0.10` over broad/opening/v2/new-loss slices | broad holdout value loss `0.1143`, policy top-1 unchanged at `0.3370` | v2 value loss `0.0203` vs parent `0.1803`; policy metrics unchanged from the policy-accuracy parent | broad+new-loss good book strict `0.0/2` (`reports/policyhead192_recent120_valuecal_policyacc_newlossbook_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent120-fullgame-policyacc-policyhead-v1/checkpoints/iter_0001` | strict-zero root guard diagnostic | same policy-accuracy policy-head checkpoint and newest exact-loss books, with `root_material_max_loss_cp=0` and `root_king_safety_max_loss_cp=0` | N/A | stricter material and king-safety guard thresholds changed the line selection but still allowed losing attacking and endgame lines | broad+new-loss good book strict `0.0/2` (`reports/policyhead192_recent120_policyacc_policyhead_newlossbook_strict0_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -232,3 +233,7 @@ Value-head-only calibration on the same recent120 and new-loss value labels cut
 v2 value loss from `0.1803` to `0.0203` without changing the policy head. Direct
 play still scored `0.0/2`, so the blocker is not merely that the policy-accuracy
 checkpoint had a stale value head on this slice.
+Tightening the root material and king-safety guard thresholds from `100cp` to
+`0cp` also stayed `0.0/2`. That changed the selected lines but still lost
+through adjacent attacks and conversion, so the current hand-written root guard
+family is not strong enough to substitute for tactical generalization.

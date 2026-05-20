@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T10:22:05-07:00`.
+Result data through: `2026-05-20T10:27:20-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -154,6 +154,7 @@ latest committed report.
 | `2026-05-20T10:05:44-07:00` PGN file mtime | Recent120 policy-head with newest exact loss book (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad+new-loss good book strict `0.0/2` | Exact coverage changed the openings and avoided the immediate repeated stems, but adjacent attacking lines still won both games. |
 | `2026-05-20T10:13:43-07:00` PGN file mtime | Recent120 policy-head with newest exact loss book at 64 simulations (`reports/2026-05-20_opening_loss_repair.md`). | N/A | 64-sim broad+new-loss good book strict `0.0/2` | Deeper search changed the games but still lost both, so this candidate is not search-starved at the current gate. |
 | `2026-05-20T10:22:05-07:00` PGN file mtime | Recent120 value-head calibration from policy-accuracy parent (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad+new-loss good book strict `0.0/2` | Value-head-only tuning cut v2 value loss from `0.1803` to `0.0203`, but the direct score stayed zero. |
+| `2026-05-20T10:27:20-07:00` PGN file mtime | Recent120 strict-zero root guard diagnostic (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad+new-loss good book strict `0.0/2` | Tightening material and king-safety root guard loss thresholds to `0` changed the lines but still lost both games. |
 
 Current practical status:
 
@@ -249,6 +250,9 @@ Current practical status:
 - Value-head-only calibration fit the v2 value labels strongly, but it also
   failed the direct gate, so the current blocker is not just stale value-head
   calibration on the recent120 slice.
+- Tightening the current root guards from `100cp` allowed loss to `0cp` also
+  failed, so the existing guard family is not enough to make this checkpoint
+  robust.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the
