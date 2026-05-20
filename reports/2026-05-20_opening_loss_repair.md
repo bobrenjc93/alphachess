@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T10:13:43-07:00`
+Timestamp: `2026-05-20T10:22:05-07:00`
 
 ## Summary
 
@@ -76,6 +76,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-recent120-fullgame-policyacc-policyhead-v1/checkpoints/iter_0001` | best v2 policy accuracy | policy head only from recent80 fullnet parent, LR `1e-6`, bad-action weight `0.3`, weights `0.35/0.15/0.50` over broad/opening/v2 full-game slices | broad holdout top-1 `0.3370`, top-3 `0.5366`, top-5 `0.6378` vs parent top-1 `0.3395`, top-3 `0.5370`, top-5 `0.6407` | v2 full-game top-1 `0.3809`, top-3 `0.6135`, top-5 `0.7153`, bad-action loss `0.3757` vs parent top-1 `0.3784`, top-3 `0.6118`, top-5 `0.7112`, bad-action loss `0.3846` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent120_fullgame_policyacc_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent120-fullgame-policyacc-policyhead-v1/checkpoints/iter_0001` | newest exact-loss book diagnostic | same policy-accuracy policy-head checkpoint, with `alpha_recent120_policyacc_directloss_legalvalue_v1` added to both exact good-action and bad-action books | N/A | exact table from the four newest failed gates changed both openings, avoiding the immediate `dxc6` and `...Nxe4` repeats, but adjacent attacking lines still won | broad+new-loss good book strict `0.0/2` (`reports/policyhead192_recent120_policyacc_policyhead_newlossbook_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent120-fullgame-policyacc-policyhead-v1/checkpoints/iter_0001` | 64-simulation newest exact-loss book diagnostic | same policy-accuracy policy-head checkpoint and newest exact-loss books, `simulations=64` instead of `16` | N/A | deeper MCTS changed both games but still allowed losing middlegame and passed-pawn lines | 64-sim broad+new-loss good book strict `0.0/2` (`reports/policyhead192_recent120_policyacc_policyhead_newlossbook_64sims_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent120-fullgame-valuecal-policyacc-v1/checkpoints/iter_0001` | best v2 value loss | value head only from policy-accuracy policy-head parent, LR `5e-5`, value weight `1.0`, weights `0.35/0.15/0.40/0.10` over broad/opening/v2/new-loss slices | broad holdout value loss `0.1143`, policy top-1 unchanged at `0.3370` | v2 value loss `0.0203` vs parent `0.1803`; policy metrics unchanged from the policy-accuracy parent | broad+new-loss good book strict `0.0/2` (`reports/policyhead192_recent120_valuecal_policyacc_newlossbook_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -227,3 +228,7 @@ soon as the table stops covering the position.
 Raising that exact-book diagnostic from 16 to 64 simulations also scored
 `0.0/2`. Search changed the games again, but still did not rescue the current
 policy/value prior from losing middlegame and passed-pawn lines.
+Value-head-only calibration on the same recent120 and new-loss value labels cut
+v2 value loss from `0.1803` to `0.0203` without changing the policy head. Direct
+play still scored `0.0/2`, so the blocker is not merely that the policy-accuracy
+checkpoint had a stale value head on this slice.
