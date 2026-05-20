@@ -119,6 +119,21 @@ Stockfish-confirmed value-dropping model moves written to
 | `experiments/policyhead192-stockfish-confirmed-fullnet-badmargin-v1/checkpoints/iter_0001` | best confirmed-blunder bad-action loss, epoch `5` | LR `7.5e-7`, bad-action weight `0.50`, weights `0.40/0.22/0.28/0.05/0.05` | top-1 `0.3439`, top-3 `0.5470`, top-5 `0.6476` | top-1 `0.0209`, top-3 `0.3458`, top-5 `0.5095`, bad-action loss `4.0162` | `0.0/2` (`reports/policyhead192_stockfish_confirmed_fullnet_badmargin_gate.pgn`) |
 | `experiments/policyhead192-stockfish-confirmed-broad73k-fullnet-v1/checkpoints/iter_0001` | best broad73k confirmed-blunder bad-action loss, epoch `4` | LR `7.5e-7`, bad-action weight `0.45`, weights `0.38/0.22/0.30/0.05/0.05` | top-1 `0.3440`, top-3 `0.5472`, top-5 `0.6488` | top-1 `0.0365`, top-3 `0.4137`, top-5 `0.5790`, bad-action loss `3.6055` | `0.0/2` (`reports/policyhead192_stockfish_confirmed_broad73k_fullnet_gate.pgn`) |
 
+## Exact bad-action book
+
+I added an optional eval-time `--bad-action-book` path that loads mined replay
+NPZs, keys positions by FEN without move counters, and suppresses exact matched
+bad actions only at AlphaChess root moves. Defaults are unchanged, and the
+filter falls back to the original legal move list if every root action would be
+removed.
+
+Tests: `uv run pytest` passed with `96 passed`.
+
+| Check | Bad-action book | Direct gate |
+| --- | --- | ---: |
+| hard-negative broad/t05 parent | `data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_v1` | `0.0/2` (`reports/policyhead192_hardneg_broad73k_badbook_stockfish_gate.pgn`) |
+| broad73k full-network repair | `data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_v1` | `0.0/2` (`reports/policyhead192_broad73k_fullnet_badbook_stockfish_gate.pgn`) |
+
 ## Read
 
 Stockfish-confirmed model-blunder mining is useful because it separates true
@@ -138,3 +153,5 @@ further, to `3.65%`, while keeping the broad holdout roughly flat. It still did
 not improve direct play, and the margin loss on the broad slice did not beat the
 parent, so the next repair needs either a different objective or direct
 move-selection use of this signal rather than another small supervised replay.
+The first exact-position move-selection use did not cover enough of the direct
+loss lines to change the gate.

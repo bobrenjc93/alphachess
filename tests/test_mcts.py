@@ -2,6 +2,7 @@ import chess
 import numpy as np
 
 from alpha_chess.chess_env import ACTION_SIZE, action_to_move, legal_actions, move_to_action
+from alpha_chess.bad_action_book import load_bad_action_book, position_key
 from alpha_chess.evaluator import UniformEvaluator
 from alpha_chess.mcts import (
     TACTICAL_MATERIAL_CANDIDATE_LIMIT,
@@ -84,6 +85,43 @@ def test_mcts_applies_root_filters_to_reused_root() -> None:
 
     assert result.root is root
     assert blunder_action not in result.root.children
+
+
+def test_mcts_filters_exact_position_bad_action() -> None:
+    board = chess.Board()
+    bad_action = move_to_action(chess.Move.from_uci("e2e4"), board)
+    good_action = move_to_action(chess.Move.from_uci("d2d4"), board)
+    evaluator = SparsePolicyEvaluator({"e2e4": 0.9, "d2d4": 0.1})
+
+    search = AlphaZeroMCTS(
+        evaluator,
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_bad_action_book={position_key(board): frozenset({bad_action})},
+        ),
+    )
+    result = search.run(board)
+
+    assert bad_action not in result.root.children
+    assert result.select_action(temperature=0.0, rng=search.rng) == good_action
+
+
+def test_bad_action_book_ignores_move_counters(tmp_path) -> None:
+    board = chess.Board()
+    bad_action = move_to_action(chess.Move.from_uci("e2e4"), board)
+    path = tmp_path / "book.npz"
+    np.savez_compressed(
+        path,
+        fens=np.asarray([board.fen()]),
+        bad_actions=np.asarray([[bad_action]], dtype=np.int64),
+    )
+
+    book = load_bad_action_book(str(path))
+    same_position = chess.Board(" ".join(board.fen().split()[:4]) + " 7 42")
+
+    assert book is not None
+    assert bad_action in book[position_key(same_position)]
 
 
 def test_mcts_policy_prior_temperature_flattens_priors() -> None:

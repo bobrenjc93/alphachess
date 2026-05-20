@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="940" height="390" viewBox="0 0 940 390" role="img" aria-labelledby="title desc">
   <title id="title">AlphaChess Capability Progress</title>
-  <desc id="desc">Simple line chart of AlphaChess capability over real timestamps, similar to an AlphaGo rating-over-time graph. The y axis is a conservative direct Stockfish score-rate proxy: score divided by max(games, 4), with the best value seen so far plotted over time. Data points include 2026-05-18T09:14:04-07:00 0.0/2 at 0 percent, 2026-05-18T13:18:35-07:00 0.0/2 at 0 percent, 2026-05-18T16:03:41-07:00 0.5/2 at 12.5 percent, 2026-05-18T23:13:16-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T00:04:01-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T10:31:47-07:00 0.5/4 at 12.5 percent, 2026-05-19T13:57:45-07:00 0.5/2 at 12.5 percent after conservative scaling, 2026-05-19T18:01:50-07:00 0.5/2 at 12.5 percent after conservative scaling, 2026-05-19T18:48:42-07:00 0.0/2 at 0 percent, 2026-05-19T19:11:04-07:00 0.0/2 guarded check at 0 percent, 2026-05-19T19:34:49-07:00 broad65k gate at 0 percent, 2026-05-19T19:56:50-07:00 expert-mix gate at 0 percent, 2026-05-19T20:49:36-07:00 fullnet192 puzzle-mix gate at 0 percent, 2026-05-19T21:22:07-07:00 fullnet192 CPU loss-overfit gate at 0 percent, 2026-05-19T21:50:00-07:00 fullnet192 holdout-selected gate at 0 percent, 2026-05-19T22:01:55-07:00 fullnet192 latest-loss repair gate at 0 percent, 2026-05-19T22:07:00-07:00 strict root-guard gate at 0 percent, 2026-05-19T22:33:45-07:00 higher-time teacher gate at 0 percent, 2026-05-19T23:13:05-07:00 broad/t05 hard-negative gate at 0 percent, 2026-05-19T23:33:20-07:00 top-3 hard-negative gate at 0 percent, 2026-05-19T23:49:30-07:00 opening/ELO2000/tactical gate at 0 percent, 2026-05-20T00:22:48-07:00 Stockfish-confirmed model-blunder gate at 0 percent, 2026-05-20T00:40:04-07:00 full-network confirmed-blunder gate at 0 percent, 2026-05-20T00:45:14-07:00 bad-margin full-network confirmed-blunder gate at 0 percent, and 2026-05-20T00:58:51-07:00 broad73k full-network confirmed-blunder gate at 0 percent. The 50 percent line marks the local Stockfish promotion gate.</desc>
+  <desc id="desc">Simple line chart of AlphaChess capability over real timestamps, similar to an AlphaGo rating-over-time graph. The y axis is a conservative direct Stockfish score-rate proxy: score divided by max(games, 4), with the best value seen so far plotted over time. Data points include 2026-05-18T09:14:04-07:00 0.0/2 at 0 percent, 2026-05-18T13:18:35-07:00 0.0/2 at 0 percent, 2026-05-18T16:03:41-07:00 0.5/2 at 12.5 percent, 2026-05-18T23:13:16-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T00:04:01-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T10:31:47-07:00 0.5/4 at 12.5 percent, 2026-05-19T13:57:45-07:00 0.5/2 at 12.5 percent after conservative scaling, 2026-05-19T18:01:50-07:00 0.5/2 at 12.5 percent after conservative scaling, 2026-05-19T18:48:42-07:00 0.0/2 at 0 percent, 2026-05-19T19:11:04-07:00 0.0/2 guarded check at 0 percent, 2026-05-19T19:34:49-07:00 broad65k gate at 0 percent, 2026-05-19T19:56:50-07:00 expert-mix gate at 0 percent, 2026-05-19T20:49:36-07:00 fullnet192 puzzle-mix gate at 0 percent, 2026-05-19T21:22:07-07:00 fullnet192 CPU loss-overfit gate at 0 percent, 2026-05-19T21:50:00-07:00 fullnet192 holdout-selected gate at 0 percent, 2026-05-19T22:01:55-07:00 fullnet192 latest-loss repair gate at 0 percent, 2026-05-19T22:07:00-07:00 strict root-guard gate at 0 percent, 2026-05-19T22:33:45-07:00 higher-time teacher gate at 0 percent, 2026-05-19T23:13:05-07:00 broad/t05 hard-negative gate at 0 percent, 2026-05-19T23:33:20-07:00 top-3 hard-negative gate at 0 percent, 2026-05-19T23:49:30-07:00 opening/ELO2000/tactical gate at 0 percent, 2026-05-20T00:22:48-07:00 Stockfish-confirmed model-blunder gate at 0 percent, 2026-05-20T00:40:04-07:00 full-network confirmed-blunder gate at 0 percent, 2026-05-20T00:45:14-07:00 bad-margin full-network confirmed-blunder gate at 0 percent, 2026-05-20T00:58:51-07:00 broad73k full-network confirmed-blunder gate at 0 percent, 2026-05-20T01:03:44-07:00 exact bad-action book parent gate at 0 percent, and 2026-05-20T01:04:09-07:00 exact bad-action book full-network gate at 0 percent. The 50 percent line marks the local Stockfish promotion gate.</desc>
   <rect width="940" height="390" fill="#fbfbf8"/>
 
   <text x="92" y="34" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#202124">AlphaChess capability progress</text>
@@ -27,7 +27,7 @@
     <text x="222.9" y="335" text-anchor="middle">05-18 16:03</text>
     <text x="360.3" y="335" text-anchor="middle">05-18 23:13</text>
     <text x="577.2" y="335" text-anchor="middle">05-19 10:31</text>
-    <text x="850" y="335" text-anchor="middle">05-20 00:58</text>
+    <text x="850" y="335" text-anchor="middle">05-20 01:04</text>
     <text x="471" y="374" text-anchor="middle">real result timestamp</text>
     <text x="20" y="198" text-anchor="middle" transform="rotate(-90 20 198)">Stockfish gate score-rate proxy</text>
   </g>
@@ -50,9 +50,11 @@
     <circle cx="820.5" cy="310" r="4"/>
     <circle cx="827" cy="310" r="4"/>
     <circle cx="832.2" cy="310" r="4"/>
-    <circle cx="838.5" cy="310" r="4"/>
+    <circle cx="836.9" cy="310" r="4"/>
+    <circle cx="842.4" cy="310" r="4"/>
     <circle cx="844" cy="310" r="4"/>
-    <circle cx="845.7" cy="310" r="4"/>
+    <circle cx="848.3" cy="310" r="4"/>
+    <circle cx="849.9" cy="310" r="4"/>
     <circle cx="850" cy="310" r="4"/>
   </g>
 

@@ -8,6 +8,7 @@ import chess
 import numpy as np
 
 from alpha_chess.chess_env import ACTION_SIZE, action_to_move, legal_actions, terminal_value
+from alpha_chess.bad_action_book import BadActionBook, filter_bad_actions
 from alpha_chess.evaluator import PIECE_VALUES, Evaluator
 
 MATE_SCORE_CP = 100_000
@@ -36,6 +37,7 @@ class MCTSConfig:
     root_king_safety_max_loss_cp: int = 250
     leaf_material_value_weight: float = 0.0
     leaf_material_search_plies: int = 0
+    root_bad_action_book: BadActionBook | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -75,6 +77,7 @@ class Node:
         material_max_loss_cp: int = 250,
         king_safety_filter_plies: int = 0,
         king_safety_max_loss_cp: int = 250,
+        bad_action_book: BadActionBook | None = None,
     ) -> None:
         actions = legal_actions(board)
         forced_mate_found = False
@@ -96,6 +99,7 @@ class Node:
                 king_safety_filter_plies,
                 king_safety_max_loss_cp,
             )
+        actions = filter_bad_actions(board, actions, bad_action_book)
         if not actions:
             return
 
@@ -213,6 +217,7 @@ class AlphaZeroMCTS:
                     material_max_loss_cp=self.config.root_material_max_loss_cp,
                     king_safety_filter_plies=self.config.root_king_safety_search_plies,
                     king_safety_max_loss_cp=self.config.root_king_safety_max_loss_cp,
+                    bad_action_book=self.config.root_bad_action_book,
                 )
             else:
                 self._filter_root_children(board, root)
@@ -277,6 +282,7 @@ class AlphaZeroMCTS:
                 self.config.root_king_safety_search_plies,
                 self.config.root_king_safety_max_loss_cp,
             )
+        actions = filter_bad_actions(board, actions, self.config.root_bad_action_book)
         root.children = {
             action: root.children[action] for action in actions if action in root.children
         }

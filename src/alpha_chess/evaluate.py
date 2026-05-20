@@ -12,6 +12,7 @@ import chess.engine
 import chess.pgn
 import numpy as np
 
+from alpha_chess.bad_action_book import BadActionBook, load_bad_action_book
 from alpha_chess.chess_env import action_to_move, move_to_action, result_value_for_color
 from alpha_chess.evaluator import Evaluator, UniformEvaluator, load_evaluator
 from alpha_chess.mcts import AlphaZeroMCTS, MCTSConfig, Node, advance_root
@@ -44,6 +45,7 @@ class EvalConfig:
     max_plies: int = 512
     pgn_out: str | None = None
     workers: int = 1
+    bad_action_book: str | list[str] | None = None
 
 
 @dataclass
@@ -64,8 +66,9 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
         material_value_weight=config.material_value_weight,
         material_value_search_plies=config.material_value_search_plies,
     )
+    bad_action_book = load_bad_action_book(config.bad_action_book)
     if config.opponent in {"uci", "stockfish"}:
-        return evaluate_against_engine(config, model_eval)
+        return evaluate_against_engine(config, model_eval, bad_action_book)
 
     opponent_eval: Evaluator
     if config.opponent_checkpoint:
@@ -92,6 +95,7 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
         root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
         leaf_material_value_weight=config.leaf_material_value_weight,
         leaf_material_search_plies=config.leaf_material_search_plies,
+        bad_action_book=bad_action_book,
         seed=config.seed,
         max_plies=config.max_plies,
         pgn_out=config.pgn_out,
@@ -122,7 +126,11 @@ def evaluate_checkpoint_parallel(config: EvalConfig) -> dict[str, float]:
     return summarize_scores(scores)
 
 
-def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[str, float]:
+def evaluate_against_engine(
+    config: EvalConfig,
+    model_eval: Evaluator,
+    bad_action_book: BadActionBook | None = None,
+) -> dict[str, float]:
     game_seeds = _game_seeds(config.seed, config.games)
     scores: list[float] = []
     records: list[EvalGameRecord] = []
@@ -145,6 +153,7 @@ def evaluate_against_engine(config: EvalConfig, model_eval: Evaluator) -> dict[s
                 root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
                 leaf_material_value_weight=config.leaf_material_value_weight,
                 leaf_material_search_plies=config.leaf_material_search_plies,
+                bad_action_book=bad_action_book,
                 max_plies=config.max_plies,
                 limit=limit,
                 rng=np.random.default_rng(game_seeds[game_idx]),
@@ -182,6 +191,7 @@ def evaluate_match(
     leaf_material_search_plies: int = 0,
     root_king_safety_search_plies: int = 0,
     root_king_safety_max_loss_cp: int = 250,
+    bad_action_book: BadActionBook | None = None,
 ) -> dict[str, float]:
     game_seeds = _game_seeds(seed, games)
     scores: list[float] = []
@@ -204,6 +214,7 @@ def evaluate_match(
             root_king_safety_max_loss_cp=root_king_safety_max_loss_cp,
             leaf_material_value_weight=leaf_material_value_weight,
             leaf_material_search_plies=leaf_material_search_plies,
+            bad_action_book=bad_action_book,
             max_plies=max_plies,
             rng=np.random.default_rng(game_seeds[game_idx]),
         )
@@ -242,6 +253,7 @@ def _evaluate_match_game_task(
         )
     else:
         opponent_eval = UniformEvaluator()
+    bad_action_book = load_bad_action_book(config.bad_action_book)
     model_color = chess.WHITE if game_idx % 2 == 0 else chess.BLACK
     score, board = play_eval_game(
         model_eval,
@@ -258,6 +270,7 @@ def _evaluate_match_game_task(
         root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
         leaf_material_value_weight=config.leaf_material_value_weight,
         leaf_material_search_plies=config.leaf_material_search_plies,
+        bad_action_book=bad_action_book,
         max_plies=config.max_plies,
         rng=np.random.default_rng(game_seed),
     )
@@ -283,6 +296,7 @@ def _evaluate_engine_game_task(
         material_value_weight=config.material_value_weight,
         material_value_search_plies=config.material_value_search_plies,
     )
+    bad_action_book = load_bad_action_book(config.bad_action_book)
     model_color = chess.WHITE if game_idx % 2 == 0 else chess.BLACK
     limit = chess.engine.Limit(time=config.engine_time, depth=config.engine_depth)
     with chess.engine.SimpleEngine.popen_uci(config.engine_path) as engine:
@@ -301,6 +315,7 @@ def _evaluate_engine_game_task(
             root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
             leaf_material_value_weight=config.leaf_material_value_weight,
             leaf_material_search_plies=config.leaf_material_search_plies,
+            bad_action_book=bad_action_book,
             max_plies=config.max_plies,
             limit=limit,
             rng=np.random.default_rng(game_seed),
@@ -339,6 +354,7 @@ def play_eval_game(
     leaf_material_search_plies: int = 0,
     root_king_safety_search_plies: int = 0,
     root_king_safety_max_loss_cp: int = 250,
+    bad_action_book: BadActionBook | None = None,
 ) -> tuple[float, chess.Board]:
     board = chess.Board()
     mcts_config = MCTSConfig(
@@ -352,9 +368,22 @@ def play_eval_game(
         root_king_safety_max_loss_cp=root_king_safety_max_loss_cp,
         leaf_material_value_weight=leaf_material_value_weight,
         leaf_material_search_plies=leaf_material_search_plies,
+        root_bad_action_book=bad_action_book,
+    )
+    opponent_mcts_config = MCTSConfig(
+        simulations=simulations,
+        c_puct=c_puct,
+        policy_prior_temperature=policy_prior_temperature,
+        root_mate_search_plies=root_mate_search_plies,
+        root_material_search_plies=root_material_search_plies,
+        root_material_max_loss_cp=root_material_max_loss_cp,
+        root_king_safety_search_plies=root_king_safety_search_plies,
+        root_king_safety_max_loss_cp=root_king_safety_max_loss_cp,
+        leaf_material_value_weight=leaf_material_value_weight,
+        leaf_material_search_plies=leaf_material_search_plies,
     )
     model_mcts = AlphaZeroMCTS(model_eval, mcts_config, rng=rng)
-    opponent_mcts = AlphaZeroMCTS(opponent_eval, mcts_config, rng=rng)
+    opponent_mcts = AlphaZeroMCTS(opponent_eval, opponent_mcts_config, rng=rng)
     model_root: Node | None = None
     opponent_root: Node | None = None
 
@@ -404,6 +433,7 @@ def play_eval_game_against_engine(
     leaf_material_search_plies: int = 0,
     root_king_safety_search_plies: int = 0,
     root_king_safety_max_loss_cp: int = 250,
+    bad_action_book: BadActionBook | None = None,
 ) -> tuple[float, chess.Board]:
     board = chess.Board()
     model_mcts = AlphaZeroMCTS(
@@ -419,6 +449,7 @@ def play_eval_game_against_engine(
             root_king_safety_max_loss_cp=root_king_safety_max_loss_cp,
             leaf_material_value_weight=leaf_material_value_weight,
             leaf_material_search_plies=leaf_material_search_plies,
+            root_bad_action_book=bad_action_book,
         ),
         rng=rng,
     )

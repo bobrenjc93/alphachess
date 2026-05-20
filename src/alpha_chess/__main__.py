@@ -150,6 +150,7 @@ def main(argv: list[str] | None = None) -> None:
     eval_parser.add_argument("--max-plies", type=int, default=512)
     eval_parser.add_argument("--pgn-out")
     eval_parser.add_argument("--workers", type=int, default=1)
+    eval_parser.add_argument("--bad-action-book", nargs="+")
 
     import_parser = subparsers.add_parser("import-pgn", help="convert expert PGN games to NPZ data")
     import_parser.add_argument("--pgn", required=True)
