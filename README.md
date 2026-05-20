@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T17:23:28-07:00`.
+Last updated: `2026-05-19T17:39:49-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -79,6 +79,7 @@ latest committed report.
 | `2026-05-19T16:49:45-07:00` report timestamp | Broader all-loss bad-action replay from direct-mix parent (`reports/2026-05-19_hard_negative_repair.md`). | `4.0/8`, all draws vs direct-loss mix parent | `0.0/2` | Broader bad-action data preserved broad teacher accuracy and improved top-3/margin diagnostics slightly, but top-1 and direct play did not improve. |
 | `2026-05-19T17:07:29-07:00` report timestamp | Broad32k Stockfish scale probe (`reports/2026-05-19_broad32k_scale_probe.md`). | `0.0/8` vs direct-loss mix parent | `0.0/2` | A 32k broad MultiPV teacher set exposed weak generalization; naive policy-head fine-tuning regressed validation and play. |
 | `2026-05-19T17:18:35-07:00` report timestamp | Broad32k epoch-1 follow-up (`reports/2026-05-19_broad32k_scale_probe.md`). | `6.0/8` vs direct-loss mix parent | `0.0/2` | The first epoch improved broad32k validation and parent play before epoch 2 collapsed, but direct Stockfish still failed. |
+| `2026-05-19T17:39:49-07:00` report timestamp | Validation-selected broad32k follow-up (`e4e3199`, `reports/2026-05-19_broad32k_scale_probe.md`). | `4.0/8` vs direct-loss mix parent | `0.0/2` | `--select-best-by val_source_0_policy_acc` kept epoch 1 as `latest.pt`, avoiding final-epoch collapse, but direct Stockfish still failed. |
 
 Current practical status:
 
@@ -116,9 +117,9 @@ Current practical status:
   than the small direct-loss slice, but it still does not move direct-loss
   top-1 or the direct Stockfish gate.
 - A broader 32k Stockfish teacher diagnostic now exists. The direct-loss mix
-  parent is best on it so far; epoch-1 fine-tuning improved fixed diagnostics
-  and parent play, but the final epoch collapsed and the saved epoch still
-  failed direct Stockfish.
+  parent is best on it so far; validation-selected fine-tuning now keeps the
+  better first epoch instead of the collapsed final epoch, but the selected
+  checkpoint still failed direct Stockfish.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
