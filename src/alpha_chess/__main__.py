@@ -7,6 +7,7 @@ from dataclasses import asdict
 
 from rich import print
 
+from alpha_chess.engine_self_play import EngineSelfPlayConfig, generate_engine_self_play
 from alpha_chess.evaluate import EvalConfig, evaluate_checkpoint
 from alpha_chess.hard_negatives import HardNegativeConfig, mine_hard_negatives
 from alpha_chess.iteration import IterationConfig, run_iterations
@@ -197,6 +198,27 @@ def main(argv: list[str] | None = None) -> None:
     teacher_parser.add_argument("--legal-value-policy-temperature", type=float)
     teacher_parser.add_argument("--chunk-size", type=int, default=1024)
 
+    engine_self_play_parser = subparsers.add_parser(
+        "engine-self-play",
+        help="generate UCI-engine self-play PGNs for teacher data",
+    )
+    engine_self_play_parser.add_argument(
+        "--out",
+        default="data/engine_selfplay/stockfish_selfplay.pgn",
+    )
+    engine_self_play_parser.add_argument("--engine-path", default="stockfish")
+    engine_self_play_parser.add_argument("--white-engine-path")
+    engine_self_play_parser.add_argument("--black-engine-path")
+    engine_self_play_parser.add_argument("--engine-time", type=float, default=0.05)
+    engine_self_play_parser.add_argument("--engine-depth", type=int)
+    engine_self_play_parser.add_argument("--games", type=int, default=1)
+    engine_self_play_parser.add_argument("--max-plies", type=int, default=200)
+    engine_self_play_parser.add_argument("--opening-random-plies", type=int, default=0)
+    engine_self_play_parser.add_argument("--opening-multipv", type=int, default=4)
+    engine_self_play_parser.add_argument("--opening-temperature-cp", type=float, default=80.0)
+    engine_self_play_parser.add_argument("--seed", type=int, default=0)
+    engine_self_play_parser.add_argument("--event", default="AlphaChess engine self-play")
+
     puzzle_parser = subparsers.add_parser(
         "import-puzzles", help="convert Lichess puzzle CSV data to NPZ data"
     )
@@ -358,6 +380,12 @@ def main(argv: list[str] | None = None) -> None:
         config = StockfishTeacherConfig(**kwargs)
         paths = generate_stockfish_teacher(config)
         print({"written": [str(path) for path in paths], "config": asdict(config)})
+    elif args.command == "engine-self-play":
+        kwargs = vars(args).copy()
+        kwargs.pop("command", None)
+        config = EngineSelfPlayConfig(**kwargs)
+        path = generate_engine_self_play(config)
+        print({"written": str(path), "config": asdict(config)})
     elif args.command == "import-puzzles":
         kwargs = vars(args).copy()
         kwargs.pop("command", None)

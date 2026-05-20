@@ -9,6 +9,7 @@ The repo starts with a complete AlphaZero-style baseline:
 - Residual policy/value network in PyTorch.
 - PUCT MCTS with root Dirichlet exploration for self-play.
 - NPZ replay data, supervised policy/value training, and checkpointed evaluation.
+- UCI-engine self-play PGN generation for stronger teacher trajectories.
 - `gpu-dev submit` helper for running the loop on reserved GPUs.
 
 This is not yet a superhuman model. It is the training and evaluation scaffold needed to iterate toward one.
@@ -440,13 +441,20 @@ DATA_DIR=data/expert/elite LEGAL_POLICY_LOSS=1 OUT_DIR=checkpoints/expert_legal 
 Generate Stockfish teacher labels from selected PGN positions:
 
 ```bash
+uv run alpha-chess engine-self-play \
+  --out data/engine_selfplay/stockfish_games.pgn \
+  --engine-path tools/stockfish/bin/stockfish \
+  --games 128 \
+  --engine-time 0.05 \
+  --opening-random-plies 12 \
+  --opening-multipv 6 \
+  --opening-temperature-cp 80
+
 uv run alpha-chess stockfish-teacher \
-  --pgn games.pgn.zst \
+  --pgn data/engine_selfplay/stockfish_games.pgn \
   --out data/teacher/stockfish_sample \
   --engine-path tools/stockfish/bin/stockfish \
   --max-positions 1024 \
-  --min-elo 1800 \
-  --min-initial-seconds 180 \
   --min-value-delta 0.25 \
   --multipv 4 \
   --policy-temperature-cp 200
