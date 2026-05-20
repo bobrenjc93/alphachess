@@ -254,6 +254,14 @@ This targeted replay produced another small direct draw and the best broad32k
 fixed top-1 so far, but it regressed the parent match and the direct draw did
 not confirm over four games. It is not a promotion candidate.
 
+Root-guard confirmation on the same policy-head repair:
+
+| Setting | Direct Stockfish score | PGN |
+| --- | ---: | --- |
+| `root_material_search_plies=3`, `root_material_max_loss_cp=100`, `root_king_safety_search_plies=2`, `root_king_safety_max_loss_cp=100` | `0.0/4` | `reports/policyhead_broad32k_selectloss_repair_rootguards_stockfish_confirm.pgn` |
+
+The current root guards did not stabilize the unconfirmed draw.
+
 ## Full-Network Select-Loss Repair
 
 Timestamp: `2026-05-19T18:14:27-07:00`

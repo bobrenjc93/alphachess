@@ -1,0 +1,44 @@
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "1"]
+[White "AlphaChess"]
+[Black "tools/stockfish/bin/stockfish"]
+[Result "0-1"]
+[AlphaChessScore "0.0"]
+
+1. Nf3 Nf6 2. c4 e6 3. g3 d5 4. cxd5 exd5 5. Bg2 Be7 6. h3 O-O 7. Nc3 d4 8. Nb1 c5 9. g4 Nd5 10. Qb3 Nf4 11. Bf1 Be6 12. Qxb7 Bd5 13. Qb5 a6 14. Qa4 Nd3+ 15. Kd1 Nxf2+ 16. Ke1 Nd3+ 17. Kd1 Nf2+ 18. Ke1 Nxh1 19. Na3 Bxf3 20. exf3 Bh4+ 21. Kd1 d3 22. Qc4 Nf2+ 23. Ke1 Qe8+ 24. Qe4 Nxe4+ 25. Kd1 Nf2# 0-1
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "2"]
+[White "tools/stockfish/bin/stockfish"]
+[Black "AlphaChess"]
+[Result "1-0"]
+[AlphaChessScore "0.0"]
+
+1. e4 c5 2. Nf3 e6 3. Nc3 a6 4. g3 b5 5. Bg2 Bb7 6. e5 Ne7 7. O-O Ng6 8. h4 Nc6 9. h5 Nge7 10. Ne4 Nf5 11. c3 c4 12. d3 Nce7 13. a4 cxd3 14. Nd4 bxa4 15. Qxd3 Qb6 16. g4 d5 17. exd6 Nxd4 18. dxe7 Bxe7 19. Qxd4 Qxd4 20. cxd4 Bc6 21. Nf6+ Bxf6 22. Bxc6+ Ke7 23. Bxa8 Bxd4 24. Rd1 Rxa8 25. Rxd4 g6 26. Rdxa4 gxh5 27. Rxa6 Rxa6 28. Rxa6 hxg4 29. Bg5+ Kd7 30. Bf6 h5 31. Ra5 Kc8 32. Rc5+ Kb7 33. Rxh5 e5 34. Rxe5 Ka6 35. Kh2 Kb7 36. Kg3 Ka6 37. Kxg4 Kb7 38. Re2 Ka6 39. Re7 Kb6 40. Kf5 Kc5 41. f3 Kb6 42. Rd7 Kc6 43. Rxf7 Kd5 44. Kg4 Kc4 45. Re7 Kb3 46. Rf7 Kc2 47. Rc7+ Kd3 48. Re7 Kd2 49. f4 Kc2 50. Rc7+ Kd3 51. Rc8 Ke4 52. Rd8 Ke3 53. Kf5 Kf3 54. Be5 Kg2 55. Kg4 Kh2 56. Kf3 Kh1 57. Bd4 Kh2 58. Rh8# 1-0
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "3"]
+[White "AlphaChess"]
+[Black "tools/stockfish/bin/stockfish"]
+[Result "0-1"]
+[AlphaChessScore "0.0"]
+
+1. Nf3 d5 2. c4 d4 3. e3 c5 4. Be2 d3 5. Bf1 Nc6 6. h3 e5 7. Nc3 Nb4 8. Nd4 exd4 9. exd4 Nc2+ 10. Qxc2 dxc2 11. dxc5 Bxc5 12. Be2 Ne7 13. Ne4 Bd4 14. c5 O-O 15. Nc3 Kh8 16. Na4 Bxf2+ 17. Kxf2 Qd4+ 18. Ke1 Qh4+ 19. Kf1 Qxa4 20. Bf3 Bd7 21. b3 Qd4 22. Bxb7 Rae8 23. c6 Nxc6 24. d3 Qxd3+ 25. Kg1 Re1+ 26. Kh2 Qd6+ 27. Bf4 Qxf4+ 28. g3 Qf2# 0-1
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "4"]
+[White "tools/stockfish/bin/stockfish"]
+[Black "AlphaChess"]
+[Result "1-0"]
+[AlphaChessScore "0.0"]
+
+1. e4 c5 2. Nf3 e6 3. d4 cxd4 4. Nxd4 Qh4 5. Nb5 Qxe4+ 6. Be3 Qe5 7. Nd2 Nc6 8. Nc4 Bb4+ 9. c3 Qxb5 10. Nd6+ Bxd6 11. Bxb5 Be5 12. Bxc6 bxc6 13. Bd4 Bxd4 14. Qxd4 Nf6 15. Qc5 Nd5 16. c4 Nb6 17. b3 Bb7 18. Qd6 Nc8 19. Qc7 Ba6 20. Qa5 Bb7 21. Qc7 Ba6 22. Rd1 Nb6 23. Qd6 Rd8 24. Qa3 Bxc4 25. bxc4 Nxc4 26. Qc3 O-O 27. Qxc4 h6 28. O-O Rfe8 29. Kh1 f6 30. h4 f5 31. Rc1 Rb8 32. Rfd1 Re7 33. Rb1 Rxb1 34. Rxb1 Re8 35. Qc5 a6 36. Qd6 Rd8 37. Qc7 Rf8 38. Qxd7 f4 39. Rb7 Rf7 40. Qxf7+ Kh8 41. Qxg7# 1-0
+
