@@ -155,11 +155,14 @@ def test_good_action_book_loads_actions_and_policy_top_k(tmp_path) -> None:
     board = chess.Board()
     e4_action = move_to_action(chess.Move.from_uci("e2e4"), board)
     d4_action = move_to_action(chess.Move.from_uci("d2d4"), board)
+    c4_action = move_to_action(chess.Move.from_uci("c2c4"), board)
     policy = np.zeros((1, ACTION_SIZE), dtype=np.float32)
     policy[0, d4_action] = 0.7
     policy[0, e4_action] = 0.3
+    policy[0, c4_action] = 0.5
     action_path = tmp_path / "actions.npz"
     policy_path = tmp_path / "policy.npz"
+    combined_path = tmp_path / "combined.npz"
     np.savez_compressed(
         action_path,
         fens=np.asarray([board.fen()]),
@@ -170,14 +173,26 @@ def test_good_action_book_loads_actions_and_policy_top_k(tmp_path) -> None:
         fens=np.asarray([board.fen()]),
         policies=policy,
     )
+    np.savez_compressed(
+        combined_path,
+        fens=np.asarray([board.fen()]),
+        actions=np.asarray([e4_action], dtype=np.int64),
+        policies=policy,
+    )
 
     action_book = load_good_action_book(str(action_path))
     policy_book = load_good_action_book(str(policy_path), policy_top_k=1)
+    combined_default_book = load_good_action_book(str(combined_path))
+    combined_topk_book = load_good_action_book(str(combined_path), policy_top_k=2)
 
     assert action_book is not None
     assert policy_book is not None
+    assert combined_default_book is not None
+    assert combined_topk_book is not None
     assert action_book[position_key(board)] == frozenset({e4_action})
     assert policy_book[position_key(board)] == frozenset({d4_action})
+    assert combined_default_book[position_key(board)] == frozenset({e4_action})
+    assert combined_topk_book[position_key(board)] == frozenset({e4_action, d4_action, c4_action})
 
 
 def test_mcts_policy_prior_temperature_flattens_priors() -> None:

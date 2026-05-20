@@ -67,7 +67,7 @@ def load_good_action_book(
                     row_actions: set[int] = set()
                     if actions is not None:
                         row_actions.add(int(actions[row_index]))
-                    elif policies is not None:
+                    if policies is not None and (actions is None or policy_top_k > 1):
                         policy = np.asarray(policies[row_index]).reshape(-1)
                         if policy.size:
                             top_count = min(policy_top_k, int(policy.size))

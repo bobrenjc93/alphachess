@@ -392,3 +392,53 @@ first-blunder mining found:
 
 The merged exact book plus 64 visits is still scoreless, so the current failure
 is not just shallow search at the direct gate.
+
+## Top-K Good-Action Book Check
+
+The exact good-action loader was only using the `actions` array when a teacher
+file had both `actions` and `policies`, so `--good-action-book-top-k` was
+effectively ignored for the normal Stockfish MultiPV teacher files. I changed
+the loader so the default `policy_top_k=1` behavior remains exact-best, while
+`policy_top_k > 1` also admits the top positive policy moves.
+
+With that fix in place, I reran the merged context-book gate with top-3
+teacher alternatives:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/guarded_blend_all_contextbook_firstblunders_context_v1 \
+  --good-action-book-top-k 3 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_guarded_blend_contextbook_all_top3book_stockfish_gate.pgn
+```
+
+Result: `{'games': 2.0, 'score': 0.0, 'score_rate': 0.0, 'wins': 0.0,
+'draws': 0.0, 'losses': 2.0}`.
+
+PGN file mtime: `2026-05-20T15:15:06-07:00`.
+
+The top-3 book produced another distinct pair of games, but still lost both.
+New first-blunder mining at `engine_time=0.05` found:
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Re2` | `Nb1` | `0.0833` | `1r3rk1/p2qbppp/4bn2/3p4/2p5/N1P1Q2P/PPB2PP1/R1B1R1K1 w - - 4 16` |
+| 2 | `...Qe8` | `...Qe7` | `0.1569` | `r1bq1rk1/ppBp1ppp/2n1pn2/1N6/1b2P3/2N5/PPP2PPP/R2QKB1R b KQ - 6 8` |
+
+This confirms the top-k flag now has the intended effect on combined
+action/policy teacher files. It does not solve the current transfer problem:
+even broader exact teacher alternatives still move the first failure surface
+instead of producing a nonzero direct Stockfish result.
