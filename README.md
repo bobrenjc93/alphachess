@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T10:05:44-07:00`.
+Result data through: `2026-05-20T10:13:43-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -152,6 +152,7 @@ latest committed report.
 | `2026-05-20T09:55:41-07:00` PGN file mtime | Recent120 policy-accuracy policy-head repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | This produced the best v2 top-1 in the set (`0.3809`) and bad-action loss `0.3757`, but broad holdout slipped to `0.3370` and direct play stayed `0.0/2`. |
 | `2026-05-20T10:00:26-07:00` teacher summary mtime | Recent120 policy-accuracy direct-loss exact book (`reports/2026-05-20_opening_loss_repair.md`). | N/A | N/A | Mined `211` positions and `1,189` dense bad-action labels from the four newest recent120 failed gates. |
 | `2026-05-20T10:05:44-07:00` PGN file mtime | Recent120 policy-head with newest exact loss book (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad+new-loss good book strict `0.0/2` | Exact coverage changed the openings and avoided the immediate repeated stems, but adjacent attacking lines still won both games. |
+| `2026-05-20T10:13:43-07:00` PGN file mtime | Recent120 policy-head with newest exact loss book at 64 simulations (`reports/2026-05-20_opening_loss_repair.md`). | N/A | 64-sim broad+new-loss good book strict `0.0/2` | Deeper search changed the games but still lost both, so this candidate is not search-starved at the current gate. |
 
 Current practical status:
 
@@ -241,6 +242,9 @@ Current practical status:
 - Adding an exact legal-value book from those newest failures changed the
   openings but did not move the score, which reinforces that exact-position
   coverage is only shifting the failure surface.
+- Raising that exact-book candidate from 16 to 64 simulations also stayed
+  `0.0/2`; the games changed, but the root policy/value still led to losing
+  middlegames.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the
