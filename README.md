@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T03:14:12-07:00`.
+Last updated: `2026-05-20T03:24:37-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -121,6 +121,7 @@ latest committed report.
 | `2026-05-20T03:05:53-07:00` PGN file mtime | Context direct-loss repair plus bad-action books and strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Context replay plus exact blocklists and strict root filters still lost both Stockfish games. |
 | `2026-05-20T03:08:48-07:00` PGN file mtime | Context direct-loss full-network repair at 64 simulations (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Raising search from 16 to 64 simulations did not rescue the context checkpoint. |
 | `2026-05-20T03:13:57-07:00` PGN file mtime | Context direct-loss value-head-only repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Freezing policy/trunk and recalibrating only the value head also failed the direct Stockfish gate. |
+| `2026-05-20T03:24:21-07:00` PGN file mtime | First-blunder-only context policy-head repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Mining only the first confirmed blunder per recent loss game produced `1,155` focused positions and `163` bad actions; policy-head repair fit that slice but still lost both direct games. |
 
 Current practical status:
 
@@ -241,6 +242,8 @@ Current practical status:
 - A value-head-only recalibration on the same broad/context labels also stayed
   `0.0/2`, so the latest tactical failures are not fixed by a small value-head
   patch alone.
+- First-blunder-only mining reduces downstream forced-loss noise and fits
+  cleanly, but a narrow policy-head repair from it still failed direct play.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 

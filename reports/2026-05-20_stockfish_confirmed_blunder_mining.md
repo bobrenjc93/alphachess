@@ -178,6 +178,10 @@ recency-biased run with two lead-up AlphaChess decision positions attached to
 each confirmed blunder. That context set produced `4,096` positions from `70`
 games with `550` bad played actions in
 `data/teacher/alpha_recent80_directloss_context_v1`.
+I then added `--first-blunder-only` to avoid training on every later mistake in
+already-lost games. The first-blunder context set produced `1,155` positions
+from `168` games with `163` bad played actions in
+`data/teacher/alpha_recent80_firstblunder_context_v1`.
 
 | Run | Selection | Key settings | Disjoint holdout | All-history direct-loss slice | Latest direct-loss slice | Direct gates |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
@@ -185,6 +189,7 @@ games with `550` bad played actions in
 | `experiments/policyhead192-recent-directloss-fullnet-v1/checkpoints/iter_0001` | best recent direct-loss bad-action loss, epoch `4` | full network, LR `7.5e-7`, bad-action weight `0.85`, weights `0.25/0.15/0.25/0.35` | top-1 `0.3420`, top-3 `0.5424`, top-5 `0.6439` | top-1 `0.2451`, top-3 `0.4661`, top-5 `0.5854`, bad-action loss `2.6682` | top-1 `0.2130`, top-3 `0.4160`, top-5 `0.5163`, bad-action loss `2.9265` | plain `0.0/2` (`reports/policyhead192_recent_directloss_fullnet_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_recent_directloss_fullnet_badbook_strictguards_stockfish_gate.pgn`) |
 | `experiments/policyhead192-context-directloss-fullnet-v1/checkpoints/iter_0001` | best context direct-loss bad-action loss, epoch `4` | full network, LR `7.5e-7`, bad-action weight `0.85`, weights `0.25/0.15/0.25/0.35`, `blunder_context_plies=2` | top-1 `0.3420`, top-3 `0.5444`, top-5 `0.6438` | context slice top-1 `0.2761`, top-3 `0.5015`, top-5 `0.6157`, bad-action loss `2.8421`; recent80 slice top-1 `0.2449`, top-3 `0.4675`, top-5 `0.5815`, bad-action loss `2.6712` | top-1 `0.2105`, top-3 `0.4135`, top-5 `0.5163`, bad-action loss `2.9300` | plain `0.0/2` (`reports/policyhead192_context_directloss_fullnet_stockfish_gate.pgn`); book+strict `0.0/2` (`reports/policyhead192_context_directloss_fullnet_badbook_strictguards_stockfish_gate.pgn`); 64-sim plain `0.0/2` (`reports/policyhead192_context_directloss_fullnet_64sims_stockfish_gate.pgn`) |
 | `experiments/policyhead192-context-directloss-valuehead-v1/checkpoints/iter_0001` | best combined holdout value loss, epoch `4` | value head only, LR `3e-6`, value weight `3.0`, weights `0.25/0.20/0.20/0.35` | top-1 `0.3452`, top-3 `0.5474`, top-5 `0.6464`, value loss `0.1139` | context slice top-1 `0.2729`, top-3 `0.4937`, top-5 `0.6240`, value loss `0.1705` | top-1 `0.2155`, top-3 `0.4085`, top-5 `0.5238`, value loss `0.1381` | plain `0.0/2` (`reports/policyhead192_context_directloss_valuehead_stockfish_gate.pgn`) |
+| `experiments/policyhead192-firstblunder-context-policyhead-v1/checkpoints/iter_0001` | best first-blunder context bad-action loss, epoch `6` | policy head only, LR `2e-6`, bad-action weight `1.0`, weights `0.24/0.16/0.20/0.40`, `first_blunder_only=True` | top-1 `0.3434`, top-3 `0.5393`, top-5 `0.6409` | first-blunder context top-1 `0.5446`, top-3 `0.7723`, top-5 `0.8797`, bad-action loss `1.1068` | top-1 `0.2130`, top-3 `0.4085`, top-5 `0.5063`, bad-action loss `2.7151` | plain `0.0/2` (`reports/policyhead192_firstblunder_context_policyhead_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -234,3 +239,7 @@ more visits under the current value/policy heads is not enough for these lines.
 A value-head-only recalibration kept broad policy metrics at the parent level
 but also scored `0.0/2`, so the current failure is not solved by a small value
 patch while leaving policy and trunk fixed.
+First-blunder-only mining is a cleaner target than all downstream loss moves and
+the policy head can fit it strongly, but the direct gate still failed. The
+remaining gap appears to be broader tactical generalization, not just noisy
+credit assignment within the recent failed PGNs.
