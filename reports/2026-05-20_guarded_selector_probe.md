@@ -1,6 +1,6 @@
 # Guarded Composite Selector Probe
 
-Timestamp: `2026-05-20T14:04:52-07:00`
+Timestamp: `2026-05-20T14:07:54-07:00`
 
 ## Summary
 
@@ -346,3 +346,14 @@ That was much less destructive but still missed the guard: top-1 `0.3395`,
 top-3 `0.5420`, top-5 `0.6417`, policy loss `3.7816`. The practical read is
 that first-blunder repair needs either a different objective or an explicit
 interpolation step after repair; direct fine-tuning from the blend is not enough.
+
+I checked interpolation back toward the original blend:
+
+| Context-only repair weight | Holdout top-1 | Holdout top-3 | Holdout top-5 | Holdout policy loss | Read |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| `0.25` | `0.3395` | `0.5421` | `0.6422` | `3.7718` | top-1 below guard |
+| `0.50` | `0.3395` | `0.5417` | `0.6421` | `3.7750` | top-1/top-3 below guard |
+| `0.75` | `0.3397` | `0.5421` | `0.6420` | `3.7782` | top-1 below guard |
+
+Interpolation recovers top-3 but not the original blend's top-1, so this
+repair branch has no new direct-gate candidate.

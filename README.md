@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T14:04:52-07:00`.
+Result data through: `2026-05-20T14:07:54-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -168,6 +168,7 @@ latest committed report.
 | `2026-05-20T13:43:48-07:00` checkpoint mtime | Guarded blend context-repair probe (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | A tiny context-repair fine-tune from the blend immediately regressed broad top-3 to about `0.5383`, so the guard rejected all epochs before direct play. |
 | `2026-05-20T14:03:57-07:00` checkpoint mtime | Source-repeat-capped context repair (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | `--max-source-repeat 5` limits tiny-slice replay pressure, but continuing broad/context training still regressed broad top-3 to `0.5381-0.5386`; all epochs were rejected. |
 | `2026-05-20T14:04:52-07:00` checkpoint mtime | Context-only tiny repair (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | A single `1e-8` pass over only the 18 context positions was nearly neutral but still missed the broad guard with top-1 `0.3395` and top-3 `0.5420`. |
+| `2026-05-20T14:07:54-07:00` checkpoint mtime | Context-only interpolation check (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | Blending the tiny context-only repair back into the original blend recovered top-3 near `0.5421`, but top-1 stayed below the guard, so no direct gate was run. |
 
 Current practical status:
 
