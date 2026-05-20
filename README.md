@@ -234,6 +234,17 @@ uv run alpha-chess stockfish-teacher \
   --policy-temperature-cp 200
 
 uv run alpha-chess stockfish-teacher \
+  --pgn games.pgn.zst \
+  --out data/teacher/stockfish_holdout \
+  --engine-path tools/stockfish/bin/stockfish \
+  --skip-positions 65536 \
+  --max-positions 8192 \
+  --min-elo 1800 \
+  --min-initial-seconds 180 \
+  --multipv 4 \
+  --policy-temperature-cp 200
+
+uv run alpha-chess stockfish-teacher \
   --pgn reports/failed_eval_games_a.pgn reports/failed_eval_games_b.pgn \
   --out data/teacher/alpha_loss_blunders \
   --engine-path tools/stockfish/bin/stockfish \

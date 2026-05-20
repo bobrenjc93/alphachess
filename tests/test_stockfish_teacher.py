@@ -192,6 +192,68 @@ def test_stockfish_teacher_can_include_game_line(monkeypatch, tmp_path) -> None:
     ).read_text()
 
 
+def test_stockfish_teacher_skips_root_samples_before_analysis(monkeypatch, tmp_path) -> None:
+    pgn_path = tmp_path / "game.pgn"
+    pgn_path.write_text(
+        "\n".join(
+            [
+                '[Event "?"]',
+                '[White "AlphaChess"]',
+                '[Black "Stockfish"]',
+                '[Result "*"]',
+                "",
+                "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *",
+                "",
+            ]
+        )
+    )
+
+    class FakeEngine:
+        def __init__(self) -> None:
+            self.analyse_calls = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def analyse(self, board, _limit, multipv=None):
+            self.analyse_calls += 1
+            move = next(iter(board.legal_moves))
+            info = {
+                "pv": [move],
+                "score": chess.engine.PovScore(chess.engine.Cp(0), board.turn),
+            }
+            return [info] if multipv and multipv > 1 else info
+
+        def play(self, board, _limit):
+            return SimpleNamespace(move=next(iter(board.legal_moves)))
+
+    engine = FakeEngine()
+    monkeypatch.setattr(chess.engine.SimpleEngine, "popen_uci", lambda _path: engine)
+
+    paths = generate_stockfish_teacher(
+        StockfishTeacherConfig(
+            pgn=str(pgn_path),
+            out=str(tmp_path / "teacher-skip"),
+            engine_path="fake-stockfish",
+            max_positions=2,
+            position_stride=1,
+            skip_positions=2,
+        )
+    )
+
+    data = np.load(paths[0])
+    boards = [chess.Board(str(fen)) for fen in data["fens"]]
+    summary = (tmp_path / "teacher-skip" / "teacher_summary.txt").read_text()
+
+    assert [board.ply() for board in boards] == [2, 3]
+    assert engine.analyse_calls == 2
+    assert "skip_positions=2" in summary
+    assert "skipped_positions=2" in summary
+
+
 def test_stockfish_teacher_stores_played_bad_action(monkeypatch, tmp_path) -> None:
     pgn_path = tmp_path / "game.pgn"
     pgn_path.write_text(

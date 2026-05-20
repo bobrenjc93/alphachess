@@ -30,6 +30,7 @@ class StockfishTeacherConfig:
     multipv: int = 1
     policy_temperature_cp: float = 200.0
     position_stride: int = 4
+    skip_positions: int = 0
     min_ply: int = 0
     max_ply: int | None = None
     pv_plies: int = 0
@@ -56,6 +57,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     games_seen = 0
     games_used = 0
     positions = 0
+    skipped_positions = 0
 
     def flush_chunk(source: str) -> None:
         nonlocal boards, actions, policies, values, value_deltas, fens, best_moves
@@ -224,6 +226,10 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                 game, board, config.player_name
                             )
                         if sample_position:
+                            if skipped_positions < max(0, config.skip_positions):
+                                skipped_positions += 1
+                                board.push(move)
+                                continue
                             infos = _analyse_position(engine, board, limit, config.multipv)
                             best_move = _best_move_from_infos(infos)
                             if best_move is None:
@@ -288,6 +294,8 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"engine_path={config.engine_path}",
                 f"games_seen={games_seen}",
                 f"games_used={games_used}",
+                f"skip_positions={config.skip_positions}",
+                f"skipped_positions={skipped_positions}",
                 f"positions={positions}",
                 f"files={len(written)}",
                 f"min_value_delta={config.min_value_delta}",
