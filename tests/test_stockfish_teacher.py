@@ -312,6 +312,81 @@ def test_stockfish_teacher_stores_played_bad_action(monkeypatch, tmp_path) -> No
     assert int(data["bad_actions"][0]) == move_to_action(chess.Move.from_uci("d2d4"), board)
 
 
+def test_stockfish_teacher_can_backfill_blunder_context(monkeypatch, tmp_path) -> None:
+    pgn_path = tmp_path / "game.pgn"
+    pgn_path.write_text(
+        "\n".join(
+            [
+                '[Event "?"]',
+                '[White "AlphaChess"]',
+                '[Black "Stockfish"]',
+                '[Result "*"]',
+                "",
+                "1. e4 e5 2. d4 *",
+                "",
+            ]
+        )
+    )
+
+    class FakeEngine:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def analyse(self, board, _limit, multipv=None):
+            if board.ply() == 0:
+                move = chess.Move.from_uci("e2e4")
+                score = chess.engine.PovScore(chess.engine.Cp(0), board.turn)
+            elif board.ply() == 1:
+                move = next(iter(board.legal_moves))
+                score = chess.engine.PovScore(chess.engine.Cp(0), board.turn)
+            elif board.turn == chess.WHITE:
+                move = chess.Move.from_uci("d2d3")
+                score = chess.engine.PovScore(chess.engine.Cp(300), board.turn)
+            else:
+                move = next(iter(board.legal_moves))
+                score = chess.engine.PovScore(chess.engine.Cp(300), board.turn)
+            info = {"pv": [move], "score": score}
+            return [info] if multipv and multipv > 1 else info
+
+        def play(self, board, _limit):
+            return SimpleNamespace(move=next(iter(board.legal_moves)))
+
+    monkeypatch.setattr(chess.engine.SimpleEngine, "popen_uci", lambda _path: FakeEngine())
+
+    paths = generate_stockfish_teacher(
+        StockfishTeacherConfig(
+            pgn=str(pgn_path),
+            out=str(tmp_path / "teacher-context"),
+            engine_path="fake-stockfish",
+            max_positions=2,
+            min_value_delta=0.1,
+            player_name="AlphaChess",
+            position_stride=1,
+            blunder_context_plies=1,
+        )
+    )
+
+    data = np.load(paths[0])
+    initial_board = chess.Board()
+    blunder_board = chess.Board()
+    blunder_board.push(chess.Move.from_uci("e2e4"))
+    blunder_board.push(chess.Move.from_uci("e7e5"))
+
+    assert data["moves"].tolist() == ["d2d3", "e2e4"]
+    assert int(data["bad_actions"][0]) == move_to_action(
+        chess.Move.from_uci("d2d4"),
+        blunder_board,
+    )
+    assert int(data["bad_actions"][1]) == -1
+    assert data["fens"].tolist() == [blunder_board.fen(), initial_board.fen()]
+    assert "blunder_context_plies=1" in (
+        tmp_path / "teacher-context" / "teacher_summary.txt"
+    ).read_text()
+
+
 def test_stockfish_teacher_respects_ply_window(monkeypatch, tmp_path) -> None:
     pgn_path = tmp_path / "game.pgn"
     pgn_path.write_text(

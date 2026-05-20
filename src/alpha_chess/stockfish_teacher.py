@@ -35,10 +35,14 @@ class StockfishTeacherConfig:
     max_ply: int | None = None
     pv_plies: int = 0
     game_line_plies: int = 0
+    blunder_context_plies: int = 0
     chunk_size: int = 1024
 
 
 def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
+    if config.blunder_context_plies > 0 and config.min_value_delta is None:
+        raise ValueError("blunder_context_plies requires min_value_delta")
+
     out_dir = Path(config.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     pgn_paths = _resolve_pgn_paths(config.pgn)
@@ -187,6 +191,35 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
             added += 1
         return added
 
+    def append_blunder_context_samples(
+        source: str,
+        context_boards: list[chess.Board],
+    ) -> int:
+        added = 0
+        context_plies = max(0, config.blunder_context_plies)
+        if context_plies <= 0:
+            return added
+
+        for context_board in context_boards[-context_plies:]:
+            if positions >= config.max_positions:
+                break
+            if context_board.is_game_over(claim_draw=True):
+                continue
+
+            infos = _analyse_position(engine, context_board, limit, config.multipv)
+            best_move = _best_move_from_infos(infos)
+            if best_move is None:
+                play = engine.play(context_board, limit)
+                best_move = play.move
+            if best_move not in context_board.legal_moves:
+                continue
+
+            score = infos[0].get("score") if infos else None
+            value = _score_to_value(score, context_board.turn)
+            append_teacher_sample(source, context_board, infos, best_move, value, 0.0)
+            added += 1
+        return added
+
     with chess.engine.SimpleEngine.popen_uci(config.engine_path) as engine:
         for pgn_path in pgn_paths:
             source = str(pgn_path)
@@ -210,6 +243,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
 
                     board = game.board()
                     mainline_moves = list(game.mainline_moves())
+                    context_boards: list[chess.Board] = []
                     used_this_game = False
                     for ply, move in enumerate(mainline_moves):
                         if positions >= config.max_positions:
@@ -230,6 +264,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                 skipped_positions += 1
                                 board.push(move)
                                 continue
+                            context_board = board.copy(stack=False)
                             infos = _analyse_position(engine, board, limit, config.multipv)
                             best_move = _best_move_from_infos(infos)
                             if best_move is None:
@@ -239,6 +274,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                 score = infos[0].get("score") if infos else None
                                 value = _score_to_value(score, board.turn)
                                 value_delta = 0.0
+                                should_append = True
                                 if config.min_value_delta is not None:
                                     after_board = board.copy(stack=False)
                                     after_board.push(move)
@@ -249,32 +285,38 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                         after_turn=after_board.turn,
                                     )
                                     if value_delta < config.min_value_delta:
-                                        board.push(move)
-                                        continue
+                                        should_append = False
                                 bad_move = (
                                     move
                                     if config.min_value_delta is not None
                                     and value_delta > 0.0
                                     else None
                                 )
-                                append_teacher_sample(
-                                    source,
-                                    board,
-                                    infos,
-                                    best_move,
-                                    value,
-                                    value_delta,
-                                    bad_move=bad_move,
-                                )
-                                if positions < config.max_positions:
-                                    append_pv_line_samples(source, board, infos)
-                                if positions < config.max_positions:
-                                    append_game_line_samples(
+                                if should_append:
+                                    append_teacher_sample(
                                         source,
                                         board,
-                                        mainline_moves[ply:],
+                                        infos,
+                                        best_move,
+                                        value,
+                                        value_delta,
+                                        bad_move=bad_move,
                                     )
-                                used_this_game = True
+                                    if bad_move is not None and positions < config.max_positions:
+                                        append_blunder_context_samples(source, context_boards)
+                                    if positions < config.max_positions:
+                                        append_pv_line_samples(source, board, infos)
+                                    if positions < config.max_positions:
+                                        append_game_line_samples(
+                                            source,
+                                            board,
+                                            mainline_moves[ply:],
+                                        )
+                                    used_this_game = True
+                            context_boards.append(context_board)
+                            context_plies = max(0, config.blunder_context_plies)
+                            if context_plies > 0 and len(context_boards) > context_plies:
+                                context_boards = context_boards[-context_plies:]
                         board.push(move)
                     if used_this_game:
                         games_used += 1
@@ -306,6 +348,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"max_ply={config.max_ply}",
                 f"pv_plies={config.pv_plies}",
                 f"game_line_plies={config.game_line_plies}",
+                f"blunder_context_plies={config.blunder_context_plies}",
                 f"config={asdict(config)}",
             ]
         )

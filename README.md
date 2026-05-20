@@ -339,13 +339,17 @@ uv run alpha-chess stockfish-teacher \
   --min-value-delta 0.08 \
   --multipv 4 \
   --policy-temperature-cp 200 \
+  --blunder-context-plies 2 \
   --pv-plies 4 \
   --game-line-plies 2
 ```
 
 When `stockfish-teacher` is run with `--min-value-delta`, it also stores the
 played PGN move as `bad_actions` when that move differs from Stockfish's target
-move. Training can use those negative labels with a margin loss:
+move. Add `--blunder-context-plies` to also label a few earlier sampled
+positions from the same game whenever a confirmed blunder is found; this gives
+loss-PGN repair runs direct supervision on the lead-up decisions before a
+forcing tactic. Training can use those negative labels with a margin loss:
 
 ```bash
 uv run alpha-chess train \
