@@ -313,3 +313,56 @@ Unfreezing the trunk reduced bad-action loss on the all-loss and selected-loss
 slices, but it regressed broad32k policy accuracy and failed both direct
 Stockfish games. The policy-head-only targeted repair remains a better
 diagnostic checkpoint, though neither branch confirmed direct strength.
+
+## Broad32k Hard-Label Selector Repair
+
+Timestamp: `2026-05-19T18:48:42-07:00`
+
+I retried the selected broad32k parent with hard action labels preferred for
+the broad32k source, while still mixing in all-loss and selected-loss
+bad-action data:
+
+```text
+experiments/policyhead-broad32k-hardlabels-selectbest-v1
+```
+
+Config highlights:
+
+- GPU: A100 reservation `8c2008a1`
+- checkpoint: `experiments/policyhead-broad32k-allloss-directmix-selectbest-v1/checkpoints/iter_0001/latest.pt`
+- `policy_head_only=true`
+- `prefer_action_labels=true`
+- `epochs=3`
+- `lr=0.0000008`
+- `bad_action_weight=0.10`
+- `select_best_by=val_source_0_policy_acc`
+- replay weights: broad32k `0.80`, all-loss bad actions `0.10`,
+  selected-loss blunders `0.10`
+
+The selector chose epoch 3:
+
+| Epoch | `val_source_0_policy_acc` | Saved as `latest.pt` |
+| --- | ---: | --- |
+| `1` | `0.3410` | yes |
+| `2` | `0.3602` | yes |
+| `3` | `0.3605` | yes |
+
+Selected checkpoint validation:
+
+| Source | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| broad32k hard-label split | `0.3605` | `0.6136` | `0.7228` | N/A |
+| `alpha_loss_badactions_all_v1` split | `0.1538` | `0.4615` | `0.5077` | `2.5569` |
+| `selectbest_broad32k_lossblunders_v1` split | `0.1053` | `0.3684` | `0.4737` | `1.7510` |
+
+Direct checks:
+
+| Check | Score | PGN |
+| --- | ---: | --- |
+| parent/internal vs selected broad32k parent | `6.0/8` | N/A |
+| Stockfish gate | `0.0/2` | `reports/policyhead_broad32k_hardlabels_selectbest_stockfish_gate.pgn` |
+
+Hard-label broad32k tuning produced the best broad32k source-0 top-1 so far
+and beat the selected broad32k parent internally, but both direct Stockfish
+games were losses. This remains diagnostic progress rather than a promotion
+candidate.
