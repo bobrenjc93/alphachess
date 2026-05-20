@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T17:18:35-07:00`.
+Last updated: `2026-05-19T17:23:28-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -27,15 +27,15 @@ uses the closest honest equivalent:
   `engine_time=0.05`, usually with 16 MCTS simulations and
   `material_value_weight=0.15`.
 - **Elo proxy**: `400 * log10(score_rate / (1 - score_rate))` against that
-  exact Stockfish gate. It is only shown for nonzero direct scores; a 0% score
-  has no finite point estimate.
+  exact Stockfish gate. It is only a local gate proxy, not calibrated chess Elo.
 
-![Capability progress: best direct Stockfish smoke-gate score rate over time](reports/capability_progress.svg)
+![Capability progress: conservative direct Stockfish score-rate proxy over time](reports/capability_progress.svg)
 
-The graph tracks the best 4-game-or-larger direct Stockfish smoke-gate score
-rate seen so far, using the actual timestamp of the first result that reached
-that level. The single `0.5/2` hard-negative smoke is not included in the line
-because its 4-game confirmation was `0.0/4`.
+The graph tracks a conservative Stockfish capability proxy: for each direct
+Stockfish check, use `score / max(games, 4)`, then plot the best value seen so
+far. That keeps one- and two-game draws visible without letting tiny samples
+look like 50% strength. The current best proxy is `12.5%`, about `-338` Elo
+against this local gate.
 
 Timestamps are real `git log --date=iso-strict` commit times unless marked as a
 PGN file mtime or report timestamp, where the result was generated after the
@@ -47,11 +47,14 @@ latest committed report.
 | `2026-05-18T09:14:04-07:00` | Lichess 10k expert bootstrap report (`45af7b1`, `reports/2026-05-18_expert_lichess_10k.md`). | `3.0/4` vs uniform | `0.0/2` | Stockfish path working; model clearly weak. |
 | `2026-05-18T13:18:35-07:00` | Focused Stockfish MultiPV 4096 training (`0baf312`, `reports/2026-05-18_legal_multipv4096_focus.md`). | `4.0/4` vs uniform | `0.0/2`, plus `0.0/1` at higher search | Better teacher accuracy, no direct strength. |
 | `2026-05-18T14:35:58-07:00` | Low-LR replay iteration promoted internally (`8fbf733`). | `3.0/4` vs base | `0.0/2` | First useful internal promotion, still loses directly. |
+| `2026-05-18T16:03:41-07:00` | Material value prior (`e0114c6`, `reports/2026-05-18_material_value_prior.md`). | `4.0/4` vs uniform | `0.5/2`; 64-sim check `0.0/1` | First nonzero direct Stockfish smoke; useful but not confirmed. |
 | `2026-05-18T18:22:01-07:00` | Puzzle-line qvalue branch (`4f1be9b`, `reports/2026-05-18_focus_puzzlelines20_vw025_material015.md`). | `6.0/8` vs base | `0.0/2`, plus 64/128-sim losses | Best fixed teacher diagnostics at that point. |
 | `2026-05-18T19:59:39-07:00` | Qvalue and poisoned-capture replay (`a6021f9`, `reports/2026-05-18_qvalue_and_poisoned_replay.md`). | qvalue `8.0/8`; poisoned branch `6.0/8` vs qvalue | direct gates still failed | Strong internal qvalue parent established. |
+| `2026-05-18T23:13:16-07:00` | PV-line qvalue branch (`d0061d4`, `reports/2026-05-18_pvlines_qvalue.md`). | `6.0/8` vs qvalue | 16-sim `0.0/2`; 64-sim `0.5/1` then `0.0/2`; 128-sim `0.0/2` | Occasional higher-search draw, not stable across seeds. |
+| `2026-05-19T00:04:01-07:00` | Recent PV-line qvalue branch (`1af1c34`, `reports/2026-05-18_pvlines_recent_qvalue.md`). | `8.0/8` vs qvalue | 16-sim `0.0/2`; 64-sim `0.5/1` then `0.0/2` | Repeated one-game higher-search draw signal, still unstable. |
 | `2026-05-19T01:27:25-07:00` | Stockfish promotion gate documented (`d78efe0`). | N/A | gate added before promotion | Process improvement: candidates must survive direct play. |
 | `2026-05-19T03:39:01-07:00` | Tree-reuse self-play PV-recent probe (`7b019cf`). | `6.0/8` vs parent | `0.0/2` | Internal wins did not transfer to Stockfish. |
-| `2026-05-19T10:31:47-07:00` | Policy-head-only broad replay (`c3f1fd7`, `reports/2026-05-19_policy_head_only_broad.md`). | `8.0/16`, all draws vs qvalue | `0.5/4` | First direct Stockfish draw; tiny-sample Elo proxy about `-338` vs this gate. |
+| `2026-05-19T10:31:47-07:00` | Policy-head-only broad replay (`c3f1fd7`, `reports/2026-05-19_policy_head_only_broad.md`). | `8.0/16`, all draws vs qvalue | `0.5/4` | First 4-game direct Stockfish draw; tiny-sample Elo proxy about `-338` vs this gate. |
 | `2026-05-19T12:11:13-07:00` | Hard-label policy-head run (`4e02a7f`, `reports/2026-05-19_policy_head_only_hardlabels.md`). | `6.0/8` vs qvalue | `0.0/4` | Better hard-label diagnostics, no direct score. |
 | `2026-05-19T12:27:41-07:00` | Value-head-only calibration (`0c64101`, `reports/2026-05-19_value_head_only_hardlabels.md`). | `6.0/8` vs hard-label parent | `0.0/4` | Value fit improved, direct tactical failures remained. |
 | `2026-05-19T12:40:49-07:00` | Leaf-material MCTS value blend (`7ba3097`, `reports/2026-05-19_leaf_material_mcts_probe.md`). | N/A | all tested variants `0.0/2`; broad 64-sim check `0.0/2` | Search-time material fallback did not recover the gate. |
@@ -79,9 +82,9 @@ latest committed report.
 
 Current practical status:
 
-- Best direct result so far: `0.5/4` against the local Stockfish smoke gate
-  from the policy-head broad run. It did not reproduce in follow-up 64-sim or
-  256-sim probes, or inference-sweep probes.
+- Best 4-game direct result so far: `0.5/4` against the local Stockfish smoke
+  gate from the policy-head broad run. Earlier `0.5/2` and `0.5/1` direct
+  smokes exist, but they did not confirm in follow-up checks.
 - Best working parent for future experiments: the qvalue puzzle-line checkpoint
   at `experiments/focus-qvalue-puzzlelines20-vw025-material015/checkpoints/iter_0001/latest.pt`.
 - Latest diagnostics show both ranking and policy-confidence failures: many
