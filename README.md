@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T00:46:03-07:00`.
+Last updated: `2026-05-20T00:59:33-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -102,6 +102,7 @@ latest committed report.
 | `2026-05-20T00:22:48-07:00` PGN file mtime | Stockfish-confirmed model-blunder mining (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | New miner found `2,010` true value-dropping model top moves; a small policy-head repair reduced bad-action loss slightly but still failed direct play. |
 | `2026-05-20T00:40:04-07:00` PGN file mtime | Stockfish-confirmed full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | H100 trunk-unfrozen repair nudged disjoint holdout top-1 to `0.3446` and confirmed-blunder top-1 to `0.0199`, but direct play did not improve. |
 | `2026-05-20T00:45:14-07:00` PGN file mtime | Bad-margin-selected full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Stronger bad-action pressure improved confirmed-blunder bad-action loss to `4.0162` and top-1 to `0.0209`, but broad holdout slipped and the gate still failed. |
+| `2026-05-20T00:58:51-07:00` PGN file mtime | Broad73k confirmed-blunder full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Larger mining found `4,687` confirmed blunders and lifted that slice's top-1 to `0.0365`, but it still lost both direct games. |
 
 Current practical status:
 
@@ -195,8 +196,9 @@ Current practical status:
   label disagreement, but the first small policy-head repair still left target
   top-1 at `0.0` on that mined slice and scored `0.0/2` against Stockfish.
 - Full-network H100 follow-ups on the same confirmed-blunder slice got mined
-  target top-1 off zero, but only to about `2%`; both variants still scored
-  `0.0/2` against Stockfish.
+  target top-1 off zero, but only to about `2%`; a broader 73k mining pass
+  raised the larger slice to `3.65%` top-1. All variants still scored `0.0/2`
+  against Stockfish.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
