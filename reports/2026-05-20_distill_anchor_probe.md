@@ -309,3 +309,45 @@ The separate anchor batch is a better training primitive than mixing anchor and
 repair roles in one batch: it improved the aggregate context loss while avoiding
 the severe `0.538x` top-3 collapse. It still did not keep enough broad top-k
 ranking to justify a direct Stockfish gate.
+
+## Aggregated Context-Book Gate
+
+Finally, I used the merged 54-position source directly as the exact good-action
+book, instead of passing the first two context slices separately:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/guarded_blend_all_contextbook_firstblunders_context_v1 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_guarded_blend_contextbook_all_stockfish_gate.pgn
+```
+
+Result: `{'games': 2.0, 'score': 0.0, 'score_rate': 0.0, 'wins': 0.0,
+'draws': 0.0, 'losses': 2.0}`.
+
+PGN file mtime: `2026-05-20T14:57:23-07:00`.
+
+The merged exact book produced different lines from both previous context-book
+checks, but the score was still zero. New first-blunder mining found:
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Nd2` | `Qf3` | `0.0882` | `r1bqk2r/p3bppp/5n2/2pp4/8/3B3P/PPP2PP1/RNBQ1RK1 w kq - 0 10` |
+| 2 | `...Bb4` | `...Nxd4` | `0.1173` | `r1bq1k1r/pp1p1ppp/2nN1n2/2b1p3/4P3/2N1B3/PPP2PPP/R2QKB1R b KQ - 1 9` |
+
+Exact context coverage is therefore only a failure-surface probe at this point.
+The model needs a broader opening-stability repair signal that can improve these
+lead-up choices without dropping below the broad top-k guard.
