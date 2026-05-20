@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T06:36:28-07:00`
+Timestamp: `2026-05-20T06:59:22-07:00`
 
 ## Summary
 
@@ -52,6 +52,9 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | broad exact teacher books | same checkpoint, broad Stockfish good-action book plus recent loss/legal-value/top-3 exact books and strict guards | N/A | expanded exact-position coverage changed the mid-opening but still left uncovered tactical collapses | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_broadgoodbooks_strict_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | speculative checking-capture guard | same checkpoint and broad exact books, plus near-best material fallback for checking captures and a king-recapture penalty for speculative checking captures | N/A | avoided the previous `Bxh7+` line, but the replacement games still lost tactically | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_broadgoodbooks_sacguard_stockfish_gate.pgn`) |
 | `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | best sac-guard bad-action loss, epoch `5` | policy head only from legal-value parent, LR `1.2e-6`, bad-action weight `1.0`, weights `0.20/0.25/0.55` over broad/legal-value/sac-guard slices | broad holdout top-1 `0.3336`, top-3 `0.5313`, top-5 `0.6329` | sac-guard slice top-1 `0.3654`, top-3 `0.6154`, top-5 `0.7308`, bad-action loss `0.3012` vs parent `0.3309` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
+| `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | speculative-capture veto before root guards | same checkpoint and books, but king-recapturable non-pawn checking captures are removed before king/material guards can collapse the root | N/A | removed the repeated `Bxh7+` family; first follow-up still lost centrally, and the second exposed that material fallback could starve king-safety on `...Kd7` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_sacfilter_stockfish_gate.pgn`) |
+| `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | king-safety before material fallback | same checkpoint and books, with king-safety run before material fallback | N/A | removed the `...Kd7` king-walk failure, but king-safety then collapsed one white root to `Qxh7+` before material could veto it | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_kingfirst_stockfish_gate.pgn`) |
+| `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | speculative-capture veto plus king-first guard order | same checkpoint and books, with speculative checking captures vetoed before both guards and king-safety run before material fallback | N/A | removed the `Bxh7+`, `Qxh7+`, and `...Kd7` root-filter failures, but the latest games still lost through nearby opening tactics | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_sacfilter2_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -106,3 +109,13 @@ bad-action loss from `0.3309` to `0.3012` and lifting top-3 from `0.5769` to
 gate remained `0.0/2` and even found a nearby `Bxh7+` sacrifice from a different
 position, so exact replay of the latest loss is still too local to solve the
 opening-tactical failure family.
+The root-filter follow-up fixed concrete guard interactions rather than model
+strength. Moving the speculative checking-capture veto before the guard stack
+removed the repeated bishop sacrifice, but the first comparison still lost and
+exposed a `...Kd7` king-walk line. Running king-safety before material fallback
+fixed that singleton-fallback failure, but then king-safety alone collapsed a
+different root to `Qxh7+`. The final ordering vetoes king-recapturable checking
+captures before both guards and then applies king-safety before material. That
+fixes the observed `Bxh7+`, `Qxh7+`, and `...Kd7` root-filter failures, but the
+comparable direct gate still scored `0.0/2`, so the remaining opening collapses
+are broader than this guard-order bug.

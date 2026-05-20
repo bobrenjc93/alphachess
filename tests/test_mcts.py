@@ -441,6 +441,91 @@ def test_mcts_root_material_prunes_speculative_checking_capture_from_gate_loss()
     assert quiet_action in result.root.children
 
 
+def test_mcts_root_material_filters_later_speculative_checking_capture_gate_loss() -> None:
+    board = chess.Board("r1b1r1k1/p1p2ppp/2q5/8/2P5/2nB1P2/P1P3PP/1RBQ1K1R w - - 1 15")
+    sacrifice_action = move_to_action(chess.Move.from_uci("d3h7"), board)
+    quiet_action = move_to_action(chess.Move.from_uci("c1d2"), board)
+
+    search = AlphaZeroMCTS(
+        SparsePolicyEvaluator({"d3h7": 0.99, "c1d2": 0.01}),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=3,
+            root_material_max_loss_cp=100,
+        ),
+    )
+    result = search.run(board)
+
+    assert sacrifice_action not in result.root.children
+    assert quiet_action in result.root.children
+    assert result.select_action(temperature=0.0, rng=search.rng) != sacrifice_action
+
+
+def test_mcts_good_action_book_can_keep_speculative_checking_capture() -> None:
+    board = chess.Board("r1b1r1k1/p1p2ppp/2q5/8/2P5/2nB1P2/P1P3PP/1RBQ1K1R w - - 1 15")
+    sacrifice_action = move_to_action(chess.Move.from_uci("d3h7"), board)
+
+    search = AlphaZeroMCTS(
+        UniformEvaluator(),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=3,
+            root_material_max_loss_cp=100,
+            root_good_action_book={position_key(board): frozenset({sacrifice_action})},
+        ),
+    )
+    result = search.run(board)
+
+    assert set(result.root.children) == {sacrifice_action}
+
+
+def test_mcts_root_king_safety_runs_before_material_fallback_from_gate_loss() -> None:
+    board = chess.Board("r1bqk2r/2p2ppp/p1n5/1p1B4/1b1pn3/2N2N2/PPP2PPP/R1BQR1K1 b kq - 0 10")
+    king_walk_action = move_to_action(chess.Move.from_uci("e8d7"), board)
+    castle_action = move_to_action(chess.Move.from_uci("e8g8"), board)
+
+    search = AlphaZeroMCTS(
+        SparsePolicyEvaluator({"e8d7": 0.99, "e8g8": 0.01}),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=3,
+            root_material_max_loss_cp=100,
+            root_king_safety_search_plies=2,
+            root_king_safety_max_loss_cp=100,
+        ),
+    )
+    result = search.run(board)
+
+    assert king_walk_action not in result.root.children
+    assert castle_action in result.root.children
+    assert result.select_action(temperature=0.0, rng=search.rng) == castle_action
+
+
+def test_mcts_speculative_checking_capture_filter_runs_before_king_safety_gate_loss() -> None:
+    board = chess.Board("r1b2rk1/ppp2ppp/3b1q2/3P4/2BP1P2/4n3/PPQ3PP/RN3RK1 w - - 0 13")
+    sacrifice_action = move_to_action(chess.Move.from_uci("c2h7"), board)
+
+    search = AlphaZeroMCTS(
+        SparsePolicyEvaluator({"c2h7": 0.99, "b1c3": 0.01}),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=3,
+            root_material_max_loss_cp=100,
+            root_king_safety_search_plies=2,
+            root_king_safety_max_loss_cp=100,
+        ),
+    )
+    result = search.run(board)
+
+    assert result.root.children
+    assert sacrifice_action not in result.root.children
+    assert result.select_action(temperature=0.0, rng=search.rng) != sacrifice_action
+
+
 def test_mcts_root_material_filter_uses_worst_shallow_depth() -> None:
     board = chess.Board(
         "rnb1kbnr/1p1p1ppp/p3p3/1N2q3/8/4BN2/PPP2PPP/R2QKB1R b KQkq - 1 8"

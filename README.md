@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T06:36:28-07:00`.
+Last updated: `2026-05-20T06:59:22-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -133,6 +133,7 @@ latest committed report.
 | `2026-05-20T06:09:52-07:00` PGN file mtime | Broad exact teacher books (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Combining broad Stockfish, recent loss, legal-value, and top-3 confirmed-blunder exact books still failed both direct games. |
 | `2026-05-20T06:25:40-07:00` PGN file mtime | Speculative checking-capture guard (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Root material fallback no longer forces a single checking-capture sacrifice and now penalizes king-recapturable checking captures; it avoided the `Bxh7+` failure but the gate still lost. |
 | `2026-05-20T06:36:28-07:00` PGN file mtime | Sac-guard direct-loss policy-head repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | A focused legal-value replay lowered the targeted sac-guard bad-action loss from `0.3309` to `0.3012`, but broad holdout top-1 slipped from `0.3356` to `0.3336` and the direct gate still failed. |
+| `2026-05-20T06:59:22-07:00` PGN file mtime | Speculative-capture veto before root guards plus king-first guard order (`reports/2026-05-20_opening_loss_repair.md`). | N/A | three comparable checks at `0.0/2` | Removed concrete `Bxh7+`, `Qxh7+`, and `...Kd7` root-filter failures, but the latest gate still lost through adjacent opening tactics. |
 
 Current practical status:
 
@@ -174,6 +175,10 @@ Current practical status:
   bad-action loss and top-3 accuracy, but it does not generalize: the latest
   gate reintroduced a nearby `Bxh7+` sacrifice from a different position and
   still scored `0.0/2`.
+- The speculative-capture veto now runs before either root guard can collapse
+  the candidate set, and king-safety now runs before material fallback. That
+  fixes several exact root-filter failures, but the direct gate still finds
+  nearby opening tactics.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the
@@ -288,6 +293,9 @@ Current practical status:
 - The latest sac-guard direct-loss replay is another local repair without direct
   transfer: targeted bad-action loss improved, broad holdout slipped, and the
   Stockfish gate remained `0.0/2`.
+- The latest root-filter refinements remove specific bad move families rather
+  than improving measured strength; all comparable follow-up gates stayed
+  `0.0/2`.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 

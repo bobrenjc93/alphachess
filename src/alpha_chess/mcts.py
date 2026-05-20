@@ -98,18 +98,20 @@ class Node:
         teacher_hit = len(teacher_actions) < len(actions)
         actions = teacher_actions
         if material_filter_plies > 0 and not forced_mate_found and not teacher_hit:
-            actions = _filter_root_material(
-                board,
-                actions,
-                material_filter_plies,
-                material_max_loss_cp,
-            )
+            actions = _filter_speculative_checking_captures(board, actions)
         if king_safety_filter_plies > 0 and not forced_mate_found and not teacher_hit:
             actions = _filter_root_king_safety(
                 board,
                 actions,
                 king_safety_filter_plies,
                 king_safety_max_loss_cp,
+            )
+        if material_filter_plies > 0 and not forced_mate_found and not teacher_hit:
+            actions = _filter_root_material(
+                board,
+                actions,
+                material_filter_plies,
+                material_max_loss_cp,
             )
         actions = filter_bad_actions(board, actions, bad_action_book)
         if not actions:
@@ -293,12 +295,7 @@ class AlphaZeroMCTS:
             and not forced_mate_found
             and not teacher_hit
         ):
-            actions = _filter_root_material(
-                board,
-                actions,
-                self.config.root_material_search_plies,
-                self.config.root_material_max_loss_cp,
-            )
+            actions = _filter_speculative_checking_captures(board, actions)
         if (
             self.config.root_king_safety_search_plies > 0
             and not forced_mate_found
@@ -309,6 +306,17 @@ class AlphaZeroMCTS:
                 actions,
                 self.config.root_king_safety_search_plies,
                 self.config.root_king_safety_max_loss_cp,
+            )
+        if (
+            self.config.root_material_search_plies > 0
+            and not forced_mate_found
+            and not teacher_hit
+        ):
+            actions = _filter_root_material(
+                board,
+                actions,
+                self.config.root_material_search_plies,
+                self.config.root_material_max_loss_cp,
             )
         actions = filter_bad_actions(board, actions, self.config.root_bad_action_book)
         root.children = {
@@ -390,6 +398,7 @@ def _filter_root_material(
     max_loss_cp = max(0, max_loss_cp)
     if material_search_plies <= 0:
         return actions
+    actions = _filter_speculative_checking_captures(board, actions)
 
     perspective = board.turn
     baseline = _material_score_cp(board, perspective)
@@ -498,6 +507,24 @@ def _has_best_checking_capture(board: chess.Board, actions: list[int]) -> bool:
         if move is not None and board.gives_check(move) and board.is_capture(move):
             return True
     return False
+
+
+def _filter_speculative_checking_captures(
+    board: chess.Board,
+    actions: list[int],
+) -> list[int]:
+    kept_actions: list[int] = []
+    speculative_actions: list[int] = []
+    for action in actions:
+        move = action_to_move(action, board)
+        if move is not None and _is_speculative_checking_capture(board, move):
+            speculative_actions.append(action)
+        else:
+            kept_actions.append(action)
+
+    if speculative_actions and kept_actions:
+        return kept_actions
+    return actions
 
 
 def _material_search_value(board: chess.Board, search_plies: int) -> float:
