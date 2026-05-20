@@ -514,6 +514,14 @@ def _filter_root_guards(
             return king_safe
         if material_safe:
             return material_safe
+        material_fallback = _filter_root_material(
+            board,
+            actions,
+            material_filter_plies,
+            material_max_loss_cp,
+        )
+        if material_fallback and not _all_king_moves(board, material_fallback):
+            return material_fallback
 
     if king_safety_filter_plies > 0:
         actions = _filter_root_king_safety(

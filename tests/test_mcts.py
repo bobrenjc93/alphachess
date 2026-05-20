@@ -572,6 +572,29 @@ def test_mcts_material_safe_set_vetoes_king_safe_exchange_sacrifice_gate_loss() 
     assert result.select_action(temperature=0.0, rng=search.rng) == safe_action
 
 
+def test_mcts_material_fallback_vetoes_king_fallback_sacrifice_gate_loss() -> None:
+    board = chess.Board("r2qkb1r/1npp1ppp/p7/1p2p3/3Pn3/5N2/PPP2PPP/RNBQR1K1 b kq - 1 10")
+    sacrifice_action = move_to_action(chess.Move.from_uci("e4f2"), board)
+    safe_action = move_to_action(chess.Move.from_uci("f7f5"), board)
+
+    search = AlphaZeroMCTS(
+        SparsePolicyEvaluator({"e4f2": 0.99, "f7f5": 0.01}),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=3,
+            root_material_max_loss_cp=100,
+            root_king_safety_search_plies=2,
+            root_king_safety_max_loss_cp=100,
+        ),
+    )
+    result = search.run(board)
+
+    assert sacrifice_action not in result.root.children
+    assert safe_action in result.root.children
+    assert result.select_action(temperature=0.0, rng=search.rng) == safe_action
+
+
 def test_mcts_root_material_filter_uses_worst_shallow_depth() -> None:
     board = chess.Board(
         "rnb1kbnr/1p1p1ppp/p3p3/1N2q3/8/4BN2/PPP2PPP/R2QKB1R b KQkq - 1 8"

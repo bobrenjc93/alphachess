@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T07:32:20-07:00`
+Timestamp: `2026-05-20T07:43:34-07:00`
 
 ## Summary
 
@@ -59,6 +59,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | independent material and king-safety safe sets | same checkpoint and books, with material and king-safety each evaluated on the pre-fallback root set before combining safe actions | N/A | removed the latest `...Nxf2` singleton-guard failure; remaining games lost through broader tactical exchanges and promotion pressure | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_independentguards_stockfish_gate.pgn`) |
 | `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | material fallback vetoes disjoint king-safe sacrifices | same checkpoint and books, with material fallback preferred when material has no threshold-safe move and the fallback is not only king moves | N/A | removed the `...Rxg4+` disjoint-safe-set exchange sacrifice; remaining games lost through broader attacking and promotion lines | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_guardfallback_stockfish_gate.pgn`) |
 | `experiments/policyhead192-guardfallback-directloss-policyhead-v1/checkpoints/iter_0001` | best guard-fallback bad-action loss, epoch `3` | policy head only from sac-guard parent, LR `1.0e-6`, bad-action weight `1.0`, weights `0.18/0.22/0.22/0.38` over broad/legal-value/sac-guard/guard-fallback slices | broad holdout top-1 `0.3324`, top-3 `0.5317`, top-5 `0.6334` | guard-fallback slice top-1 `0.4068`, top-3 `0.5085`, top-5 `0.6441`, bad-action loss `0.6428` vs parent `0.6754` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_guardfallback_directloss_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
+| `experiments/policyhead192-guardfallback-directloss-policyhead-v1/checkpoints/iter_0001` | material fallback preferred when both guards find no safe move | same checkpoint and books, with material fallback preferred over king-safety fallback when both threshold-safe sets are empty and the material fallback is not only king moves | N/A | removed the follow-up all-empty-fallback `...Nxf2` sacrifice; remaining games lost through broader material, king-safety, and passed-pawn failures | broad-good+bad book strict `0.0/2` (`reports/policyhead192_guardfallback_directloss_policyhead_broadgoodbooks_materialfallback_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -143,3 +144,10 @@ bad-action loss from `0.6754` to `0.6428`, but it also regressed the disjoint
 broad holdout top-1 from `0.3336` to `0.3324` and the target slice top-1 from
 `0.4237` to `0.4068`. The direct gate still scored `0.0/2`, so this is another
 local replay fit without practical transfer.
+The next guard check exposed one remaining fallback tie case: when both
+threshold-safe sets were empty, the old sequential path could still return
+king-safety's fallback sacrifice. Preferring the material fallback in that
+all-empty case removed the repeated `...Nxf2` family from the latest direct
+gate, while still allowing king-only material fallbacks to preserve the earlier
+`...Kd7` fix. The comparable Stockfish gate remained `0.0/2`; the new games
+shifted to broader exchange, king-safety, and passed-pawn failures.

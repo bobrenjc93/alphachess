@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T07:32:20-07:00`.
+Last updated: `2026-05-20T07:43:34-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -137,6 +137,7 @@ latest committed report.
 | `2026-05-20T07:10:26-07:00` PGN file mtime | Independent material and king-safety root guard safe sets (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Material and king-safety now both evaluate the original root set before fallback; this removed the `...Nxf2` singleton-guard failure, but direct play still lost. |
 | `2026-05-20T07:19:53-07:00` PGN file mtime | Material fallback can veto disjoint king-safe sacrifices (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Removed the `...Rxg4+` disjoint-safe-set failure, but the direct losses shifted to broader attacking and promotion lines. |
 | `2026-05-20T07:32:20-07:00` PGN file mtime | Guard-fallback direct-loss policy-head repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | A 59-position replay lowered targeted bad-action loss from `0.6754` to `0.6428`, but broad holdout top-1 fell from `0.3336` to `0.3324` and direct play still failed. |
+| `2026-05-20T07:43:34-07:00` PGN file mtime | Material fallback preferred when both root guards find no safe move (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Removed the follow-up all-empty-fallback `...Nxf2` sacrifice, but the latest games still lost through broader material, king-safety, and passed-pawn failures. |
 
 Current practical status:
 
@@ -192,6 +193,10 @@ Current practical status:
 - The guard-fallback loss replay is another local repair without transfer:
   targeted bad-action loss improved, but broad holdout and target top-1
   regressed and the direct gate stayed `0.0/2`.
+- When both material and king-safety have no threshold-safe root move, the
+  guard stack now prefers the material fallback unless that fallback is only
+  king moves. This removed the follow-up `...Nxf2` sacrifice from the latest
+  direct gate, but the score stayed `0.0/2`.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the
