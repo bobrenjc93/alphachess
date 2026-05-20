@@ -30,6 +30,7 @@ class TrainConfig:
     bad_action_weight: float = 0.0
     bad_action_margin: float = 1.0
     data_weights: list[float] | None = None
+    max_source_repeat: float | None = None
     source_policy_weights: list[float] | None = None
     legal_policy_loss: bool = False
     color_mirror_augmentation: bool = False
@@ -84,7 +85,13 @@ def train(config: TrainConfig) -> Path:
     else:
         train_ds, val_ds = dataset, None
 
-    train_sampler = _build_train_sampler(dataset, train_ds, config.data_weights, config.seed)
+    train_sampler = _build_train_sampler(
+        dataset,
+        train_ds,
+        config.data_weights,
+        config.seed,
+        max_source_repeat=config.max_source_repeat,
+    )
     loader = DataLoader(
         train_ds,
         batch_size=config.batch_size,
@@ -455,11 +462,19 @@ def _build_train_sampler(
     train_ds: SelfPlayDataset | Subset,
     data_weights: list[float] | None,
     seed: int,
+    *,
+    max_source_repeat: float | None = None,
 ) -> WeightedRandomSampler | None:
     if data_weights is None:
+        if max_source_repeat is not None:
+            raise ValueError("max_source_repeat requires data_weights")
         return None
 
-    weights = dataset.source_sample_weights(data_weights)
+    weights = dataset.source_sample_weights(
+        data_weights,
+        max_source_repeat=max_source_repeat,
+        num_samples=len(train_ds),
+    )
     if isinstance(train_ds, Subset):
         weights = weights[list(train_ds.indices)]
     if float(weights.sum()) <= 0:

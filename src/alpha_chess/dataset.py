@@ -85,11 +85,19 @@ class SelfPlayDataset(Dataset):
             return self.base_length * 2
         return self.base_length
 
-    def source_sample_weights(self, source_weights: list[float]) -> torch.Tensor:
+    def source_sample_weights(
+        self,
+        source_weights: list[float],
+        *,
+        max_source_repeat: float | None = None,
+        num_samples: int | None = None,
+    ) -> torch.Tensor:
         """Return per-sample weights that balance input data sources.
 
         Each source receives total probability mass proportional to its source
-        weight, independent of how many positions it contains.
+        weight, independent of how many positions it contains. When
+        max_source_repeat is set, a source's probability mass is capped so its
+        expected samples per position per epoch cannot exceed that value.
         """
 
         if len(source_weights) != len(self.source_names):
@@ -117,6 +125,21 @@ class SelfPlayDataset(Dataset):
                 + ", ".join(empty_weighted_sources)
             )
 
+        source_masses = weights / weights.sum()
+        if max_source_repeat is not None:
+            if not np.isfinite(max_source_repeat) or max_source_repeat <= 0:
+                raise ValueError("max_source_repeat must be a finite positive value")
+            epoch_samples = int(num_samples) if num_samples is not None else len(self)
+            if epoch_samples <= 0:
+                raise ValueError("num_samples must be positive when max_source_repeat is set")
+            effective_positions = positions_per_source * (
+                2 if self.color_mirror_augmentation else 1
+            )
+            source_masses = _cap_source_masses(
+                source_masses,
+                max_source_repeat * effective_positions / epoch_samples,
+            )
+
         sample_weights = np.zeros(self.base_length, dtype=np.float64)
         for file_index, (source_id, length) in enumerate(zip(self.file_source_ids, self.lengths)):
             source_positions = positions_per_source[source_id]
@@ -124,7 +147,7 @@ class SelfPlayDataset(Dataset):
                 continue
             start = int(self.cumsum[file_index])
             end = int(self.cumsum[file_index + 1])
-            sample_weights[start:end] = weights[source_id] / source_positions
+            sample_weights[start:end] = source_masses[source_id] / source_positions
 
         if self.color_mirror_augmentation:
             sample_weights = np.concatenate([sample_weights, sample_weights])
@@ -210,6 +233,43 @@ class SelfPlayDataset(Dataset):
             )
         )
         return output
+
+
+def _cap_source_masses(source_masses: np.ndarray, caps: np.ndarray) -> np.ndarray:
+    """Project source masses onto per-source upper caps while preserving ratios."""
+
+    caps = np.minimum(caps, 1.0)
+    if np.any(caps < 0) or float(caps.sum()) <= 0:
+        raise ValueError("max_source_repeat caps all data sources to zero")
+    if float(caps.sum()) < 1.0:
+        raise ValueError("max_source_repeat is too low to sample one full epoch")
+
+    adjusted = np.zeros_like(source_masses)
+    remaining = np.ones_like(source_masses, dtype=bool)
+    remaining_mass = 1.0
+    while bool(remaining.any()):
+        desired = source_masses[remaining]
+        desired_sum = float(desired.sum())
+        if desired_sum <= 0:
+            break
+        scaled = desired / desired_sum * remaining_mass
+        remaining_indices = np.flatnonzero(remaining)
+        cap_values = caps[remaining]
+        over_cap = scaled > cap_values
+        if not bool(over_cap.any()):
+            adjusted[remaining_indices] = scaled
+            break
+        capped_indices = remaining_indices[over_cap]
+        adjusted[capped_indices] = cap_values[over_cap]
+        remaining_mass -= float(cap_values[over_cap].sum())
+        remaining[capped_indices] = False
+        if remaining_mass <= 0:
+            break
+
+    total = float(adjusted.sum())
+    if total <= 0:
+        raise ValueError("max_source_repeat caps all data sources to zero")
+    return adjusted / total
 
 
 def collate_samples(samples: list[Sample]) -> dict[str, torch.Tensor | list[str]]:

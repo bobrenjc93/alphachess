@@ -84,6 +84,36 @@ def test_source_sample_weights_balance_input_paths(tmp_path) -> None:
         dataset.source_sample_weights([1.0])
 
 
+def test_source_sample_weights_can_cap_tiny_source_repeats(tmp_path) -> None:
+    source_a = tmp_path / "source-a"
+    source_b = tmp_path / "source-b"
+    source_a.mkdir()
+    source_b.mkdir()
+    _write_sparse_npz(source_a / "a.npz", positions=100)
+    _write_sparse_npz(source_b / "b.npz", positions=2)
+
+    dataset = SelfPlayDataset([source_a, source_b])
+    weights = dataset.source_sample_weights(
+        [0.5, 0.5],
+        max_source_repeat=5.0,
+        num_samples=len(dataset),
+    )
+    probabilities = weights / weights.sum()
+
+    assert torch.isclose(
+        probabilities[100:].sum(),
+        torch.tensor(10 / 102, dtype=torch.double),
+    )
+    assert torch.isclose(probabilities[:100].sum(), torch.tensor(92 / 102, dtype=torch.double))
+
+    with pytest.raises(ValueError, match="too low"):
+        dataset.source_sample_weights(
+            [0.5, 0.5],
+            max_source_repeat=0.5,
+            num_samples=len(dataset),
+        )
+
+
 def test_dataset_collates_fens_for_legal_policy_loss(tmp_path) -> None:
     board = chess.Board()
     move = chess.Move.from_uci("e2e4")

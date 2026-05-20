@@ -61,6 +61,7 @@ def main(argv: list[str] | None = None) -> None:
     train_parser.add_argument("--bad-action-weight", type=float, default=0.0)
     train_parser.add_argument("--bad-action-margin", type=float, default=1.0)
     train_parser.add_argument("--data-weights", type=float, nargs="+")
+    train_parser.add_argument("--max-source-repeat", type=float)
     train_parser.add_argument("--source-policy-weights", type=float, nargs="+")
     train_parser.add_argument("--legal-policy-loss", action="store_true")
     train_parser.add_argument("--color-mirror-augmentation", action="store_true")

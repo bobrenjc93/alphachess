@@ -534,12 +534,19 @@ uv run alpha-chess train \
   --data data/teacher/stockfish_sample data/teacher/alpha_loss_blunders \
   --holdout-data data/teacher/stockfish_holdout \
   --data-weights 0.8 0.2 \
+  --max-source-repeat 20 \
   --legal-policy-loss \
   --bad-action-weight 0.25 \
   --bad-action-margin 1.0 \
   --select-best-by holdout_policy_acc \
   --out checkpoints/bad_action_repair
 ```
+
+Use `--max-source-repeat` with `--data-weights` when mixing a tiny repair slice
+with a large broad teacher set. It caps the expected number of times each
+position from any source is sampled per epoch, which prevents a 10- or
+20-position loss slice from being replayed hundreds of times while still
+retaining the source's intended priority.
 
 When a run spans multiple epochs, keep the best validation epoch as `latest.pt`
 instead of blindly using the final epoch. Use `--holdout-data` with a
