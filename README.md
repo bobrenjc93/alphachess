@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T02:32:39-07:00`.
+Last updated: `2026-05-20T02:45:46-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -115,6 +115,8 @@ latest committed report.
 | `2026-05-20T02:03:04-07:00` PGN file mtime | Aggressive direct-loss policy-head repair plus bad-action book and strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | The stricter root filters and exact blocklists still lost both games, so the new replay did not transfer to direct Stockfish play. |
 | `2026-05-20T02:29:22-07:00` PGN file mtime | All-history direct-loss full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Mining all tracked Stockfish PGNs produced `4,096` positions and `780` bad actions; the repair fit that historical slice to top-1 `0.2925` and bad-action loss `1.7075`, but broad holdout fell to `0.3430` and the latest-loss slice did not improve. |
 | `2026-05-20T02:31:10-07:00` PGN file mtime | All-history direct-loss repair plus bad-action books and strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Combining the all-history blocklist, latest-loss blocklist, top-3 blocklist, and strict root guards still failed both Stockfish games. |
+| `2026-05-20T02:43:05-07:00` PGN file mtime | Recent-PGN direct-loss full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Re-mining from the 80 most recent PGN mtimes produced `4,096` positions and `772` bad actions; the repair nudged the latest-loss bad-action loss to `2.9265`, but broad holdout fell to `0.3420` and direct play still failed. |
+| `2026-05-20T02:44:39-07:00` PGN file mtime | Recent-PGN direct-loss repair plus bad-action books and strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Recency-biased replay plus exact blocklists and strict root filters also lost both games. |
 
 Current practical status:
 
@@ -224,6 +226,9 @@ Current practical status:
 - Expanding direct-loss mining to all tracked Stockfish PGNs produced `4,096`
   positions and `780` bad played actions. It fit the historical slice much
   better, but did not help the latest-loss slice or the direct Stockfish gate.
+- Repeating that mining with the 80 most recent PGN mtimes produced another
+  `4,096`-position slice and moved the latest-loss bad-action loss only
+  slightly; direct gates still stayed `0.0/2`.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
