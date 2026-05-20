@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T03:09:04-07:00`.
+Last updated: `2026-05-20T03:14:12-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -120,6 +120,7 @@ latest committed report.
 | `2026-05-20T03:02:04-07:00` PGN file mtime | Context direct-loss full-network repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | `--blunder-context-plies 2` backfilled lead-up decisions around recent losses, producing `4,096` positions and `550` bad actions; the selected epoch kept broad holdout at `0.3420` and context top-1 at `0.2761`, but direct play still failed. |
 | `2026-05-20T03:05:53-07:00` PGN file mtime | Context direct-loss repair plus bad-action books and strict guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Context replay plus exact blocklists and strict root filters still lost both Stockfish games. |
 | `2026-05-20T03:08:48-07:00` PGN file mtime | Context direct-loss full-network repair at 64 simulations (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Raising search from 16 to 64 simulations did not rescue the context checkpoint. |
+| `2026-05-20T03:13:57-07:00` PGN file mtime | Context direct-loss value-head-only repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Freezing policy/trunk and recalibrating only the value head also failed the direct Stockfish gate. |
 
 Current practical status:
 
@@ -237,6 +238,9 @@ Current practical status:
   Stockfish gates.
 - A 64-simulation gate on that context checkpoint also stayed `0.0/2`, so this
   failure is not just the 16-simulation gate being too shallow.
+- A value-head-only recalibration on the same broad/context labels also stayed
+  `0.0/2`, so the latest tactical failures are not fixed by a small value-head
+  patch alone.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
