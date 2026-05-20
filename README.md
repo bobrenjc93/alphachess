@@ -529,7 +529,12 @@ uv run alpha-chess train \
 
 When a run spans multiple epochs, keep the best validation epoch as `latest.pt`
 instead of blindly using the final epoch. Use `--holdout-data` with a
-`holdout_*` selector when you have a disjoint validation set:
+`holdout_*` selector when you have a disjoint validation set. Composite
+same-direction selectors such as
+`--select-best-by holdout_source_0_policy_acc+holdout_source_0_policy_top3_acc`
+are supported when top-1 alone is too noisy. Add `--select-best-require`
+guards when a candidate must keep a baseline metric above or below a known
+threshold:
 
 ```bash
 uv run alpha-chess train \
@@ -538,6 +543,7 @@ uv run alpha-chess train \
   --holdout-data data/teacher/stockfish_holdout \
   --legal-policy-loss \
   --select-best-by holdout_policy_acc \
+  --select-best-require 'holdout_policy_top3_acc>=0.64' \
   --out checkpoints/selected_best
 ```
 

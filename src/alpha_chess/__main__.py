@@ -68,6 +68,7 @@ def main(argv: list[str] | None = None) -> None:
     train_parser.add_argument("--policy-head-only", action="store_true")
     train_parser.add_argument("--value-head-only", action="store_true")
     train_parser.add_argument("--select-best-by")
+    train_parser.add_argument("--select-best-require", nargs="+")
     train_parser.add_argument("--channels", type=int, default=128)
     train_parser.add_argument("--blocks", type=int, default=6)
     train_parser.add_argument("--seed", type=int, default=0)

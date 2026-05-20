@@ -528,6 +528,90 @@ def test_train_can_select_best_by_holdout_metric(monkeypatch, tmp_path) -> None:
     assert latest["metrics"]["selected_checkpoint"] == "epoch_0002.pt"
 
 
+def test_train_can_select_best_by_composite_metric(monkeypatch, tmp_path) -> None:
+    data_dir = tmp_path / "data"
+    out_dir = tmp_path / "out"
+    data_dir.mkdir()
+    _write_sparse_npz(data_dir / "game.npz", positions=12)
+
+    eval_metrics = [
+        {"val_loss": 1.0, "val_policy_acc": 0.30, "val_policy_top3_acc": 0.85},
+        {"val_loss": 1.0, "val_policy_acc": 0.55, "val_policy_top3_acc": 0.45},
+    ]
+
+    def fake_evaluate_loss(*_args, **_kwargs):
+        return eval_metrics.pop(0)
+
+    monkeypatch.setattr("alpha_chess.train._evaluate_loss", fake_evaluate_loss)
+
+    train(
+        TrainConfig(
+            data=str(data_dir),
+            out=str(out_dir),
+            epochs=2,
+            batch_size=4,
+            channels=8,
+            blocks=1,
+            lr=0.01,
+            value_weight=0.0,
+            weight_decay=0.0,
+            select_best_by="val_policy_acc+val_policy_top3_acc",
+            device="cpu",
+        )
+    )
+
+    latest = torch.load(out_dir / "latest.pt", map_location="cpu")
+
+    assert latest["metrics"]["selected_by"] == "val_policy_acc+val_policy_top3_acc"
+    assert latest["metrics"]["selected_metric_value"] == pytest.approx(1.15)
+    assert latest["metrics"]["selected_epoch"] == 1
+    assert latest["metrics"]["selected_checkpoint"] == "epoch_0001.pt"
+
+
+def test_train_select_best_require_skips_ineligible_epoch(monkeypatch, tmp_path) -> None:
+    data_dir = tmp_path / "data"
+    out_dir = tmp_path / "out"
+    data_dir.mkdir()
+    _write_sparse_npz(data_dir / "game.npz", positions=12)
+
+    eval_metrics = [
+        {"val_loss": 1.0, "val_policy_acc": 0.40, "val_policy_top3_acc": 0.70},
+        {"val_loss": 1.0, "val_policy_acc": 0.90, "val_policy_top3_acc": 0.60},
+    ]
+
+    def fake_evaluate_loss(*_args, **_kwargs):
+        return eval_metrics.pop(0)
+
+    monkeypatch.setattr("alpha_chess.train._evaluate_loss", fake_evaluate_loss)
+
+    train(
+        TrainConfig(
+            data=str(data_dir),
+            out=str(out_dir),
+            epochs=2,
+            batch_size=4,
+            channels=8,
+            blocks=1,
+            lr=0.01,
+            value_weight=0.0,
+            weight_decay=0.0,
+            select_best_by="val_policy_acc",
+            select_best_require=["val_policy_top3_acc>=0.65"],
+            device="cpu",
+        )
+    )
+
+    latest = torch.load(out_dir / "latest.pt", map_location="cpu")
+    epoch2 = torch.load(out_dir / "epoch_0002.pt", map_location="cpu")
+
+    assert latest["metrics"]["selected_metric_value"] == pytest.approx(0.40)
+    assert latest["metrics"]["selected_epoch"] == 1
+    assert latest["metrics"]["selected_requirements"] == "val_policy_top3_acc>=0.65"
+    assert epoch2["metrics"]["selected_metric_value"] == pytest.approx(0.90)
+    assert epoch2["metrics"]["selected_eligible"] is False
+    assert epoch2["metrics"]["selected_as_latest"] is False
+
+
 def test_train_select_best_by_rejects_missing_metric(monkeypatch, tmp_path) -> None:
     data_dir = tmp_path / "data"
     out_dir = tmp_path / "out"

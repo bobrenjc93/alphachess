@@ -37,6 +37,7 @@ class TrainConfig:
     policy_head_only: bool = False
     value_head_only: bool = False
     select_best_by: str | None = None
+    select_best_require: list[str] | None = None
     channels: int = 128
     blocks: int = 6
     seed: int = 0
@@ -131,6 +132,8 @@ def train(config: TrainConfig) -> Path:
     model.to(device)
     if config.policy_head_only and config.value_head_only:
         raise ValueError("policy_head_only and value_head_only are mutually exclusive")
+    if config.select_best_require is not None and config.select_best_by is None:
+        raise ValueError("select_best_require requires select_best_by")
     if config.policy_head_only:
         _freeze_except_policy_head(model)
     if config.value_head_only:
@@ -220,18 +223,27 @@ def train(config: TrainConfig) -> Path:
         epoch_metrics = dict(latest_metrics)
         if config.select_best_by is not None:
             selected_value = _selected_metric_value(epoch_metrics, config.select_best_by)
+            eligible = _selection_requirements_satisfied(
+                epoch_metrics,
+                config.select_best_require,
+            )
             improved = _metric_improved(
                 config.select_best_by,
                 selected_value,
                 best_metric_value,
-            )
+            ) and eligible
             epoch_metrics.update(
                 {
                     "selected_by": config.select_best_by,
                     "selected_metric_value": selected_value,
+                    "selected_eligible": eligible,
                     "selected_as_latest": improved,
                 }
             )
+            if config.select_best_require is not None:
+                epoch_metrics["selected_requirements"] = " ".join(
+                    config.select_best_require
+                )
         else:
             improved = True
 
@@ -249,14 +261,39 @@ def train(config: TrainConfig) -> Path:
             )
             save_checkpoint(out_dir / "latest.pt", model, optimizer, step, latest_metrics)
 
+    if config.select_best_by is not None and best_metric_value is None:
+        requirement_text = (
+            " with requirements " + " ".join(config.select_best_require)
+            if config.select_best_require is not None
+            else ""
+        )
+        raise ValueError(
+            f"No epoch satisfied select_best_by {config.select_best_by!r}{requirement_text}"
+        )
+
     return out_dir / "latest.pt"
 
 
 def _selected_metric_value(metrics: dict[str, float], metric_name: str) -> float:
+    metric_terms = _metric_terms(metric_name)
+    values = [
+        _metric_value(metrics, term, spec_name=metric_name, context="select_best_by")
+        for term in metric_terms
+    ]
+    return sum(values)
+
+
+def _metric_value(
+    metrics: dict[str, float],
+    metric_name: str,
+    *,
+    spec_name: str,
+    context: str,
+) -> float:
     if metric_name not in metrics:
         available = ", ".join(sorted(metrics))
         raise ValueError(
-            f"select_best_by metric {metric_name!r} was not produced; "
+            f"{context} metric {metric_name!r} from {spec_name!r} was not produced; "
             f"available metrics: {available}"
         )
     value = float(metrics[metric_name])
@@ -267,6 +304,15 @@ def _selected_metric_value(metrics: dict[str, float], metric_name: str) -> float
 
 
 def _metric_higher_is_better(metric_name: str) -> bool:
+    metric_terms = _metric_terms(metric_name)
+    if len(metric_terms) > 1:
+        directions = {_metric_higher_is_better(term) for term in metric_terms}
+        if len(directions) != 1:
+            raise ValueError(
+                f"select_best_by metric {metric_name!r} mixes higher-is-better "
+                "and lower-is-better metrics"
+            )
+        return directions.pop()
     if metric_name.endswith("_acc") or metric_name == "policy_acc":
         return True
     if metric_name.endswith("_loss") or metric_name in {"loss", "epoch_loss"}:
@@ -275,6 +321,13 @@ def _metric_higher_is_better(metric_name: str) -> bool:
         f"select_best_by metric {metric_name!r} is ambiguous; "
         "use a metric ending in _acc or _loss"
     )
+
+
+def _metric_terms(metric_name: str) -> list[str]:
+    terms = [term.strip() for term in metric_name.split("+")]
+    if any(term == "" for term in terms):
+        raise ValueError(f"select_best_by metric {metric_name!r} has an empty term")
+    return terms
 
 
 def _metric_improved(
@@ -287,6 +340,53 @@ def _metric_improved(
     if _metric_higher_is_better(metric_name):
         return current_value > best_value
     return current_value < best_value
+
+
+def _selection_requirements_satisfied(
+    metrics: dict[str, float],
+    requirements: list[str] | None,
+) -> bool:
+    if requirements is None:
+        return True
+    return all(
+        _selection_requirement_satisfied(metrics, requirement)
+        for requirement in requirements
+    )
+
+
+def _selection_requirement_satisfied(metrics: dict[str, float], requirement: str) -> bool:
+    metric_name, operator, threshold = _parse_selection_requirement(requirement)
+    value = _metric_value(
+        metrics,
+        metric_name,
+        spec_name=requirement,
+        context="select_best_require",
+    )
+    if operator == ">=":
+        return value >= threshold
+    if operator == "<=":
+        return value <= threshold
+    raise ValueError(f"unsupported select_best_require operator {operator!r}")
+
+
+def _parse_selection_requirement(requirement: str) -> tuple[str, str, float]:
+    for operator in (">=", "<="):
+        if operator not in requirement:
+            continue
+        metric_name, raw_threshold = requirement.split(operator, 1)
+        metric_name = metric_name.strip()
+        raw_threshold = raw_threshold.strip()
+        if metric_name == "" or raw_threshold == "":
+            break
+        threshold = float(raw_threshold)
+        if not math.isfinite(threshold):
+            raise ValueError(
+                f"select_best_require threshold in {requirement!r} is not finite: {threshold}"
+            )
+        return metric_name, operator, threshold
+    raise ValueError(
+        f"select_best_require entry {requirement!r} must use metric>=value or metric<=value"
+    )
 
 
 def _freeze_except_policy_head(model: ChessNet) -> None:
