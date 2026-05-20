@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T23:49:30-07:00`.
+Last updated: `2026-05-20T00:01:38-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -98,6 +98,7 @@ latest committed report.
 | `2026-05-19T23:13:05-07:00` PGN file mtime | Broad/t05 top-1 hard-negative repair (`reports/2026-05-19_hard_negative_topk_repair.md`). | N/A | `0.0/2` | Mined `11,290` top-wrong broad/t05 positions and nudged disjoint holdout top-1 to `0.3442`, but direct play still failed. |
 | `2026-05-19T23:33:20-07:00` PGN file mtime | Top-3 hard-negative repair (`reports/2026-05-19_hard_negative_topk_repair.md`). | N/A | `0.0/2` | New vector bad-action training reduced top-3 hard-negative loss, but disjoint holdout top-1 regressed to `0.3436` and direct play still failed. |
 | `2026-05-19T23:49:30-07:00` PGN file mtime | Opening/ELO2000/tactical mix (`reports/2026-05-19_opening_elo2000_tactical_probe.md`). | N/A | `0.0/2` | Specialist opening and tactical sources improved their own split metrics but regressed broad holdout top-1 to `0.3425` and still failed direct play. |
+| `2026-05-20T00:01:38-07:00` report timestamp | Soft-MultiPV recalibration (`reports/2026-05-20_softmultipv_recalibration_probe.md`). | N/A | not gated | Dense MultiPV targets regressed disjoint holdout top-1 to `0.3374`, so the branch was rejected before direct play. |
 
 Current practical status:
 
@@ -182,6 +183,9 @@ Current practical status:
 - Adding specialist opening, ELO2000, and tactical continuation slices improves
   those local source metrics but regresses the broad holdout and still fails the
   direct gate.
+- Dense MultiPV soft-target recalibration regressed the hard-label holdout
+  ranking badly (`0.3374` top-1), so it is not a useful repair for the current
+  checkpoint.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
