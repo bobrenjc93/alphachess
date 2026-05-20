@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="940" height="390" viewBox="0 0 940 390" role="img" aria-labelledby="title desc">
   <title id="title">AlphaChess Capability Progress</title>
-  <desc id="desc">Line chart of AlphaChess capability over real timestamps. The y axis is a conservative direct Stockfish score-rate proxy: score divided by max(games, 4), with the best value seen so far plotted over time. Data points include 2026-05-18T09:14:04-07:00 0.0/2 at 0 percent, 2026-05-18T13:18:35-07:00 0.0/2 at 0 percent, 2026-05-18T16:03:41-07:00 0.5/2 at 12.5 percent, 2026-05-18T23:13:16-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T00:04:01-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T10:31:47-07:00 0.5/4 at 12.5 percent, 2026-05-19T13:57:45-07:00 0.5/2 at 12.5 percent after conservative scaling, 2026-05-19T18:01:50-07:00 0.5/2 at 12.5 percent after conservative scaling, 2026-05-19T18:48:42-07:00 0.0/2 at 0 percent, 2026-05-19T19:11:04-07:00 0.0/2 guarded check at 0 percent, 2026-05-19T19:34:49-07:00 broad65k gate at 0 percent, 2026-05-19T19:56:50-07:00 expert-mix gate at 0 percent, 2026-05-19T20:49:36-07:00 fullnet192 puzzle-mix gate at 0 percent, 2026-05-19T21:22:07-07:00 fullnet192 CPU loss-overfit gate at 0 percent, 2026-05-19T21:50:00-07:00 fullnet192 holdout-selected gate at 0 percent, 2026-05-19T22:01:55-07:00 fullnet192 latest-loss repair gate at 0 percent, 2026-05-19T22:07:00-07:00 strict root-guard gate at 0 percent, 2026-05-19T22:33:45-07:00 higher-time teacher gate at 0 percent, 2026-05-19T23:13:05-07:00 broad/t05 hard-negative gate at 0 percent, and 2026-05-19T23:33:20-07:00 top-3 hard-negative gate at 0 percent. The 50 percent line marks the local Stockfish promotion gate.</desc>
+  <desc id="desc">Line chart of AlphaChess capability over real timestamps. The y axis is a conservative direct Stockfish score-rate proxy: score divided by max(games, 4), with the best value seen so far plotted over time. Data points include 2026-05-18T09:14:04-07:00 0.0/2 at 0 percent, 2026-05-18T13:18:35-07:00 0.0/2 at 0 percent, 2026-05-18T16:03:41-07:00 0.5/2 at 12.5 percent, 2026-05-18T23:13:16-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T00:04:01-07:00 0.5/1 at 12.5 percent after conservative scaling, 2026-05-19T10:31:47-07:00 0.5/4 at 12.5 percent, 2026-05-19T13:57:45-07:00 0.5/2 at 12.5 percent after conservative scaling, 2026-05-19T18:01:50-07:00 0.5/2 at 12.5 percent after conservative scaling, 2026-05-19T18:48:42-07:00 0.0/2 at 0 percent, 2026-05-19T19:11:04-07:00 0.0/2 guarded check at 0 percent, 2026-05-19T19:34:49-07:00 broad65k gate at 0 percent, 2026-05-19T19:56:50-07:00 expert-mix gate at 0 percent, 2026-05-19T20:49:36-07:00 fullnet192 puzzle-mix gate at 0 percent, 2026-05-19T21:22:07-07:00 fullnet192 CPU loss-overfit gate at 0 percent, 2026-05-19T21:50:00-07:00 fullnet192 holdout-selected gate at 0 percent, 2026-05-19T22:01:55-07:00 fullnet192 latest-loss repair gate at 0 percent, 2026-05-19T22:07:00-07:00 strict root-guard gate at 0 percent, 2026-05-19T22:33:45-07:00 higher-time teacher gate at 0 percent, 2026-05-19T23:13:05-07:00 broad/t05 hard-negative gate at 0 percent, 2026-05-19T23:33:20-07:00 top-3 hard-negative gate at 0 percent, and 2026-05-19T23:49:30-07:00 opening/ELO2000/tactical gate at 0 percent. The 50 percent line marks the local Stockfish promotion gate.</desc>
   <rect width="940" height="390" fill="#fbfbf8"/>
 
   <text x="92" y="34" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#202124">AlphaChess capability progress</text>
@@ -24,42 +24,43 @@
     <text x="858" y="72" fill="#a23b31">promotion gate</text>
 
     <text x="92" y="335" text-anchor="middle">05-18 09:14</text>
-    <text x="227" y="335" text-anchor="middle">05-18 16:03</text>
-    <text x="368.7" y="335" text-anchor="middle">05-18 23:13</text>
-    <text x="592.3" y="335" text-anchor="middle">05-19 10:31</text>
-    <text x="850" y="335" text-anchor="middle">05-19 23:33</text>
+    <text x="226.1" y="335" text-anchor="middle">05-18 16:03</text>
+    <text x="366.7" y="335" text-anchor="middle">05-18 23:13</text>
+    <text x="588.9" y="335" text-anchor="middle">05-19 10:31</text>
+    <text x="850" y="335" text-anchor="middle">05-19 23:49</text>
   </g>
 
-  <path d="M 92 310 L 227 310 L 227 249.5 L 850 249.5" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 92 310 L 226.1 310 L 226.1 249.5 L 850 249.5" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
 
   <g fill="#9aa0a6" stroke="#fbfbf8" stroke-width="2">
     <circle cx="92" cy="310" r="4"/>
-    <circle cx="172.6" cy="310" r="4"/>
-    <circle cx="756.2" cy="310" r="4"/>
-    <circle cx="763.5" cy="310" r="4"/>
-    <circle cx="771.4" cy="310" r="4"/>
-    <circle cx="778.6" cy="310" r="4"/>
-    <circle cx="796" cy="310" r="4"/>
-    <circle cx="806.7" cy="310" r="4"/>
-    <circle cx="815.9" cy="310" r="4"/>
-    <circle cx="819.9" cy="310" r="4"/>
-    <circle cx="821.5" cy="310" r="4"/>
-    <circle cx="830.4" cy="310" r="4"/>
-    <circle cx="843.3" cy="310" r="4"/>
+    <circle cx="172" cy="310" r="4"/>
+    <circle cx="751.5" cy="310" r="4"/>
+    <circle cx="758.8" cy="310" r="4"/>
+    <circle cx="766.6" cy="310" r="4"/>
+    <circle cx="773.8" cy="310" r="4"/>
+    <circle cx="791.1" cy="310" r="4"/>
+    <circle cx="801.8" cy="310" r="4"/>
+    <circle cx="810.9" cy="310" r="4"/>
+    <circle cx="814.8" cy="310" r="4"/>
+    <circle cx="816.4" cy="310" r="4"/>
+    <circle cx="825.2" cy="310" r="4"/>
+    <circle cx="838.1" cy="310" r="4"/>
+    <circle cx="844.7" cy="310" r="4"/>
     <circle cx="850" cy="310" r="4"/>
   </g>
 
   <g fill="#1f6f8b" stroke="#fbfbf8" stroke-width="2">
-    <circle cx="227" cy="249.5" r="5"/>
-    <circle cx="592.3" cy="249.5" r="5"/>
-    <circle cx="740.7" cy="249.5" r="5"/>
+    <circle cx="226.1" cy="249.5" r="5"/>
+    <circle cx="588.9" cy="249.5" r="5"/>
+    <circle cx="736.2" cy="249.5" r="5"/>
   </g>
 
   <g fill="#ffffff" stroke="#d9822b" stroke-width="2">
-    <circle cx="368.7" cy="249.5" r="4"/>
-    <circle cx="385.4" cy="249.5" r="4"/>
-    <circle cx="660.2" cy="249.5" r="4"/>
-    <circle cx="740.7" cy="249.5" r="6"/>
+    <circle cx="366.7" cy="249.5" r="4"/>
+    <circle cx="383.3" cy="249.5" r="4"/>
+    <circle cx="656.3" cy="249.5" r="4"/>
+    <circle cx="736.2" cy="249.5" r="6"/>
   </g>
 
   <g font-family="Arial, sans-serif" font-size="12" fill="#202124">
