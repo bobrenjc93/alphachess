@@ -674,3 +674,61 @@ First-blunder mining found:
 Both interpolations clear the broad holdout guard and both lose directly. The
 broader supervised mix is useful for validation, but this candidate family is
 still rejected for promotion.
+
+## Aggregated Opening-Stability Source
+
+I then aggregated all recent guarded-blend, full-network, and broad/opening
+blend direct failures into a single first-blunder context source:
+
+- PGNs: `10`
+- Failed games used: `20`
+- Positions: `180`
+- Engine time: `0.05`
+- First confirmed blunder only, `2` context plies, `4` PV plies, `2` game-line
+  plies
+- Output: `data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1`
+
+I reran the broad/opening/context hard-label mix with the 180-position source in
+place of the 72-position source. Epoch 2 selected under the broad guard:
+
+| Checkpoint | Holdout top-1 | Holdout top-3 | Holdout top-5 | Stability source top-1/top-3/top-5 | Read |
+| --- | ---: | ---: | ---: | ---: | --- |
+| epoch 1 | `0.3446` | `0.5406` | `0.6440` | `0.3200`/`0.4800`/`0.6800` | Better top-1, top-3 below guard. |
+| epoch 2 / latest | `0.3445` | `0.5421` | `0.6442` | `0.3200`/`0.5200`/`0.6800` | Selected; broader context top-3 improved. |
+
+Direct gate:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening_stability180_hardlabels_cap20_lr2e6/latest.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --good-action-book-top-k 3 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_opening_stability180_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. PGN file mtime: `2026-05-20T16:00:05-07:00`.
+
+First-blunder mining found:
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Bd3` | `Bd4` | `0.2046` | `r2qr1k1/p3bppp/2p2nb1/3p4/8/2N1B2P/PPP1BPP1/2RQR1K1 w - - 3 15` |
+| 2 | `...e5` | `...Nf6` | `0.1290` | `rnbqkbnr/pp1p1ppp/4p3/2pP4/4P3/8/PPP2PPP/RNBQKBNR b KQkq - 0 3` |
+
+This is the best selected broad/opening/context candidate so far, but it still
+fails direct play immediately. The new Black failure appears as early as ply 3,
+so the next data step should broaden opening coverage rather than only append
+more local first-blunder contexts.

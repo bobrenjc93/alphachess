@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="940" height="390" viewBox="0 0 940 390" role="img" aria-labelledby="title desc">
   <title id="title">AlphaChess Capability Progress</title>
-  <desc id="desc">Simple line chart of AlphaChess capability over real result timestamps, similar to an AlphaGo rating-over-time graph. The y axis is a best-so-far local Elo proxy derived from the conservative direct Stockfish score-rate proxy: score divided by max(games, 4), converted with 400 times log10(p divided by 1-p). Scoreless gates are drawn at a floor of less than or equal to -800 Elo because their logit is otherwise undefined. The plotted direct Stockfish checks follow the README progress table from 2026-05-18T09:14:04-07:00 through 2026-05-20T15:52:48-07:00. The 0 Elo line marks the local Stockfish promotion gate.</desc>
+  <desc id="desc">Simple line chart of AlphaChess capability over real result timestamps, similar to an AlphaGo rating-over-time graph. The y axis is a best-so-far local Elo proxy derived from the conservative direct Stockfish score-rate proxy: score divided by max(games, 4), converted with 400 times log10(p divided by 1-p). Scoreless gates are drawn at a floor of less than or equal to -800 Elo because their logit is otherwise undefined. The plotted direct Stockfish checks follow the README progress table from 2026-05-18T09:14:04-07:00 through 2026-05-20T16:00:05-07:00. The 0 Elo line marks the local Stockfish promotion gate.</desc>
   <!-- Key source timestamps:
        2026-05-18T09:14:04-07:00: first direct gate, 0.0/2, x=92.0
-       2026-05-18T16:03:41-07:00: material-prior smoke, 0.5/2, x=186.7
-       2026-05-19T10:31:47-07:00: policy-head broad gate, 0.5/4, x=442.9
-       2026-05-20T15:52:48-07:00: broad opening/context 50% blend gate, 0.0/2, x=850.0 -->
+       2026-05-18T16:03:41-07:00: material-prior smoke, 0.5/2, x=186.5
+       2026-05-19T10:31:47-07:00: policy-head broad gate, 0.5/4, x=442.1
+       2026-05-20T16:00:05-07:00: aggregated opening-stability gate, 0.0/2, x=850.0 -->
   <rect width="940" height="390" fill="#fbfbf8"/>
 
   <text x="92" y="34" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#202124">AlphaChess capability progress</text>
@@ -29,39 +29,40 @@
     <text x="858" y="72" fill="#a23b31">promotion gate</text>
 
     <text x="92" y="335" text-anchor="middle">05-18 09:14</text>
-    <text x="186.7" y="335" text-anchor="middle">05-18 16:03</text>
-    <text x="442.9" y="335" text-anchor="middle">05-19 10:31</text>
-    <text x="850" y="335" text-anchor="middle">05-20 15:52</text>
+    <text x="186.5" y="335" text-anchor="middle">05-18 16:03</text>
+    <text x="442.1" y="335" text-anchor="middle">05-19 10:31</text>
+    <text x="850" y="335" text-anchor="middle">05-20 16:00</text>
     <text x="471" y="374" text-anchor="middle">real result timestamp</text>
     <text x="20" y="198" text-anchor="middle" transform="rotate(-90 20 198)">local Stockfish Elo proxy</text>
   </g>
 
-  <path d="M 92 310 L 186.7 310 L 186.7 170.2 L 850 170.2" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 92 310 L 186.5 310 L 186.5 170.2 L 850 170.2" fill="none" stroke="#1f6f8b" stroke-width="4" stroke-linejoin="round"/>
 
   <g fill="#9aa0a6" stroke="#fbfbf8" stroke-width="2">
     <circle cx="92" cy="310" r="4"/>
-    <circle cx="153.7" cy="310" r="4"/>
-    <circle cx="442.9" cy="310" r="4"/>
-    <circle cx="546.9" cy="310" r="4"/>
-    <circle cx="818.1" cy="310" r="4"/>
-    <circle cx="838.5" cy="310" r="4"/>
-    <circle cx="841.3" cy="310" r="4"/>
-    <circle cx="845.9" cy="310" r="4"/>
-    <circle cx="846.8" cy="310" r="4"/>
-    <circle cx="848.8" cy="310" r="4"/>
+    <circle cx="153.6" cy="310" r="4"/>
+    <circle cx="442.1" cy="310" r="4"/>
+    <circle cx="545.9" cy="310" r="4"/>
+    <circle cx="816.5" cy="310" r="4"/>
+    <circle cx="836.8" cy="310" r="4"/>
+    <circle cx="839.6" cy="310" r="4"/>
+    <circle cx="844.2" cy="310" r="4"/>
+    <circle cx="845.1" cy="310" r="4"/>
+    <circle cx="847.1" cy="310" r="4"/>
+    <circle cx="848.3" cy="310" r="4"/>
     <circle cx="850" cy="310" r="4"/>
   </g>
 
   <g fill="#1f6f8b" stroke="#fbfbf8" stroke-width="2">
-    <circle cx="186.7" cy="170.2" r="5"/>
-    <circle cx="442.9" cy="170.2" r="5"/>
+    <circle cx="186.5" cy="170.2" r="5"/>
+    <circle cx="442.1" cy="170.2" r="5"/>
   </g>
 
   <g fill="#ffffff" stroke="#d9822b" stroke-width="2">
-    <circle cx="286.0" cy="170.2" r="4"/>
-    <circle cx="297.7" cy="170.2" r="4"/>
-    <circle cx="490.5" cy="170.2" r="4"/>
-    <circle cx="546.9" cy="170.2" r="4"/>
+    <circle cx="285.6" cy="170.2" r="4"/>
+    <circle cx="297.3" cy="170.2" r="4"/>
+    <circle cx="489.6" cy="170.2" r="4"/>
+    <circle cx="545.9" cy="170.2" r="4"/>
   </g>
 
   <g font-family="Arial, sans-serif" font-size="12" fill="#202124">
@@ -70,7 +71,7 @@
     <text x="585" y="188" fill="#1f6f8b">12.5% proxy, about -338 Elo vs gate</text>
     <text x="314" y="150" fill="#9a5b16">one-game PV-line draws</text>
     <text x="490" y="210" fill="#9a5b16">0.5/2 smokes, not confirmed</text>
-    <text x="620" y="303" fill="#5f6368">latest broad opening/context 50% blend gate 0.0/2</text>
+    <text x="620" y="303" fill="#5f6368">latest aggregated opening-stability gate 0.0/2</text>
   </g>
 
   <g font-family="Arial, sans-serif" font-size="11" fill="#5f6368">
