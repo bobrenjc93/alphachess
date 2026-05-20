@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T06:25:40-07:00`
+Timestamp: `2026-05-20T06:36:28-07:00`
 
 ## Summary
 
@@ -36,6 +36,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `data/teacher/alpha_recent80_stockfish_loss_opening_allblunders_v1` | `80` most recent Stockfish PGNs by mtime, AlphaChess score `0.0`, `max_ply=24`, all early confirmed blunders | `4,096` from `141` recent loss games | `763` | Current-position-specific opening/tactical bad-action labels. |
 | `data/teacher/alpha_recent60_opening_legalbad_v1` | `60` most recent Stockfish PGNs by mtime, AlphaChess score `0.0`, `max_ply=18`, all legal root moves scored by Stockfish, up to `8` bad actions at value drop `>=0.12` | `1,147` from `123` recent loss games | `8,705` | Dense per-position bad-action labels, averaging `7.6` bad legal moves per sampled opening position. |
 | `data/teacher/alpha_recent40_opening_legalvalue_v1` | `40` most recent Stockfish PGNs by mtime, AlphaChess score `0.0`, `max_ply=18`, all legal root moves scored by Stockfish, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.12` | `760` from `80` recent loss games | `5,656` | Dense value-policy targets plus bad-action labels for the latest opening failures. |
+| `data/teacher/alpha_sacguard_directloss_legalvalue_v1` | sac-guard direct-loss PGN, AlphaChess score `0.0`, `max_ply=70`, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `52` | `303` | Very small focused replay slice for the losses after the speculative checking-capture guard. |
 
 ## Runs
 
@@ -50,6 +51,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | exact Stockfish good-action book | same checkpoint, legal-value good-action book plus bad-action book, strict guards | N/A | restored the exact teacher opening `e4 e5 Nf3 Nc6 d4`, proving the book can override overzealous root heuristics at known positions | good+bad book strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_goodbadbook_strict_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | broad exact teacher books | same checkpoint, broad Stockfish good-action book plus recent loss/legal-value/top-3 exact books and strict guards | N/A | expanded exact-position coverage changed the mid-opening but still left uncovered tactical collapses | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_broadgoodbooks_strict_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent-opening-legalvalue-policyhead-v1/checkpoints/iter_0001` | speculative checking-capture guard | same checkpoint and broad exact books, plus near-best material fallback for checking captures and a king-recapture penalty for speculative checking captures | N/A | avoided the previous `Bxh7+` line, but the replacement games still lost tactically | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent_opening_legalvalue_policyhead_broadgoodbooks_sacguard_stockfish_gate.pgn`) |
+| `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | best sac-guard bad-action loss, epoch `5` | policy head only from legal-value parent, LR `1.2e-6`, bad-action weight `1.0`, weights `0.20/0.25/0.55` over broad/legal-value/sac-guard slices | broad holdout top-1 `0.3336`, top-3 `0.5313`, top-5 `0.6329` | sac-guard slice top-1 `0.3654`, top-3 `0.6154`, top-5 `0.7308`, bad-action loss `0.3012` vs parent `0.3309` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -98,3 +100,9 @@ keep a small near-best band only for checking-capture sacrifices and added a
 penalty when the opponent king can immediately recapture the attacker. This
 fixes the concrete `Bxh7+` root-filter failure, but the direct gate still lost
 both games through other tactics.
+The follow-up sac-guard replay improved the tiny targeted slice, reducing
+bad-action loss from `0.3309` to `0.3012` and lifting top-3 from `0.5769` to
+`0.6154`, but broad holdout top-1 slipped from `0.3356` to `0.3336`. The direct
+gate remained `0.0/2` and even found a nearby `Bxh7+` sacrifice from a different
+position, so exact replay of the latest loss is still too local to solve the
+opening-tactical failure family.

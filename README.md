@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T06:25:40-07:00`.
+Last updated: `2026-05-20T06:36:28-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -132,6 +132,7 @@ latest committed report.
 | `2026-05-20T06:02:44-07:00` PGN file mtime | Exact Stockfish good-action book (`reports/2026-05-20_opening_loss_repair.md`). | N/A | good+bad book strict `0.0/2` | Exact teacher best-move filtering restored the known `e4 e5 Nf3 Nc6 d4` opening line, but direct play still collapsed tactically after leaving the book. |
 | `2026-05-20T06:09:52-07:00` PGN file mtime | Broad exact teacher books (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Combining broad Stockfish, recent loss, legal-value, and top-3 confirmed-blunder exact books still failed both direct games. |
 | `2026-05-20T06:25:40-07:00` PGN file mtime | Speculative checking-capture guard (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | Root material fallback no longer forces a single checking-capture sacrifice and now penalizes king-recapturable checking captures; it avoided the `Bxh7+` failure but the gate still lost. |
+| `2026-05-20T06:36:28-07:00` PGN file mtime | Sac-guard direct-loss policy-head repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | broad-good+bad book strict `0.0/2` | A focused legal-value replay lowered the targeted sac-guard bad-action loss from `0.3309` to `0.3012`, but broad holdout top-1 slipped from `0.3356` to `0.3336` and the direct gate still failed. |
 
 Current practical status:
 
@@ -169,6 +170,10 @@ Current practical status:
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.
+- A focused replay on the sac-guard losses improves that tiny slice's
+  bad-action loss and top-3 accuracy, but it does not generalize: the latest
+  gate reintroduced a nearby `Bxh7+` sacrifice from a different position and
+  still scored `0.0/2`.
 - Softening the broad Stockfish source did not fix the gap between internal
   parent wins and direct Stockfish play.
 - Direct-loss blunder replay can also dominate the internal parent, but the
@@ -280,6 +285,9 @@ Current practical status:
 - Dense legal-value policy targets also improve their own replay metrics, but
   the latest policy-head-only run still regressed the broad holdout and failed
   direct play.
+- The latest sac-guard direct-loss replay is another local repair without direct
+  transfer: targeted bad-action loss improved, broad holdout slipped, and the
+  Stockfish gate remained `0.0/2`.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
