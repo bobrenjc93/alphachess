@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T13:43:48-07:00`.
+Result data through: `2026-05-20T14:04:52-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -166,6 +166,8 @@ latest committed report.
 | `2026-05-20T13:34:42-07:00` PGN file mtime | Guarded blend direct gate (`reports/policyhead192_guarded_blend_broad_epoch3_w010_stockfish_gate.pgn`). | N/A | broad/t05 book+strict `0.0/2` | The guard-passing blend still lost both direct games: one through a passed-pawn queen/mate line, and one through an early Sicilian tactical collapse. |
 | `2026-05-20T13:39:48-07:00` teacher summary mtime | Guarded blend first-blunder context mining (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | N/A | Context mining produced an 18-position diagnostic slice and moved game 2's first confirmed mistake earlier to `...Nxc3` instead of `...Rf8`; game 1's first mistake stayed `Re1` instead of `Na3`. |
 | `2026-05-20T13:43:48-07:00` checkpoint mtime | Guarded blend context-repair probe (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | A tiny context-repair fine-tune from the blend immediately regressed broad top-3 to about `0.5383`, so the guard rejected all epochs before direct play. |
+| `2026-05-20T14:03:57-07:00` checkpoint mtime | Source-repeat-capped context repair (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | `--max-source-repeat 5` limits tiny-slice replay pressure, but continuing broad/context training still regressed broad top-3 to `0.5381-0.5386`; all epochs were rejected. |
+| `2026-05-20T14:04:52-07:00` checkpoint mtime | Context-only tiny repair (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | A single `1e-8` pass over only the 18 context positions was nearly neutral but still missed the broad guard with top-1 `0.3395` and top-3 `0.5420`. |
 
 Current practical status:
 

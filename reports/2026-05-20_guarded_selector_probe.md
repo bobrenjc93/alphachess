@@ -1,6 +1,6 @@
 # Guarded Composite Selector Probe
 
-Timestamp: `2026-05-20T13:43:48-07:00`
+Timestamp: `2026-05-20T14:04:52-07:00`
 
 ## Summary
 
@@ -274,3 +274,75 @@ Even a `5%` context slice weight immediately erased the blend's top-3 gain.
 This reinforces that narrow loss repair needs either a much lower effective
 weight or a different objective; otherwise it destroys the broad ranking signal
 before direct play.
+
+## Source-Repeat Cap Follow-Up
+
+I added `--max-source-repeat` to cap how often tiny repair sources are sampled
+per epoch. This prevents an 18-position slice from being replayed thousands of
+times when it receives nonzero `--data-weights` mass.
+
+The capped version used the same context repair but limited the tiny source to
+at most five expected samples per position per epoch:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-guarded-blends-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --data data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/guarded_blend_gate_firstblunders_context_v1 \
+  --holdout-data data/teacher/stockfish_multipv_elo1800_holdout8192_t005_skip65536 \
+  --out experiments/policyhead192-guarded-blend-contextrepair-capped-v1/checkpoints/iter_0001 \
+  --epochs 5 \
+  --batch-size 512 \
+  --lr 5e-8 \
+  --weight-decay 1e-4 \
+  --value-weight 0.05 \
+  --bad-action-weight 0.3 \
+  --bad-action-margin 1.0 \
+  --data-weights 0.95 0.05 \
+  --max-source-repeat 5 \
+  --legal-policy-loss \
+  --policy-head-only \
+  --select-best-by holdout_policy_acc+holdout_policy_top3_acc \
+  --select-best-require 'holdout_policy_acc>=0.3400' 'holdout_policy_top3_acc>=0.5420' \
+  --device cuda
+```
+
+All epochs were still rejected:
+
+| Epoch | Holdout top-1 | Holdout top-3 | Holdout top-5 | Holdout policy loss | Eligible |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 1 | `0.3386` | `0.5385` | `0.6401` | `3.6263` | no |
+| 2 | `0.3391` | `0.5386` | `0.6401` | `3.6176` | no |
+| 3 | `0.3390` | `0.5385` | `0.6396` | `3.5897` | no |
+| 4 | `0.3395` | `0.5385` | `0.6398` | `3.5906` | no |
+| 5 | `0.3394` | `0.5381` | `0.6401` | `3.5855` | no |
+
+The cap fixes the sampling mechanics, but this run still continues broad
+training from the blend toward the rejected broad-only epoch, so it loses the
+top-3 gain again.
+
+I also tried a single low-LR pass over only the 18 context positions:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-guarded-blends-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --data data/teacher/guarded_blend_gate_firstblunders_context_v1 \
+  --holdout-data data/teacher/stockfish_multipv_elo1800_holdout8192_t005_skip65536 \
+  --out experiments/policyhead192-guarded-blend-contextonly-tiny-v1/checkpoints/iter_0001 \
+  --epochs 1 \
+  --batch-size 18 \
+  --lr 1e-8 \
+  --weight-decay 1e-4 \
+  --value-weight 0.05 \
+  --bad-action-weight 0.3 \
+  --bad-action-margin 1.0 \
+  --legal-policy-loss \
+  --policy-head-only \
+  --select-best-by holdout_policy_acc+holdout_policy_top3_acc \
+  --select-best-require 'holdout_policy_acc>=0.3400' 'holdout_policy_top3_acc>=0.5420' \
+  --device cuda
+```
+
+That was much less destructive but still missed the guard: top-1 `0.3395`,
+top-3 `0.5420`, top-5 `0.6417`, policy loss `3.7816`. The practical read is
+that first-blunder repair needs either a different objective or an explicit
+interpolation step after repair; direct fine-tuning from the blend is not enough.
