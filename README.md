@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T01:07:50-07:00`.
+Last updated: `2026-05-20T01:15:44-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -106,6 +106,7 @@ latest committed report.
 | `2026-05-20T01:03:44-07:00` PGN file mtime | Exact bad-action book on hard-negative parent (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Eval-time blocklist from the 4,687 confirmed blunders did not recover direct play. |
 | `2026-05-20T01:04:09-07:00` PGN file mtime | Exact bad-action book on broad73k repair (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Applying the same exact-position blocklist to the repaired checkpoint also lost both direct games. |
 | `2026-05-20T01:07:29-07:00` PGN file mtime | Bad-action book plus strict root guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | Combining the exact-position blocklist with stricter mate/material/king-safety root filters still failed. |
+| `2026-05-20T01:14:58-07:00` PGN file mtime | 64-sim bad-action book plus strict root guards (`reports/2026-05-20_stockfish_confirmed_blunder_mining.md`). | N/A | `0.0/2` | H100 64-simulation search with the same book and strict root filters also lost both games. |
 
 Current practical status:
 
@@ -205,7 +206,7 @@ Current practical status:
 - Exact-position bad-action filtering is now available at eval time, but the
   first broad73k blocklist checks still scored `0.0/2`; the current direct
   losses are not fixed by suppressing known mined FEN/action pairs, even with
-  stricter root tactical filters layered on top.
+  stricter root tactical filters and 64-simulation search layered on top.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
