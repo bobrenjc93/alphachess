@@ -187,6 +187,7 @@ def main(argv: list[str] | None = None) -> None:
     teacher_parser.add_argument("--pv-plies", type=int, default=0)
     teacher_parser.add_argument("--game-line-plies", type=int, default=0)
     teacher_parser.add_argument("--blunder-context-plies", type=int, default=0)
+    teacher_parser.add_argument("--first-blunder-only", action="store_true")
     teacher_parser.add_argument("--chunk-size", type=int, default=1024)
 
     puzzle_parser = subparsers.add_parser(

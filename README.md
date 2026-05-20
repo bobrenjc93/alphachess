@@ -352,6 +352,7 @@ uv run alpha-chess stockfish-teacher \
   --multipv 4 \
   --policy-temperature-cp 200 \
   --blunder-context-plies 2 \
+  --first-blunder-only \
   --pv-plies 4 \
   --game-line-plies 2
 ```
@@ -361,7 +362,9 @@ played PGN move as `bad_actions` when that move differs from Stockfish's target
 move. Add `--blunder-context-plies` to also label a few earlier sampled
 positions from the same game whenever a confirmed blunder is found; this gives
 loss-PGN repair runs direct supervision on the lead-up decisions before a
-forcing tactic. Training can use those negative labels with a margin loss:
+forcing tactic. Add `--first-blunder-only` when mining failed games to focus
+the replay on the first confirmed mistake instead of later forced-loss
+positions. Training can use those negative labels with a margin loss:
 
 ```bash
 uv run alpha-chess train \

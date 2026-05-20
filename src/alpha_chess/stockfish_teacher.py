@@ -36,6 +36,7 @@ class StockfishTeacherConfig:
     pv_plies: int = 0
     game_line_plies: int = 0
     blunder_context_plies: int = 0
+    first_blunder_only: bool = False
     chunk_size: int = 1024
 
 
@@ -244,9 +245,12 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                     board = game.board()
                     mainline_moves = list(game.mainline_moves())
                     context_boards: list[chess.Board] = []
+                    found_blunder_this_game = False
                     used_this_game = False
                     for ply, move in enumerate(mainline_moves):
                         if positions >= config.max_positions:
+                            break
+                        if config.first_blunder_only and found_blunder_this_game:
                             break
                         if move not in board.legal_moves:
                             break
@@ -313,6 +317,8 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                             mainline_moves[ply:],
                                         )
                                     used_this_game = True
+                                    if bad_move is not None:
+                                        found_blunder_this_game = True
                             context_boards.append(context_board)
                             context_plies = max(0, config.blunder_context_plies)
                             if context_plies > 0 and len(context_boards) > context_plies:
@@ -349,6 +355,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"pv_plies={config.pv_plies}",
                 f"game_line_plies={config.game_line_plies}",
                 f"blunder_context_plies={config.blunder_context_plies}",
+                f"first_blunder_only={config.first_blunder_only}",
                 f"config={asdict(config)}",
             ]
         )
