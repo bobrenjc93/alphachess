@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-20T04:57:13-07:00`.
+Last updated: `2026-05-20T05:15:15-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -127,6 +127,7 @@ latest committed report.
 | `2026-05-20T04:21:51-07:00` PGN file mtime | Recent opening all-blunders policy-head repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | plain `0.0/2`; book+strict `0.0/2` | Mining all early confirmed blunders from the `80` most recent Stockfish PGNs produced `4,096` positions and `763` bad actions; exact books changed the openings but did not stop adjacent tactical collapses. |
 | `2026-05-20T04:32:27-07:00` PGN file mtime | Recent opening all-blunders full-network repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | plain `0.0/2`; book+strict `0.0/2` | Full-network fitting reduced recent all-blunders bad-action loss to `2.0906`, but disjoint holdout fell to `0.3370` and direct play still failed. |
 | `2026-05-20T04:56:40-07:00` PGN file mtime | Dense legal-bad-action opening repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | plain `0.0/2`; book+strict `0.0/2` | All-legal Stockfish sweep wrote `8,705` bad-action labels across `1,147` recent positions; policy-head repair lowered recent direct-loss bad-action loss to `2.3248`, but disjoint holdout fell to `0.3361` and direct play still failed. |
+| `2026-05-20T05:15:06-07:00` PGN file mtime | Dense legal-value policy opening repair (`reports/2026-05-20_opening_loss_repair.md`). | N/A | plain `0.0/2`; book+strict `0.0/2` | Dense legal-move value policy improved its own policy loss to `5.0559` and recent direct-loss bad-action loss to `2.3648`, but broad holdout fell to `0.3356` and both direct gates still failed. |
 
 Current practical status:
 
@@ -260,6 +261,9 @@ Current practical status:
   position, not just the played blunder. It improves local bad-action losses,
   but the latest policy-head repair still lost both plain and strict Stockfish
   gates.
+- Dense legal-value policy targets also improve their own replay metrics, but
+  the latest policy-head-only run still regressed the broad holdout and failed
+  direct play.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
