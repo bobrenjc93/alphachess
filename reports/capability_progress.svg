@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="940" height="390" viewBox="0 0 940 390" role="img" aria-labelledby="title desc">
   <title id="title">AlphaChess Capability Progress</title>
-  <desc id="desc">Simple line chart of AlphaChess capability over real result timestamps, similar to an AlphaGo rating-over-time graph. The y axis is a conservative direct Stockfish score-rate proxy: score divided by max(games, 4), with the best value seen so far plotted over time. The plotted checks follow the README progress table from 2026-05-18T09:14:04-07:00 through 2026-05-20T07:19:53-07:00. The 50 percent line marks the local Stockfish promotion gate.</desc>
+  <desc id="desc">Simple line chart of AlphaChess capability over real result timestamps, similar to an AlphaGo rating-over-time graph. The y axis is a conservative direct Stockfish score-rate proxy: score divided by max(games, 4), with the best value seen so far plotted over time. The plotted checks follow the README progress table from 2026-05-18T09:14:04-07:00 through 2026-05-20T07:32:20-07:00. The 50 percent line marks the local Stockfish promotion gate.</desc>
   <rect width="940" height="390" fill="#fbfbf8"/>
 
   <text x="92" y="34" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#202124">AlphaChess capability progress</text>
@@ -27,7 +27,7 @@
     <text x="212" y="335" text-anchor="middle">05-18 16:03</text>
     <text x="337.8" y="335" text-anchor="middle">05-18 23:13</text>
     <text x="536.6" y="335" text-anchor="middle">05-19 10:31</text>
-    <text x="850" y="335" text-anchor="middle">05-20 07:19</text>
+    <text x="850" y="335" text-anchor="middle">05-20 07:32</text>
     <text x="471" y="374" text-anchor="middle">real result timestamp</text>
     <text x="20" y="198" text-anchor="middle" transform="rotate(-90 20 198)">Stockfish gate score-rate proxy</text>
   </g>
