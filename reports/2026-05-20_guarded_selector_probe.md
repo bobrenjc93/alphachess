@@ -1,6 +1,6 @@
 # Guarded Composite Selector Probe
 
-Timestamp: `2026-05-20T13:09:24-07:00`
+Timestamp: `2026-05-20T13:34:42-07:00`
 
 ## Summary
 
@@ -139,10 +139,43 @@ parent's top-k ranking while taking the lower-loss/top-1 signal.
 | broad-only epoch 3 | `0.20` | `0.3401` | `0.5414` | `0.6410` | `3.7512` | top-3 regresses |
 | broad-only epoch 3 | `0.30` | `0.3398` | `0.5410` | `0.6407` | `3.7345` | top-3 regresses |
 
-The `broad-only epoch 3` blend at `0.10` is the best checkpoint from this
-sequence: it improves disjoint broad top-1 from `0.3395` to `0.3401`, top-3
-from `0.5421` to `0.5426`, keeps top-5 roughly flat, and lowers policy loss.
-I started a two-game direct Stockfish gate for it, but the persistent GPU
-reservation was canceled mid-run, so no complete PGN/result was produced. This
-blend should be the next direct-gate candidate when the persistent workspace is
-available again.
+The `broad-only epoch 3` blend at `0.10` was the best checkpoint from this
+sequence: it improved disjoint broad top-1 from `0.3395` to `0.3401`, top-3
+from `0.5421` to `0.5426`, kept top-5 roughly flat, and lowered policy loss.
+The first direct gate attempt was interrupted when the persistent GPU
+reservation was canceled, so I recreated the same broad-only epoch and blend on
+a temporary H100 host. The validation metrics reproduced exactly.
+
+## Direct Gate
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-guarded-blends-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_guarded_blend_broad_epoch3_w010_stockfish_gate.pgn
+```
+
+Result: `{'games': 2.0, 'score': 0.0, 'score_rate': 0.0, 'wins': 0.0,
+'draws': 0.0, 'losses': 2.0}`.
+
+PGN file mtime: `2026-05-20T13:34:42-07:00`.
+
+The first loss followed the familiar `e4 e5 Nf3 Nc6 d4` stem but collapsed
+after allowing a passed `d` pawn to queen with mate. The second loss came from a
+Sicilian line where AlphaChess accepted early queenside material and then lost
+to a forcing attack ending in `Qa3#`. So the broad top-k guard and small blend
+step produce a better supervised candidate, but still do not solve the direct
+tactical reliability problem.
