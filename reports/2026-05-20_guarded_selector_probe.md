@@ -1,6 +1,6 @@
 # Guarded Composite Selector Probe
 
-Timestamp: `2026-05-20T13:36:45-07:00`
+Timestamp: `2026-05-20T13:39:48-07:00`
 
 ## Summary
 
@@ -205,8 +205,33 @@ Result: `14` positions from both games.
 | 1 | `Re1` | `Na3` | `0.4704` | `1rbqr1k1/p1p1bppp/5n2/3p2B1/8/2PB4/PP1Q1PPP/RN3RK1 w - - 1 12` |
 | 2 | `...Nxa2+` | `...Rf8` | `0.3231` | `rnbqk2r/pp1p1pQp/4p3/4P3/1b1N4/2n5/PPP2PPP/R1B1KB1R b KQkq - 0 8` |
 
-The first mistake in game 1 is not the final passed-pawn tactic itself; it is a
-quiet rook move that lets the later sequence become forcing. The second mistake
-is a speculative material grab in the Sicilian. This suggests the next repair
-should focus on first-blunder lead-up states, not only the final mate/promotion
-positions.
+I reran the same miner with `--blunder-context-plies 2` because the game 1
+mistake is a quiet lead-up move, not the final passed-pawn tactic:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn reports/policyhead192_guarded_blend_broad_epoch3_w010_stockfish_gate.pgn \
+  --out data/teacher/guarded_blend_gate_firstblunders_context_v1 \
+  --engine-path tools/stockfish/bin/stockfish \
+  --player-name AlphaChess \
+  --position-stride 1 \
+  --min-value-delta 0.08 \
+  --multipv 4 \
+  --policy-temperature-cp 180 \
+  --first-blunder-only \
+  --blunder-context-plies 2 \
+  --pv-plies 4 \
+  --game-line-plies 2 \
+  --chunk-size 256
+```
+
+Result: `18` positions from both games.
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Re1` | `Na3` | `0.4887` | `1rbqr1k1/p1p1bppp/5n2/3p2B1/8/2PB4/PP1Q1PPP/RN3RK1 w - - 1 12` |
+| 2 | `...Nxc3` | `...Rf8` | `0.1123` | `rnbqk2r/pp1p1ppp/4p3/3nP3/1b1N2Q1/2N5/PPP2PPP/R1B1KB1R b KQkq - 2 7` |
+
+The context run moves game 2's first confirmed mistake earlier than the final
+`...Nxa2+` material grab. The next repair should focus on these lead-up states
+instead of only the final mate/promotion positions.
