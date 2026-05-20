@@ -368,6 +368,53 @@ def test_policy_distillation_loss_anchors_to_reference_model() -> None:
     assert anchored_loss.detach().item() > plain_loss.detach().item()
 
 
+def test_train_uses_separate_distill_data(monkeypatch, tmp_path) -> None:
+    data_dir = tmp_path / "data"
+    distill_dir = tmp_path / "distill"
+    out_dir = tmp_path / "out"
+    data_dir.mkdir()
+    distill_dir.mkdir()
+    _write_sparse_npz(data_dir / "game.npz", positions=4)
+    _write_sparse_npz(distill_dir / "anchor.npz", positions=5)
+    teacher_path = tmp_path / "teacher.pt"
+    save_checkpoint(teacher_path, ChessNet(ChessNetConfig(channels=8, blocks=1)))
+    distill_batch_sizes = []
+
+    def fake_distill_only_loss(*args, **_kwargs):
+        batch = args[1]
+        distill_batch_sizes.append(int(batch["board"].shape[0]))
+        return torch.as_tensor(0.25)
+
+    monkeypatch.setattr(
+        "alpha_chess.train._compute_policy_distill_only_loss",
+        fake_distill_only_loss,
+    )
+
+    train(
+        TrainConfig(
+            data=str(data_dir),
+            out=str(out_dir),
+            distill_checkpoint=str(teacher_path),
+            distill_data=str(distill_dir),
+            distill_batch_size=3,
+            policy_distill_weight=0.5,
+            epochs=1,
+            batch_size=2,
+            channels=8,
+            blocks=1,
+            lr=0.01,
+            value_weight=0.0,
+            weight_decay=0.0,
+            device="cpu",
+        )
+    )
+
+    latest = torch.load(out_dir / "latest.pt", map_location="cpu")
+    assert distill_batch_sizes
+    assert distill_batch_sizes[0] == 3
+    assert latest["metrics"]["policy_distill_loss"] == pytest.approx(0.25)
+
+
 def test_source_policy_weights_scale_policy_loss() -> None:
     model = ChessNet(ChessNetConfig(channels=8, blocks=1))
     model.eval()

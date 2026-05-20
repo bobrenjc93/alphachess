@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T14:40:48-07:00`.
+Result data through: `2026-05-20T14:49:33-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -172,6 +172,7 @@ latest committed report.
 | `2026-05-20T14:07:54-07:00` checkpoint mtime | Context-only interpolation check (`reports/2026-05-20_guarded_selector_probe.md`). | N/A | not gated | Blending the tiny context-only repair back into the original blend recovered top-3 near `0.5421`, but top-1 stayed below the guard, so no direct gate was run. |
 | `2026-05-20T14:33:37-07:00` PGN file mtime | Policy-distillation anchor and context-book diagnostic (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_guarded_blend_contextbook_stockfish_gate.pgn`). | N/A | context-book gate `0.0/2` | The new distillation-anchor repair variants all missed the broad guard; adding the mined context positions as an exact good-action book shifted the first failures to `h4` vs `Bf4` and `...Qb6` vs `...a6`, but direct play stayed scoreless. |
 | `2026-05-20T14:40:48-07:00` PGN file mtime | Second context-book diagnostic (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_guarded_blend_contextbook_v2_stockfish_gate.pgn`). | N/A | context-book v2 gate `0.0/2` | Adding both mined context slices as exact good-action coverage changed the games again, but new first failures appeared at `Be3` vs `b3` and `...e5` vs `...d6`; direct play stayed scoreless. |
+| `2026-05-20T14:49:33-07:00` checkpoint mtime | Separate distill-data broad-anchor repair (`reports/2026-05-20_distill_anchor_probe.md`). | N/A | not gated | Aggregating all three context-book gates produced a 54-position repair source. The new `--distill-data` broad anchor improved context policy loss to `3.5188`, but the best raw/interpolated holdout stayed below the `0.3400` top-1 and `0.5420` top-3 guard, so no direct gate was run. |
 
 Current practical status:
 
@@ -572,6 +573,22 @@ uv run alpha-chess train \
   --max-source-repeat 10 \
   --legal-policy-loss \
   --out checkpoints/anchored_repair
+```
+
+For very narrow repair data, use `--distill-data` to draw a separate broad
+anchor batch on every optimizer step instead of relying on the supervised batch
+to contain broad positions:
+
+```bash
+uv run alpha-chess train \
+  --checkpoint checkpoints/current/latest.pt \
+  --distill-checkpoint checkpoints/current/latest.pt \
+  --distill-data data/teacher/stockfish_sample \
+  --distill-batch-size 512 \
+  --policy-distill-weight 1.0 \
+  --data data/teacher/alpha_loss_blunders \
+  --legal-policy-loss \
+  --out checkpoints/anchor_batch_repair
 ```
 
 When a run spans multiple epochs, keep the best validation epoch as `latest.pt`

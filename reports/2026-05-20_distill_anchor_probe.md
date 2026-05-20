@@ -235,3 +235,77 @@ current policy/search stack still exposes new adjacent tactical weaknesses
 immediately. The next useful data step is to aggregate several of these
 first-blunder contexts into a broader opening-stability source before trying
 more supervised repair.
+
+## Separate Distillation Data Follow-Up
+
+I aggregated all three guarded-blend/context-book gates into one broader
+first-blunder context source:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn reports/policyhead192_guarded_blend_broad_epoch3_w010_stockfish_gate.pgn reports/policyhead192_guarded_blend_contextbook_stockfish_gate.pgn reports/policyhead192_guarded_blend_contextbook_v2_stockfish_gate.pgn \
+  --out data/teacher/guarded_blend_all_contextbook_firstblunders_context_v1 \
+  --engine-path tools/stockfish/bin/stockfish \
+  --player-name AlphaChess \
+  --position-stride 1 \
+  --min-value-delta 0.08 \
+  --multipv 4 \
+  --policy-temperature-cp 180 \
+  --first-blunder-only \
+  --blunder-context-plies 2 \
+  --pv-plies 4 \
+  --game-line-plies 2 \
+  --chunk-size 256
+```
+
+Result: `54` positions from `6` failed direct games.
+
+I then added `--distill-data` so each supervised repair step can draw a separate
+broad teacher-anchor batch instead of relying on the narrow supervised batch to
+carry both jobs. The first run used the 54-position context source as supervised
+data and broad65k as the independent anchor:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --distill-checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_epoch3_w0.10.pt \
+  --distill-data data/teacher/stockfish_multipv_elo1800_65536_t005 \
+  --distill-batch-size 1024 \
+  --policy-distill-weight 10.0 \
+  --data data/teacher/guarded_blend_all_contextbook_firstblunders_context_v1 \
+  --holdout-data data/teacher/stockfish_multipv_elo1800_holdout8192_t005_skip65536 \
+  --out experiments/policyhead192-distill-anchor-v1/checkpoints/all_context_distilldata_w10_lr1e8 \
+  --epochs 5 \
+  --batch-size 54 \
+  --lr 1e-8 \
+  --weight-decay 1e-4 \
+  --value-weight 0.05 \
+  --bad-action-weight 0.3 \
+  --bad-action-margin 1.0 \
+  --legal-policy-loss \
+  --policy-head-only \
+  --select-best-by holdout_policy_acc+holdout_policy_top3_acc \
+  --select-best-require 'holdout_policy_acc>=0.3400' 'holdout_policy_top3_acc>=0.5420' \
+  --device cuda
+```
+
+No epoch satisfied the broad guard.
+
+| Checkpoint | Holdout top-1 | Holdout top-3 | Holdout top-5 | Holdout policy loss | Context policy loss | Read |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| starting blend | `0.3401` | `0.5426` | `0.6422` | `3.7688` | `3.5373` | guard-passing baseline |
+| epoch 2 | `0.3397` | `0.5410` | `0.6410` | `3.7654` | `3.5188` | context loss improves, guard missed |
+| epoch 5 | `0.3386` | `0.5402` | `0.6410` | `3.7748` | `3.5129` | more context fit, broader regression |
+
+I also interpolated epoch 2 back toward the starting blend:
+
+| Epoch-2 weight | Holdout top-1 | Holdout top-3 | Holdout top-5 | Context policy loss | Read |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| `0.25` | `0.3392` | `0.5419` | `0.6422` | `3.5326` | top-1/top-3 below guard |
+| `0.50` | `0.3394` | `0.5419` | `0.6417` | `3.5279` | top-1/top-3 below guard |
+| `0.75` | `0.3394` | `0.5411` | `0.6414` | `3.5233` | top-1/top-3 below guard |
+
+The separate anchor batch is a better training primitive than mixing anchor and
+repair roles in one batch: it improved the aggregate context loss while avoiding
+the severe `0.538x` top-3 collapse. It still did not keep enough broad top-k
+ranking to justify a direct Stockfish gate.

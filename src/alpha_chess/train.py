@@ -33,6 +33,8 @@ class TrainConfig:
     max_source_repeat: float | None = None
     source_policy_weights: list[float] | None = None
     distill_checkpoint: str | None = None
+    distill_data: str | list[str] | None = None
+    distill_batch_size: int | None = None
     policy_distill_weight: float = 0.0
     distill_temperature: float = 1.0
     legal_policy_loss: bool = False
@@ -134,6 +136,27 @@ def train(config: TrainConfig) -> Path:
         if holdout_dataset is not None
         else None
     )
+    distill_dataset = (
+        SelfPlayDataset(
+            config.distill_data,
+            in_memory=True,
+            prefer_action_labels=config.prefer_action_labels,
+        )
+        if config.distill_data is not None
+        else None
+    )
+    distill_loader = (
+        DataLoader(
+            distill_dataset,
+            batch_size=config.distill_batch_size or config.batch_size,
+            shuffle=True,
+            num_workers=0,
+            collate_fn=collate_samples,
+            generator=torch.Generator().manual_seed(config.seed),
+        )
+        if distill_dataset is not None
+        else None
+    )
 
     if config.checkpoint:
         model = load_checkpoint(config.checkpoint, map_location=device)
@@ -150,6 +173,10 @@ def train(config: TrainConfig) -> Path:
         raise ValueError("distill_temperature must be a finite positive value")
     if config.policy_distill_weight > 0 and config.distill_checkpoint is None:
         raise ValueError("policy_distill_weight requires distill_checkpoint")
+    if config.distill_data is not None and config.policy_distill_weight <= 0:
+        raise ValueError("distill_data requires a positive policy_distill_weight")
+    if config.distill_batch_size is not None and config.distill_batch_size <= 0:
+        raise ValueError("distill_batch_size must be positive")
     if config.policy_head_only:
         _freeze_except_policy_head(model)
     if config.value_head_only:
@@ -175,6 +202,10 @@ def train(config: TrainConfig) -> Path:
     step = 0
     latest_metrics: dict[str, float] = {}
     best_metric_value: float | None = None
+    distill_iter = iter(distill_loader) if distill_loader is not None else None
+    train_batch_distill_weight = (
+        0.0 if distill_loader is not None else config.policy_distill_weight
+    )
 
     for epoch in range(config.epochs):
         _set_train_mode(
@@ -194,9 +225,26 @@ def train(config: TrainConfig) -> Path:
                 bad_action_margin=config.bad_action_margin,
                 source_policy_weights=config.source_policy_weights,
                 distill_model=distill_model,
-                policy_distill_weight=config.policy_distill_weight,
+                policy_distill_weight=train_batch_distill_weight,
                 distill_temperature=config.distill_temperature,
             )
+            if distill_loader is not None:
+                assert distill_iter is not None
+                try:
+                    distill_batch = next(distill_iter)
+                except StopIteration:
+                    distill_iter = iter(distill_loader)
+                    distill_batch = next(distill_iter)
+                policy_distill_loss = _compute_policy_distill_only_loss(
+                    model,
+                    distill_batch,
+                    device,
+                    legal_policy_loss=config.legal_policy_loss,
+                    distill_model=distill_model,
+                    distill_temperature=config.distill_temperature,
+                )
+                loss = loss + config.policy_distill_weight * policy_distill_loss
+                parts["policy_distill_loss"] = policy_distill_loss.detach()
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
@@ -671,6 +719,38 @@ def _compute_batch_loss(
         distill_model=distill_model,
         policy_distill_weight=policy_distill_weight,
         distill_temperature=distill_temperature,
+    )
+
+
+def _compute_policy_distill_only_loss(
+    model: ChessNet,
+    batch: dict[str, torch.Tensor | list[str]],
+    device: torch.device,
+    *,
+    legal_policy_loss: bool,
+    distill_model: ChessNet | None,
+    distill_temperature: float,
+) -> torch.Tensor:
+    if distill_model is None:
+        raise ValueError("distill_data requires distill_model")
+    boards = _batch_tensor(batch, "board").to(device)
+    policy_logits, _value = model(boards)
+    legal_mask = None
+    student_logits = policy_logits
+    if legal_policy_loss:
+        if "fen" not in batch:
+            raise ValueError("legal_policy_loss distillation requires stored FENs")
+        fens = batch["fen"]
+        if not isinstance(fens, list):
+            raise TypeError("Batch FENs must be a list of strings")
+        legal_mask = _legal_action_mask_from_fens(fens, device)
+        student_logits = policy_logits.masked_fill(~legal_mask, -1e9)
+    return _policy_distillation_loss(
+        student_logits,
+        boards,
+        distill_model,
+        legal_mask=legal_mask,
+        temperature=distill_temperature,
     )
 
 
