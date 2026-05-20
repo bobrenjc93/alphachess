@@ -1,0 +1,44 @@
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "1"]
+[White "AlphaChess"]
+[Black "experiments/policyhead192-broad65k-puzzlemix-v1/checkpoints/iter_0001/latest.pt"]
+[Result "0-1"]
+[AlphaChessScore "0.0"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Bc5 5. Be3 Qf6 6. c3 Nge7 7. Bc4 d5 8. exd5 Nxd4 9. cxd4 Nxd5 10. dxc5 Nxe3 11. fxe3 Qxb2 12. Qc2 Qxa1 13. c6 O-O 14. O-O bxc6 15. Rxf7 Rxf7 16. Bxf7+ Kxf7 17. Qxc6 Bf5 18. a3 Rb8 19. h3 Rb2 20. Qxc7+ Ke6 21. Qd8 Bxb1 22. Qe7+ Kxe7 23. Kh2 Qa2 24. e4 Bd3 25. e5 Qd5 26. Kg3 Qxe5+ 27. Kh4 Rxg2 28. a4 Qf6+ 29. Kh5 Qf3+ 30. Kh4 Qd1 31. a5 Qc1 32. a6 Qf4+ 33. Kh5 Qf3+ 34. Kh4 Qf6+ 35. Kh5 Kd6 36. h4 Be2# 0-1
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "2"]
+[White "experiments/policyhead192-broad65k-puzzlemix-v1/checkpoints/iter_0001/latest.pt"]
+[Black "AlphaChess"]
+[Result "0-1"]
+[AlphaChessScore "1.0"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Bc5 5. Be3 Qf6 6. c3 Nge7 7. Bc4 d5 8. exd5 Nxd4 9. cxd4 Nxd5 10. dxc5 Nxe3 11. fxe3 Qxb2 12. Qc2 Qxa1 13. c6 O-O 14. O-O bxc6 15. Rxf7 Rxf7 16. Bxf7+ Kxf7 17. Qxc6 Bf5 18. Qe8+ Rxe8 19. g4 Bxb1 20. Kf2 Qxa2+ 21. Kg3 Rxe3+ 22. Kf4 Qe6 23. Kg5 Bc2 24. Kh5 Rc3 25. h3 Re3 26. Kg5 Ba4 27. h4 Qd5+ 28. Kf4 Rf3# 0-1
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "3"]
+[White "AlphaChess"]
+[Black "experiments/policyhead192-broad65k-puzzlemix-v1/checkpoints/iter_0001/latest.pt"]
+[Result "0-1"]
+[AlphaChessScore "0.0"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Bc5 5. Be3 Qf6 6. c3 Nge7 7. Bc4 d5 8. exd5 Nxd4 9. cxd4 Nxd5 10. dxc5 Nxe3 11. fxe3 Qxb2 12. Qc2 Qxa1 13. c6 O-O 14. O-O bxc6 15. Rxf7 Rxf7 16. Bxf7+ Kxf7 17. Qxc6 Bf5 18. a3 Rb8 19. h3 Rb2 20. Qxc7+ Ke6 21. Qd8 Bxb1 22. Qe7+ Kxe7 23. Kh2 Qa2 24. e4 Bd3 25. e5 Qd5 26. Kg3 Qxe5+ 27. Kh4 Rxg2 28. a4 Qf6+ 29. Kh5 Qf3+ 30. Kh4 Qd1 31. a5 Qc1 32. a6 Qf4+ 33. Kh5 Qf3+ 34. Kh4 Qf6+ 35. Kh5 Kd6 36. h4 Be2# 0-1
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "4"]
+[White "experiments/policyhead192-broad65k-puzzlemix-v1/checkpoints/iter_0001/latest.pt"]
+[Black "AlphaChess"]
+[Result "0-1"]
+[AlphaChessScore "1.0"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Bc5 5. Be3 Qf6 6. c3 Nge7 7. Bc4 d5 8. exd5 Nxd4 9. cxd4 Nxd5 10. dxc5 Nxe3 11. fxe3 Qxb2 12. Qc2 Qxa1 13. c6 O-O 14. O-O bxc6 15. Rxf7 Rxf7 16. Bxf7+ Kxf7 17. Qxc6 Bf5 18. Qe8+ Rxe8 19. g4 Bxb1 20. Kf2 Qxa2+ 21. Kg3 Rxe3+ 22. Kf4 Qe6 23. Kg5 Bc2 24. Kh5 Rc3 25. h3 Re3 26. Kg5 Ba4 27. h4 Qd5+ 28. Kf4 Rf3# 0-1
+

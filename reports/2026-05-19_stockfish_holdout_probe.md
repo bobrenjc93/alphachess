@@ -77,3 +77,66 @@ Read:
 - This is a better generalization diagnostic than validating on the broad65k
   training set, but it is still only supervised teacher agreement. The direct
   Stockfish promotion gate remains the required strength signal.
+
+## Fullnet192 Holdout-Selected Repair
+
+Timestamp: `2026-05-19T21:51:50-07:00`
+
+While GPU reservations were still stuck in `preparing`, I ran a bounded CPU
+policy-head-only repair from the current `192x8` puzzle-mix checkpoint:
+
+```text
+experiments/policyhead192-broad65k-holdoutselect-v1
+```
+
+Training command:
+
+```bash
+OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 \
+uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-broad65k-puzzlemix-v1/checkpoints/iter_0001/latest.pt \
+  --data data/teacher/stockfish_multipv_elo1800_65536_t005 \
+    data/teacher/fullnet192_lossblunders_v1 \
+    data/teacher/alpha_loss_badactions_all_v1 \
+    data/teacher/hardlabel_broad32k_lossblunders_v1 \
+  --holdout-data data/teacher/stockfish_multipv_elo1800_holdout8192_t005_skip65536 \
+  --out experiments/policyhead192-broad65k-holdoutselect-v1/checkpoints/iter_0001 \
+  --epochs 3 \
+  --batch-size 256 \
+  --lr 0.00001 \
+  --value-weight 0.10 \
+  --bad-action-weight 0.10 \
+  --data-weights 0.85 0.05 0.05 0.05 \
+  --legal-policy-loss \
+  --prefer-action-labels \
+  --policy-head-only \
+  --select-best-by holdout_policy_acc \
+  --device cpu
+```
+
+The selector chose epoch 3:
+
+| Epoch | Train split top-1 | Holdout top-1 | Holdout top-3 | Holdout top-5 | Holdout policy loss | Saved as `latest.pt` |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `1` | `0.8733` | `0.3425` | `0.5441` | `0.6462` | `2.7706` | yes |
+| `2` | `0.8723` | `0.3430` | `0.5459` | `0.6472` | `2.8014` | yes |
+| `3` | `0.8730` | `0.3439` | `0.5433` | `0.6477` | `2.8032` | yes |
+
+Validation of the selected checkpoint:
+
+| Dataset | Top-1 | Top-3 | Top-5 | Policy loss | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| disjoint broad Stockfish holdout | `0.3439` | `0.5433` | `0.6477` | `2.8032` | N/A |
+| `fullnet192_lossblunders_v1` | `0.2647` | `0.4664` | `0.5714` | `2.8291` | `3.1139` |
+
+Direct checks:
+
+| Check | Score | PGN |
+| --- | ---: | --- |
+| parent/internal vs `policyhead192-broad65k-puzzlemix-v1` | `2.0/4` | `reports/policyhead192_broad65k_holdoutselect_vs_parent.pgn` |
+| Stockfish gate | `0.0/2` | `reports/policyhead192_broad65k_holdoutselect_stockfish_gate.pgn` |
+
+Read: this is a small supervised generalization improvement over the puzzle-mix
+parent (`0.3429` to `0.3439` holdout top-1, `0.6443` to `0.6477` holdout
+top-5) and it reduces the fullnet192 loss-slice bad-action loss (`3.6894` to
+`3.1139`). It still does not transfer to direct Stockfish play.
