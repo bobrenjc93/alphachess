@@ -140,3 +140,78 @@ Read: this is a small supervised generalization improvement over the puzzle-mix
 parent (`0.3429` to `0.3439` holdout top-1, `0.6443` to `0.6477` holdout
 top-5) and it reduces the fullnet192 loss-slice bad-action loss (`3.6894` to
 `3.1139`). It still does not transfer to direct Stockfish play.
+
+## Latest-Loss Replay Follow-Up
+
+Timestamp: `2026-05-19T22:01:55-07:00`
+
+I mined the holdout-selected checkpoint's direct Stockfish losses into another
+ignored hard-negative replay:
+
+```text
+data/teacher/fullnet192_holdoutselect_lossblunders_v1
+```
+
+Generation summary:
+
+```text
+source=reports/policyhead192_broad65k_holdoutselect_stockfish_gate.pgn
+games_seen=2
+games_used=2
+positions=49
+min_value_delta=0.08
+player_name=AlphaChess
+multipv=8
+pv_plies=4
+game_line_plies=2
+```
+
+Baseline validation on this new slice:
+
+| Checkpoint | Top-1 | Top-3 | Top-5 | Policy loss | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `policyhead192-broad65k-puzzlemix-v1` | `0.2245` | `0.4898` | `0.5510` | `3.5087` | `4.4545` |
+| `policyhead192-broad65k-holdoutselect-v1` | `0.2245` | `0.4490` | `0.5714` | `3.3612` | `4.0817` |
+
+Then I trained a two-epoch policy-head repair from the holdout-selected parent:
+
+```text
+experiments/policyhead192-holdoutloss-repair-v1
+```
+
+Config highlights:
+
+- checkpoint: `experiments/policyhead192-broad65k-holdoutselect-v1/checkpoints/iter_0001/latest.pt`
+- data: broad65k, `fullnet192_lossblunders_v1`,
+  `fullnet192_holdoutselect_lossblunders_v1`, all-loss, hard-label loss replay
+- holdout: `stockfish_multipv_elo1800_holdout8192_t005_skip65536`
+- replay weights: `0.80 0.08 0.07 0.03 0.02`
+- `policy_head_only=true`
+- `lr=0.000008`
+- `bad_action_weight=0.15`
+- `select_best_by=holdout_policy_acc`
+
+The selector chose epoch 1, but it regressed the broad holdout:
+
+| Epoch | Train split top-1 | Holdout top-1 | Holdout top-3 | Holdout top-5 | Saved as `latest.pt` |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `1` | `0.8790` | `0.3416` | `0.5442` | `0.6484` | yes |
+| `2` | `0.8787` | `0.3411` | `0.5443` | `0.6471` | no |
+
+Selected checkpoint validation:
+
+| Dataset | Top-1 | Top-3 | Top-5 | Policy loss | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| disjoint broad Stockfish holdout | `0.3416` | `0.5442` | `0.6484` | `2.8435` | N/A |
+| `fullnet192_lossblunders_v1` | `0.2731` | `0.4790` | `0.5924` | `2.7403` | `2.9509` |
+| `fullnet192_holdoutselect_lossblunders_v1` | `0.2245` | `0.4490` | `0.6327` | `3.1099` | `3.7292` |
+
+Direct check:
+
+| Check | Score | PGN |
+| --- | ---: | --- |
+| Stockfish gate | `0.0/2` | `reports/policyhead192_holdoutloss_repair_stockfish_gate.pgn` |
+
+Read: this repair improved targeted bad-action loss and top-5 on the new loss
+slice, but it regressed the broad holdout top-1 and still failed direct
+Stockfish. It is rejected as a promotion path.

@@ -15,7 +15,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Last updated: `2026-05-19T21:51:50-07:00`.
+Last updated: `2026-05-19T22:01:55-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -92,6 +92,7 @@ latest committed report.
 | `2026-05-19T21:22:07-07:00` report timestamp | CPU fullnet192 loss-overfit smoke (`reports/2026-05-19_fullnet192_capacity_probe.md`). | N/A | `0.0/2` | Narrow CPU policy-head overfit worsened full-slice bad-action loss to `4.4458` vs parent `4.4038`, so it was rejected. |
 | `2026-05-19T21:33:15-07:00` report timestamp | Disjoint Stockfish holdout probe (`reports/2026-05-19_stockfish_holdout_probe.md`). | N/A | N/A | New skipped-position 8,192-position holdout shows fullnet192 puzzle-mix has best unseen top-1 so far (`0.3429`), while 128x6 expert mix keeps better top-5 (`0.6803`). |
 | `2026-05-19T21:51:50-07:00` report timestamp | Fullnet192 holdout-selected repair (`reports/2026-05-19_stockfish_holdout_probe.md`). | `2.0/4` vs fullnet192 puzzle-mix parent | `0.0/2` | Holdout-selected policy-head tuning nudged unseen top-1 to `0.3439` and reduced fullnet192 loss-slice bad-action loss to `3.1139`, but direct play still failed. |
+| `2026-05-19T22:01:55-07:00` report timestamp | Latest-loss replay follow-up (`reports/2026-05-19_stockfish_holdout_probe.md`). | N/A | `0.0/2` | New 49-position loss replay reduced targeted bad-action losses, but broad holdout top-1 regressed to `0.3416` and direct play still failed. |
 
 Current practical status:
 
@@ -163,6 +164,9 @@ Current practical status:
   the 128x6 broad65k expert mix still has better top-5 (`0.6803`).
 - Holdout-selected policy-head tuning of the fullnet192 branch improves that
   holdout top-1 only slightly (`0.3439`) and still fails direct Stockfish.
+- Replaying the latest fullnet192 direct losses improves targeted bad-action
+  losses but regresses broad holdout top-1, so the current failure is not fixed
+  by another narrow loss-slice policy-head repair.
 - No checkpoint has passed the direct Stockfish promotion gate. This is not a
   superhuman model yet.
 
