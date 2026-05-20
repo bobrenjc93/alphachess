@@ -388,17 +388,22 @@ def test_stockfish_teacher_can_store_multiple_legal_bad_actions(monkeypatch, tmp
             max_positions=1,
             min_value_delta=0.2,
             legal_bad_actions_per_position=2,
+            legal_value_policy_temperature=0.2,
         )
     )
 
     data = np.load(paths[0])
     board = chess.Board()
+    e4_action = move_to_action(chess.Move.from_uci("e2e4"), board)
     d4_action = move_to_action(chess.Move.from_uci("d2d4"), board)
     nf3_action = move_to_action(chess.Move.from_uci("g1f3"), board)
 
     assert data["bad_actions"].shape == (1, 2)
     assert set(data["bad_actions"][0].tolist()) == {d4_action, nf3_action}
     assert data["bad_action_deltas"].shape == (1, 2)
+    assert abs(float(data["policies"][0].sum()) - 1.0) < 1e-6
+    assert data["policies"][0, e4_action] > data["policies"][0, d4_action]
+    assert data["policies"][0, e4_action] > data["policies"][0, nf3_action]
     assert "legal_bad_action_labels=2" in (
         tmp_path / "teacher-legal-bad" / "teacher_summary.txt"
     ).read_text()

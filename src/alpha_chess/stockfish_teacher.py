@@ -41,6 +41,7 @@ class StockfishTeacherConfig:
     first_blunder_only: bool = False
     legal_bad_actions_per_position: int = 0
     legal_bad_action_min_delta: float | None = None
+    legal_value_policy_temperature: float | None = None
     chunk_size: int = 1024
 
 
@@ -120,11 +121,14 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
         value_delta: float,
         bad_move: chess.Move | None = None,
         legal_bad_moves: list[tuple[chess.Move, float]] | None = None,
+        policy_override: np.ndarray | None = None,
     ) -> None:
         nonlocal positions
         boards.append(encode_board(sample_board))
         actions.append(move_to_action(best_move, sample_board))
-        if config.multipv > 1:
+        if policy_override is not None:
+            policies.append(policy_override)
+        elif config.multipv > 1:
             policies.append(
                 _policy_from_multipv(
                     sample_board,
@@ -332,6 +336,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                 value_delta = 0.0
                                 should_append = True
                                 legal_bad_moves: list[tuple[chess.Move, float]] = []
+                                policy_override: np.ndarray | None = None
                                 if config.min_value_delta is not None:
                                     after_board = board.copy(stack=False)
                                     after_board.push(move)
@@ -349,11 +354,15 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                     and value_delta > 0.0
                                     else None
                                 )
-                                if config.legal_bad_actions_per_position > 0:
+                                if (
+                                    config.legal_bad_actions_per_position > 0
+                                    or config.legal_value_policy_temperature is not None
+                                ):
                                     (
                                         legal_bad_moves,
+                                        policy_override,
                                         candidates_evaluated,
-                                    ) = _legal_bad_moves(
+                                    ) = _legal_move_value_labels(
                                         engine=engine,
                                         board=board,
                                         best_move=best_move,
@@ -362,16 +371,24 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                         min_value_delta=(
                                             config.legal_bad_action_min_delta
                                             if config.legal_bad_action_min_delta is not None
-                                            else float(config.min_value_delta)
+                                            else (
+                                                float(config.min_value_delta)
+                                                if config.min_value_delta is not None
+                                                else float("inf")
+                                            )
                                         ),
                                         max_bad_actions=config.legal_bad_actions_per_position,
+                                        policy_temperature=config.legal_value_policy_temperature,
                                     )
                                     legal_bad_action_candidates_evaluated += candidates_evaluated
                                     if legal_bad_moves:
                                         should_append = True
                                         legal_bad_action_rows += 1
                                         legal_bad_action_labels += len(legal_bad_moves)
-                                    elif config.min_value_delta is None:
+                                    elif (
+                                        config.min_value_delta is None
+                                        and config.legal_value_policy_temperature is None
+                                    ):
                                         should_append = False
                                 if should_append:
                                     append_teacher_sample(
@@ -383,6 +400,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                         value_delta,
                                         bad_move=bad_move,
                                         legal_bad_moves=legal_bad_moves,
+                                        policy_override=policy_override,
                                     )
                                     if bad_move is not None and positions < config.max_positions:
                                         append_blunder_context_samples(source, context_boards)
@@ -438,6 +456,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"first_blunder_only={config.first_blunder_only}",
                 f"legal_bad_actions_per_position={config.legal_bad_actions_per_position}",
                 f"legal_bad_action_min_delta={config.legal_bad_action_min_delta}",
+                f"legal_value_policy_temperature={config.legal_value_policy_temperature}",
                 f"legal_bad_action_rows={legal_bad_action_rows}",
                 f"legal_bad_action_labels={legal_bad_action_labels}",
                 f"legal_bad_action_candidates_evaluated={legal_bad_action_candidates_evaluated}",
@@ -615,7 +634,33 @@ def _legal_bad_moves(
     min_value_delta: float,
     max_bad_actions: int,
 ) -> tuple[list[tuple[chess.Move, float]], int]:
+    bad_moves, _policy, candidates_evaluated = _legal_move_value_labels(
+        engine=engine,
+        board=board,
+        best_move=best_move,
+        best_value=best_value,
+        limit=limit,
+        min_value_delta=min_value_delta,
+        max_bad_actions=max_bad_actions,
+        policy_temperature=None,
+    )
+    return bad_moves, candidates_evaluated
+
+
+def _legal_move_value_labels(
+    engine: chess.engine.SimpleEngine,
+    board: chess.Board,
+    best_move: chess.Move,
+    best_value: float,
+    limit: chess.engine.Limit,
+    min_value_delta: float,
+    max_bad_actions: int,
+    policy_temperature: float | None,
+) -> tuple[list[tuple[chess.Move, float]], np.ndarray | None, int]:
     bad_moves: list[tuple[chess.Move, float]] = []
+    action_values: dict[int, float] = {}
+    if best_move in board.legal_moves:
+        action_values[move_to_action(best_move, board)] = best_value
     candidates_evaluated = 0
     for candidate in board.legal_moves:
         if candidate == best_move:
@@ -624,6 +669,8 @@ def _legal_bad_moves(
         after_board = board.copy(stack=False)
         after_board.push(candidate)
         after_info = engine.analyse(after_board, limit)
+        original_value_after_move = -_score_to_value(after_info.get("score"), after_board.turn)
+        action_values[move_to_action(candidate, board)] = original_value_after_move
         value_delta = _value_drop_after_move(
             best_value=best_value,
             after_score=after_info.get("score"),
@@ -634,7 +681,37 @@ def _legal_bad_moves(
         bad_moves.append((candidate, float(value_delta)))
 
     bad_moves.sort(key=lambda item: item[1], reverse=True)
-    return bad_moves[: max(1, int(max_bad_actions))], candidates_evaluated
+    policy = (
+        _policy_from_legal_move_values(action_values, policy_temperature)
+        if policy_temperature is not None
+        else None
+    )
+    bad_action_limit = max(0, int(max_bad_actions))
+    bad_moves = bad_moves[:bad_action_limit] if bad_action_limit > 0 else []
+    return bad_moves, policy, candidates_evaluated
+
+
+def _policy_from_legal_move_values(
+    action_values: dict[int, float],
+    temperature: float,
+) -> np.ndarray:
+    policy = np.zeros(ACTION_SIZE, dtype=np.float32)
+    if not action_values:
+        return policy
+    actions = np.asarray(list(action_values.keys()), dtype=np.int64)
+    values = np.asarray([action_values[int(action)] for action in actions], dtype=np.float64)
+    if temperature <= 0:
+        policy[int(actions[int(np.argmax(values))])] = 1.0
+        return policy
+    logits = values / float(temperature)
+    logits -= float(np.max(logits))
+    probabilities = np.exp(logits)
+    total = float(probabilities.sum())
+    if total <= 0 or not np.isfinite(total):
+        policy[int(actions[int(np.argmax(values))])] = 1.0
+    else:
+        policy[actions] = (probabilities / total).astype(np.float32)
+    return policy
 
 
 def _pad_bad_action_rows(rows: list[list[int]], fill: int = -1) -> np.ndarray:
