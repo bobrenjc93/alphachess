@@ -579,3 +579,61 @@ First-blunder mining found:
 The stronger holdout checkpoint has the same direct-transfer problem as the
 guarded blend. Exact coverage can redirect the games, but it still exposes new
 low-rank opening and early-middlegame decisions immediately.
+
+## Broad Opening/Context Mix
+
+The tiny-context repairs were too narrow, so I tried a broader hard-label
+policy-head mix from the guarded blend:
+
+- `stockfish_multipv_elo1800_65536_t005`, weight `0.50`
+- `stockfish_multipv_elo1800_8192_t05`, weight `0.20`
+- `stockfish_opening_elo1800_8192_t03`, weight `0.25`
+- `guarded_blend_top3book_all_firstblunders_context_t05_v1`, weight `0.05`,
+  capped at `20` repeats per position
+- LR `2e-6`, epochs `2`, hard action labels, bad-action weight `0.5`
+
+Epoch 2 narrowly missed the top-3 guard raw, but blending it back into the
+guarded blend produced guard-passing candidates:
+
+| Candidate | Holdout top-1 | Holdout top-3 | Holdout top-5 | Context policy loss | Context top-1/top-3/top-5 | Read |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| raw epoch 2 | `0.3446` | `0.5419` | `0.6440` | N/A | N/A | Better top-1, but top-3 just below the `0.5420` guard. |
+| `25%` blend | `0.3451` | `0.5448` | `0.6437` | `3.0278` | `0.2222`/`0.4167`/`0.5556` | Best selected by holdout top-1+top-3. |
+| `50%` blend | `0.3459` | `0.5436` | `0.6426` | `2.9826` | `0.2222`/`0.4167`/`0.5556` | Higher top-1, lower top-3. |
+| `75%` blend | `0.3455` | `0.5431` | `0.6428` | `2.9422` | `0.2222`/`0.4167`/`0.5417` | More context loss improvement, weaker top-3/top-5. |
+
+I spent a direct gate on the `25%` blend:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening_context72_hardlabels_cap20_lr2e6_blend_0.25.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 3 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/guarded_blend_top3book_all_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --good-action-book-top-k 3 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_broad_opening_context72_blend025_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. PGN file mtime: `2026-05-20T15:47:37-07:00`.
+
+First-blunder mining found:
+
+| Game | First confirmed mistake with context | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Na3` | `h3` | `0.0931` | `r1bq1rk1/p1p1bppp/5n2/3p4/8/3B4/PPP2PPP/RNBQR1K1 w - - 4 10` |
+| 2 | `...Qa5` | `...d5` | `0.1465` | `r1bqk1nr/pp1p1ppp/2n1p3/8/3NP3/P1P5/2P2PPP/R1BQKB1R b KQkq - 0 7` |
+
+This is the best broad-holdout candidate in this probe, but it still does not
+transfer to direct Stockfish play. The remaining failures are still early
+opening choices outside the exact book.

@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Result data through: `2026-05-20T15:38:49-07:00`.
+Result data through: `2026-05-20T15:47:37-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -180,6 +180,7 @@ latest committed report.
 | `2026-05-20T15:29:41-07:00` checkpoint mtime | Bad-action margin diagnostic on top-k context (`reports/2026-05-20_distill_anchor_probe.md`). | N/A | not gated | Raising bad-action pressure did not solve the low-rank targets: guarded LR left targets at `34/42` and `21/32`, while a one-step overfit only reached `30/42` and `19/32` and dropped holdout top-1/top-3 to `0.3374`/`0.5399`. |
 | `2026-05-20T15:35:02-07:00` PGN file mtime | Top-3 full-network checkpoint with top-k books (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_top3_fullnet_top3book_stockfish_gate.pgn`). | N/A | top-3 book gate `0.0/2` | The stronger holdout checkpoint still lost both games; first failures overlapped known motifs at `Bxh6` vs `Bf4` and `...Bb4` vs `...Nc6`. |
 | `2026-05-20T15:38:49-07:00` PGN file mtime | Top-3 full-network checkpoint with context top-k books (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_top3_fullnet_context_top3book_stockfish_gate.pgn`). | N/A | context+top-3 book gate `0.0/2` | Adding the merged guarded-blend context book shifted the games but still lost both, with first failures at `Na3` vs `h3` and `...Qe8` vs `...Qe7`. |
+| `2026-05-20T15:47:37-07:00` PGN file mtime | Broad opening/context hard-label blend (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_broad_opening_context72_blend025_stockfish_gate.pgn`). | N/A | context+top-3 book gate `0.0/2` | A broad/opening/context mix produced the best holdout in this probe (`0.3451` top-1, `0.5448` top-3 after 25% interpolation), but direct play still lost both games with first failures at `Na3` vs `h3` and `...Qa5` vs `...d5`. |
 
 Current practical status:
 
@@ -232,6 +233,9 @@ Current practical status:
 - The stronger top-3 confirmed-blunder full-network checkpoint also fails with
   the top-k books. Adding the guarded context book shifts the full-network
   games, but direct play remains `0.0/2`.
+- A broader hard-label mix with broad, t05, opening, and capped context sources
+  gives the best holdout read in this probe, but still fails the direct
+  Stockfish gate. Better holdout ranking alone is not enough yet.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.
