@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T10:27:20-07:00`
+Timestamp: `2026-05-20T10:34:29-07:00`
 
 ## Summary
 
@@ -78,6 +78,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-recent120-fullgame-policyacc-policyhead-v1/checkpoints/iter_0001` | 64-simulation newest exact-loss book diagnostic | same policy-accuracy policy-head checkpoint and newest exact-loss books, `simulations=64` instead of `16` | N/A | deeper MCTS changed both games but still allowed losing middlegame and passed-pawn lines | 64-sim broad+new-loss good book strict `0.0/2` (`reports/policyhead192_recent120_policyacc_policyhead_newlossbook_64sims_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent120-fullgame-valuecal-policyacc-v1/checkpoints/iter_0001` | best v2 value loss | value head only from policy-accuracy policy-head parent, LR `5e-5`, value weight `1.0`, weights `0.35/0.15/0.40/0.10` over broad/opening/v2/new-loss slices | broad holdout value loss `0.1143`, policy top-1 unchanged at `0.3370` | v2 value loss `0.0203` vs parent `0.1803`; policy metrics unchanged from the policy-accuracy parent | broad+new-loss good book strict `0.0/2` (`reports/policyhead192_recent120_valuecal_policyacc_newlossbook_stockfish_gate.pgn`) |
 | `experiments/policyhead192-recent120-fullgame-policyacc-policyhead-v1/checkpoints/iter_0001` | strict-zero root guard diagnostic | same policy-accuracy policy-head checkpoint and newest exact-loss books, with `root_material_max_loss_cp=0` and `root_king_safety_max_loss_cp=0` | N/A | stricter material and king-safety guard thresholds changed the line selection but still allowed losing attacking and endgame lines | broad+new-loss good book strict `0.0/2` (`reports/policyhead192_recent120_policyacc_policyhead_newlossbook_strict0_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent120-mirror-policyhead-v1/checkpoints/iter_0001` | best combined holdout policy accuracy | policy head only from recent80 fullnet parent, color-mirror augmentation, LR `5e-7`, bad-action weight `0.5`, weights `0.40/0.15/0.35/0.10` over broad/opening/v2/new-loss slices | broad holdout top-1 `0.3342`, top-3 `0.5370`, top-5 `0.6378` vs parent top-1 `0.3395`, top-3 `0.5370`, top-5 `0.6407` | v2 full-game top-1 `0.3772`, top-3 `0.6096`, top-5 `0.7058`, bad-action loss `0.3825` vs parent top-1 `0.3784`, top-3 `0.6118`, top-5 `0.7112`, bad-action loss `0.3846` | rejected before direct gate |
 
 ## Read
 
@@ -237,3 +238,7 @@ Tightening the root material and king-safety guard thresholds from `100cp` to
 `0cp` also stayed `0.0/2`. That changed the selected lines but still lost
 through adjacent attacks and conversion, so the current hand-written root guard
 family is not strong enough to substitute for tactical generalization.
+Color-mirror augmentation on the recent120 mix also failed as a generalization
+lever. The selected policy-head checkpoint regressed broad holdout top-1 from
+`0.3395` to `0.3342` and v2 top-1 from `0.3784` to `0.3772`, so it was rejected
+before direct play.
