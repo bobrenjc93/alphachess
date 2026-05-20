@@ -37,6 +37,7 @@ ROOT_MATERIAL_MAX_LOSS_CP="${ROOT_MATERIAL_MAX_LOSS_CP:-250}"
 ROOT_KING_SAFETY_SEARCH_PLIES="${ROOT_KING_SAFETY_SEARCH_PLIES:-0}"
 ROOT_KING_SAFETY_MAX_LOSS_CP="${ROOT_KING_SAFETY_MAX_LOSS_CP:-250}"
 REPLAY_DATA="${REPLAY_DATA:-}"
+HOLDOUT_DATA="${HOLDOUT_DATA:-}"
 SELF_PLAY_WEIGHT="${SELF_PLAY_WEIGHT:-1.0}"
 REPLAY_WEIGHTS="${REPLAY_WEIGHTS:-}"
 SELF_PLAY_POLICY_WEIGHT="${SELF_PLAY_POLICY_WEIGHT:-1.0}"
@@ -97,6 +98,9 @@ copy_runtime_path "$CHECKPOINT"
 for path in $REPLAY_DATA; do
   copy_runtime_path "$path"
 done
+for path in $HOLDOUT_DATA; do
+  copy_runtime_path "$path"
+done
 
 CHECKPOINT_ARG=""
 if [[ -n "$CHECKPOINT" ]]; then
@@ -129,6 +133,10 @@ fi
 REPLAY_DATA_ARG=""
 if [[ -n "$REPLAY_DATA" ]]; then
   REPLAY_DATA_ARG="--replay-data $REPLAY_DATA"
+fi
+HOLDOUT_DATA_ARG=""
+if [[ -n "$HOLDOUT_DATA" ]]; then
+  HOLDOUT_DATA_ARG="--holdout-data $HOLDOUT_DATA"
 fi
 REPLAY_WEIGHTS_ARG=""
 if [[ -n "$REPLAY_WEIGHTS" ]]; then
@@ -203,6 +211,7 @@ gpu-dev submit \
       --self-play-weight $SELF_PLAY_WEIGHT \
       --self-play-policy-weight $SELF_PLAY_POLICY_WEIGHT \
       $REPLAY_DATA_ARG \
+      $HOLDOUT_DATA_ARG \
       $REPLAY_WEIGHTS_ARG \
       $REPLAY_POLICY_WEIGHTS_ARG \
       $LEGAL_POLICY_LOSS_ARG \

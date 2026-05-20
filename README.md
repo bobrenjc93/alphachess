@@ -282,22 +282,26 @@ move. Training can use those negative labels with a margin loss:
 uv run alpha-chess train \
   --checkpoint checkpoints/current/latest.pt \
   --data data/teacher/stockfish_sample data/teacher/alpha_loss_blunders \
+  --holdout-data data/teacher/stockfish_holdout \
   --data-weights 0.8 0.2 \
   --legal-policy-loss \
   --bad-action-weight 0.25 \
   --bad-action-margin 1.0 \
+  --select-best-by holdout_policy_acc \
   --out checkpoints/bad_action_repair
 ```
 
 When a run spans multiple epochs, keep the best validation epoch as `latest.pt`
-instead of blindly using the final epoch:
+instead of blindly using the final epoch. Use `--holdout-data` with a
+`holdout_*` selector when you have a disjoint validation set:
 
 ```bash
 uv run alpha-chess train \
   --checkpoint checkpoints/current/latest.pt \
   --data data/teacher/stockfish_sample \
+  --holdout-data data/teacher/stockfish_holdout \
   --legal-policy-loss \
-  --select-best-by val_policy_acc \
+  --select-best-by holdout_policy_acc \
   --out checkpoints/selected_best
 ```
 

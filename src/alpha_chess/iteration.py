@@ -54,6 +54,7 @@ class IterationConfig:
     root_king_safety_search_plies: int = 0
     root_king_safety_max_loss_cp: int = 250
     replay_data: list[str] | None = None
+    holdout_data: list[str] | None = None
     self_play_weight: float = 1.0
     replay_weights: list[float] | None = None
     self_play_policy_weight: float = 1.0
@@ -142,6 +143,7 @@ def run_iterations(config: IterationConfig) -> Path:
                 data=train_data,
                 out=str(candidate_dir),
                 checkpoint=best_checkpoint,
+                holdout_data=config.holdout_data,
                 epochs=config.epochs,
                 batch_size=config.batch_size,
                 lr=config.lr,

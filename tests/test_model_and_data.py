@@ -324,6 +324,20 @@ def test_evaluate_loss_reports_source_metrics(tmp_path) -> None:
     assert "val_source_1_policy_top3_acc" in metrics
     assert "val_source_1_policy_top5_acc" in metrics
 
+    holdout_metrics = _evaluate_loss(
+        model,
+        loader,
+        torch.device("cpu"),
+        value_weight=1.0,
+        source_names=dataset.source_names,
+        prefix="holdout",
+    )
+
+    assert holdout_metrics["holdout_examples"] == 8.0
+    assert holdout_metrics["holdout_source_0_examples"] == 3.0
+    assert holdout_metrics["holdout_source_1_examples"] == 5.0
+    assert "holdout_source_0_policy_acc" in holdout_metrics
+
 
 def test_validate_checkpoint_reports_metrics(tmp_path) -> None:
     source_a = tmp_path / "source-a"
@@ -411,6 +425,55 @@ def test_train_select_best_by_keeps_best_validation_epoch(monkeypatch, tmp_path)
         for key, tensor in epoch2["model_state"].items()
         if torch.is_floating_point(tensor)
     )
+
+
+def test_train_can_select_best_by_holdout_metric(monkeypatch, tmp_path) -> None:
+    data_dir = tmp_path / "data"
+    holdout_dir = tmp_path / "holdout"
+    out_dir = tmp_path / "out"
+    data_dir.mkdir()
+    holdout_dir.mkdir()
+    _write_sparse_npz(data_dir / "game.npz", positions=8)
+    _write_sparse_npz(holdout_dir / "holdout.npz", positions=4)
+
+    holdout_scores = [0.1, 0.8]
+    prefixes = []
+
+    def fake_evaluate_loss(*_args, **kwargs):
+        prefixes.append(kwargs.get("prefix", "val"))
+        score = holdout_scores[len(prefixes) - 1]
+        return {
+            "holdout_loss": 1.0 - score,
+            "holdout_policy_acc": score,
+            "holdout_examples": 4.0,
+        }
+
+    monkeypatch.setattr("alpha_chess.train._evaluate_loss", fake_evaluate_loss)
+
+    train(
+        TrainConfig(
+            data=str(data_dir),
+            holdout_data=str(holdout_dir),
+            out=str(out_dir),
+            epochs=2,
+            batch_size=4,
+            channels=8,
+            blocks=1,
+            lr=0.01,
+            value_weight=0.0,
+            weight_decay=0.0,
+            select_best_by="holdout_policy_acc",
+            device="cpu",
+        )
+    )
+
+    latest = torch.load(out_dir / "latest.pt", map_location="cpu")
+
+    assert prefixes == ["holdout", "holdout"]
+    assert latest["metrics"]["selected_by"] == "holdout_policy_acc"
+    assert latest["metrics"]["selected_metric_value"] == pytest.approx(0.8)
+    assert latest["metrics"]["selected_epoch"] == 2
+    assert latest["metrics"]["selected_checkpoint"] == "epoch_0002.pt"
 
 
 def test_train_select_best_by_rejects_missing_metric(monkeypatch, tmp_path) -> None:

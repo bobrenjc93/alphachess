@@ -21,6 +21,7 @@ class TrainConfig:
     data: str | list[str]
     out: str = "checkpoints/run"
     checkpoint: str | None = None
+    holdout_data: str | list[str] | None = None
     epochs: int = 1
     batch_size: int = 64
     lr: float = 1e-3
@@ -102,6 +103,26 @@ def train(config: TrainConfig) -> Path:
         if val_ds is not None
         else None
     )
+    holdout_dataset = (
+        SelfPlayDataset(
+            config.holdout_data,
+            in_memory=True,
+            prefer_action_labels=config.prefer_action_labels,
+        )
+        if config.holdout_data is not None
+        else None
+    )
+    holdout_loader = (
+        DataLoader(
+            holdout_dataset,
+            batch_size=config.batch_size,
+            shuffle=False,
+            num_workers=0,
+            collate_fn=collate_samples,
+        )
+        if holdout_dataset is not None
+        else None
+    )
 
     if config.checkpoint:
         model = load_checkpoint(config.checkpoint, map_location=device)
@@ -174,6 +195,24 @@ def train(config: TrainConfig) -> Path:
                     bad_action_weight=config.bad_action_weight,
                     bad_action_margin=config.bad_action_margin,
                     source_names=dataset.source_names if len(dataset.source_names) > 1 else None,
+                )
+            )
+        if holdout_loader is not None and holdout_dataset is not None:
+            latest_metrics.update(
+                _evaluate_loss(
+                    model,
+                    holdout_loader,
+                    device,
+                    config.value_weight,
+                    legal_policy_loss=config.legal_policy_loss,
+                    bad_action_weight=config.bad_action_weight,
+                    bad_action_margin=config.bad_action_margin,
+                    source_names=(
+                        holdout_dataset.source_names
+                        if len(holdout_dataset.source_names) > 1
+                        else None
+                    ),
+                    prefix="holdout",
                 )
             )
 
@@ -344,6 +383,7 @@ def _evaluate_loss(
     bad_action_weight: float = 0.0,
     bad_action_margin: float = 1.0,
     source_names: list[str] | None = None,
+    prefix: str = "val",
 ) -> dict[str, float]:
     model.eval()
     totals = _new_eval_totals()
@@ -388,9 +428,9 @@ def _evaluate_loss(
                     sub_parts,
                 )
 
-    metrics = _finalize_eval_totals("val", totals)
+    metrics = _finalize_eval_totals(prefix, totals)
     for source_id, source_totals_for_id in source_totals.items():
-        metrics.update(_finalize_eval_totals(f"val_source_{source_id}", source_totals_for_id))
+        metrics.update(_finalize_eval_totals(f"{prefix}_source_{source_id}", source_totals_for_id))
     return metrics
 
 
