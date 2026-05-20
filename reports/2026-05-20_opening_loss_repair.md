@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T08:00:31-07:00`
+Timestamp: `2026-05-20T08:32:20-07:00`
 
 ## Summary
 
@@ -39,6 +39,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `data/teacher/alpha_sacguard_directloss_legalvalue_v1` | sac-guard direct-loss PGN, AlphaChess score `0.0`, `max_ply=70`, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `52` | `303` | Very small focused replay slice for the losses after the speculative checking-capture guard. |
 | `data/teacher/alpha_guardfallback_directloss_legalvalue_v1` | guard-fallback direct-loss PGN, AlphaChess score `0.0`, `max_ply=80`, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `59` | `307` | Focused replay slice for the losses after the independent root-guard fixes. |
 | `data/teacher/alpha_materialfallback_directloss_legalvalue_v1` | material-fallback direct-loss PGN, AlphaChess score `0.0`, `max_ply=80`, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `70` | `274` | Focused replay slice for the losses after the all-empty root-guard fallback fix. |
+| `data/teacher/alpha_recent80_fullgame_legalvalue_v1` | `80` most recent Stockfish PGNs from git history, AlphaChess score `0.0`, `position_stride=2`, `max_ply=80`, all legal root moves scored by Stockfish, dense legal-move value policy at temperature `0.25`, up to `8` bad actions at value drop `>=0.10` | `2,048` from `75` loss games | `9,497` | Broader full-game legal-value and bad-action replay covering middlegame failures, not only the opening root. |
 
 ## Runs
 
@@ -62,6 +63,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-guardfallback-directloss-policyhead-v1/checkpoints/iter_0001` | best guard-fallback bad-action loss, epoch `3` | policy head only from sac-guard parent, LR `1.0e-6`, bad-action weight `1.0`, weights `0.18/0.22/0.22/0.38` over broad/legal-value/sac-guard/guard-fallback slices | broad holdout top-1 `0.3324`, top-3 `0.5317`, top-5 `0.6334` | guard-fallback slice top-1 `0.4068`, top-3 `0.5085`, top-5 `0.6441`, bad-action loss `0.6428` vs parent `0.6754` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_guardfallback_directloss_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
 | `experiments/policyhead192-guardfallback-directloss-policyhead-v1/checkpoints/iter_0001` | material fallback preferred when both guards find no safe move | same checkpoint and books, with material fallback preferred over king-safety fallback when both threshold-safe sets are empty and the material fallback is not only king moves | N/A | removed the follow-up all-empty-fallback `...Nxf2` sacrifice; remaining games lost through broader material, king-safety, and passed-pawn failures | broad-good+bad book strict `0.0/2` (`reports/policyhead192_guardfallback_directloss_policyhead_broadgoodbooks_materialfallback_stockfish_gate.pgn`) |
 | `experiments/policyhead192-materialfallback-directloss-policyhead-v1/checkpoints/iter_0001` | best material-fallback bad-action loss, epoch `5` | policy head only from guard-fallback parent, LR `5e-7`, bad-action weight `0.6`, weights `0.34/0.22/0.14/0.14/0.16` over broad/legal-value/sac-guard/guard-fallback/material-fallback slices | broad holdout top-1 `0.3386`, top-3 `0.5360`, top-5 `0.6360` vs parent top-1 `0.3383`, top-3 `0.5365`, top-5 `0.6367` | material-fallback slice top-1 `0.3857`, top-3 `0.5857`, top-5 `0.7143`, bad-action loss `0.3811` vs parent `0.3893` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_materialfallback_directloss_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
+| `experiments/policyhead192-recent80-fullgame-legalvalue-policyhead-v1/checkpoints/iter_0001` | best recent80 full-game bad-action loss, epoch `5` | policy head only from material-fallback parent, LR `7.5e-7`, bad-action weight `0.7`, weights `0.40/0.20/0.40` over broad/opening/full-game slices | broad holdout top-1 `0.3387`, top-3 `0.5353`, top-5 `0.6373` vs parent top-1 `0.3386`, top-3 `0.5360`, top-5 `0.6360` | recent80 full-game top-1 `0.3638`, top-3 `0.5952`, top-5 `0.7095`, bad-action loss `0.3806` vs parent top-1 `0.3652`, top-3 `0.5806`, top-5 `0.7041`, bad-action loss `0.3908` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_recent80_fullgame_legalvalue_policyhead_broadgoodbooks_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -160,3 +162,10 @@ the broad holdout essentially flat-to-slightly-up (`0.3383` to `0.3386`
 top-1). That still did not transfer to direct play: the next gate scored
 `0.0/2`, with losses moving to new `Rxb2`, passed-pawn, and king-attack
 families rather than the exact `...Nxf2` root fallback.
+The broader full-game legal-value replay is a better diagnostic slice than the
+single-gate repairs: it mined 2,048 positions and 9,497 bad-action labels from
+75 recent AlphaChess losses through ply 80. Policy-head tuning on that slice
+improved bad-action loss (`0.3908` to `0.3806`) and lifted top-3/top-5 while
+leaving broad holdout top-1 flat. The direct gate still scored `0.0/2`, so the
+current bottleneck is not just lack of exact middlegame labels; the policy and
+search still fail to convert those local labels into robust direct play.
