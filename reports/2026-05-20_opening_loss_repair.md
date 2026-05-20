@@ -1,6 +1,6 @@
 # Opening-Loss Repair
 
-Timestamp: `2026-05-20T06:59:22-07:00`
+Timestamp: `2026-05-20T07:10:26-07:00`
 
 ## Summary
 
@@ -55,6 +55,7 @@ e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6
 | `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | speculative-capture veto before root guards | same checkpoint and books, but king-recapturable non-pawn checking captures are removed before king/material guards can collapse the root | N/A | removed the repeated `Bxh7+` family; first follow-up still lost centrally, and the second exposed that material fallback could starve king-safety on `...Kd7` | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_sacfilter_stockfish_gate.pgn`) |
 | `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | king-safety before material fallback | same checkpoint and books, with king-safety run before material fallback | N/A | removed the `...Kd7` king-walk failure, but king-safety then collapsed one white root to `Qxh7+` before material could veto it | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_kingfirst_stockfish_gate.pgn`) |
 | `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | speculative-capture veto plus king-first guard order | same checkpoint and books, with speculative checking captures vetoed before both guards and king-safety run before material fallback | N/A | removed the `Bxh7+`, `Qxh7+`, and `...Kd7` root-filter failures, but the latest games still lost through nearby opening tactics | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_sacfilter2_stockfish_gate.pgn`) |
+| `experiments/policyhead192-sacguard-directloss-policyhead-v1/checkpoints/iter_0001` | independent material and king-safety safe sets | same checkpoint and books, with material and king-safety each evaluated on the pre-fallback root set before combining safe actions | N/A | removed the latest `...Nxf2` singleton-guard failure; remaining games lost through broader tactical exchanges and promotion pressure | broad-good+bad book strict `0.0/2` (`reports/policyhead192_sacguard_directloss_policyhead_broadgoodbooks_independentguards_stockfish_gate.pgn`) |
 
 ## Read
 
@@ -119,3 +120,10 @@ captures before both guards and then applies king-safety before material. That
 fixes the observed `Bxh7+`, `Qxh7+`, and `...Kd7` root-filter failures, but the
 comparable direct gate still scored `0.0/2`, so the remaining opening collapses
 are broader than this guard-order bug.
+The next gate showed the same sequencing problem from the other direction:
+king-safety collapsed the root to a non-checking `...Nxf2` sacrifice before
+material could reject it. I changed the combined guard path so material and
+king-safety each produce safe actions from the same pre-fallback root set, then
+intersect or fall back to whichever guard has real safe actions. That removed
+the `...Nxf2` failure, but the comparable direct gate remained `0.0/2`; the
+losses shifted to broader tactical exchanges and passed-pawn/promotion pressure.

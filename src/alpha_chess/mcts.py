@@ -97,21 +97,14 @@ class Node:
         teacher_actions = filter_good_actions(board, actions, good_action_book)
         teacher_hit = len(teacher_actions) < len(actions)
         actions = teacher_actions
-        if material_filter_plies > 0 and not forced_mate_found and not teacher_hit:
-            actions = _filter_speculative_checking_captures(board, actions)
-        if king_safety_filter_plies > 0 and not forced_mate_found and not teacher_hit:
-            actions = _filter_root_king_safety(
-                board,
-                actions,
-                king_safety_filter_plies,
-                king_safety_max_loss_cp,
-            )
-        if material_filter_plies > 0 and not forced_mate_found and not teacher_hit:
-            actions = _filter_root_material(
+        if not forced_mate_found and not teacher_hit:
+            actions = _filter_root_guards(
                 board,
                 actions,
                 material_filter_plies,
                 material_max_loss_cp,
+                king_safety_filter_plies,
+                king_safety_max_loss_cp,
             )
         actions = filter_bad_actions(board, actions, bad_action_book)
         if not actions:
@@ -290,33 +283,14 @@ class AlphaZeroMCTS:
         )
         teacher_hit = len(teacher_actions) < len(actions)
         actions = teacher_actions
-        if (
-            self.config.root_material_search_plies > 0
-            and not forced_mate_found
-            and not teacher_hit
-        ):
-            actions = _filter_speculative_checking_captures(board, actions)
-        if (
-            self.config.root_king_safety_search_plies > 0
-            and not forced_mate_found
-            and not teacher_hit
-        ):
-            actions = _filter_root_king_safety(
-                board,
-                actions,
-                self.config.root_king_safety_search_plies,
-                self.config.root_king_safety_max_loss_cp,
-            )
-        if (
-            self.config.root_material_search_plies > 0
-            and not forced_mate_found
-            and not teacher_hit
-        ):
-            actions = _filter_root_material(
+        if not forced_mate_found and not teacher_hit:
+            actions = _filter_root_guards(
                 board,
                 actions,
                 self.config.root_material_search_plies,
                 self.config.root_material_max_loss_cp,
+                self.config.root_king_safety_search_plies,
+                self.config.root_king_safety_max_loss_cp,
             )
         actions = filter_bad_actions(board, actions, self.config.root_bad_action_book)
         root.children = {
@@ -393,6 +367,8 @@ def _filter_root_material(
     actions: list[int],
     material_search_plies: int,
     max_loss_cp: int,
+    *,
+    use_fallback: bool = True,
 ) -> list[int]:
     material_search_plies = max(0, material_search_plies)
     max_loss_cp = max(0, max_loss_cp)
@@ -431,6 +407,8 @@ def _filter_root_material(
         return safe_actions
     if not scored_actions:
         return actions
+    if not use_fallback:
+        return []
 
     return _material_fallback_actions(board, scored_actions)
 
@@ -440,6 +418,8 @@ def _filter_root_king_safety(
     actions: list[int],
     search_plies: int,
     max_loss_cp: int,
+    *,
+    use_fallback: bool = True,
 ) -> list[int]:
     search_plies = max(0, search_plies)
     max_loss_cp = max(0, max_loss_cp)
@@ -477,8 +457,75 @@ def _filter_root_king_safety(
         return safe_actions
     if not scored_actions:
         return actions
+    if not use_fallback:
+        return []
 
     return _best_scored_actions(scored_actions)
+
+
+def _filter_root_guards(
+    board: chess.Board,
+    actions: list[int],
+    material_filter_plies: int,
+    material_max_loss_cp: int,
+    king_safety_filter_plies: int,
+    king_safety_max_loss_cp: int,
+) -> list[int]:
+    material_filter_plies = max(0, material_filter_plies)
+    king_safety_filter_plies = max(0, king_safety_filter_plies)
+    if material_filter_plies > 0:
+        actions = _filter_speculative_checking_captures(board, actions)
+
+    if material_filter_plies > 0 and king_safety_filter_plies > 0:
+        material_safe = _filter_root_material(
+            board,
+            actions,
+            material_filter_plies,
+            material_max_loss_cp,
+            use_fallback=False,
+        )
+        king_safe = _filter_root_king_safety(
+            board,
+            actions,
+            king_safety_filter_plies,
+            king_safety_max_loss_cp,
+            use_fallback=False,
+        )
+        if material_safe and king_safe:
+            material_set = set(material_safe)
+            king_set = set(king_safe)
+            intersection = [
+                action
+                for action in actions
+                if action in material_set and action in king_set
+            ]
+            if intersection:
+                return intersection
+            return [
+                action
+                for action in actions
+                if action in material_set or action in king_set
+            ]
+        if king_safe:
+            return king_safe
+        if material_safe:
+            return material_safe
+
+    if king_safety_filter_plies > 0:
+        actions = _filter_root_king_safety(
+            board,
+            actions,
+            king_safety_filter_plies,
+            king_safety_max_loss_cp,
+        )
+    if material_filter_plies > 0:
+        actions = _filter_root_material(
+            board,
+            actions,
+            material_filter_plies,
+            material_max_loss_cp,
+        )
+    return actions
 
 
 def _material_fallback_actions(
