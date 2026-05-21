@@ -243,6 +243,73 @@ Evaluation PGNs now write real provenance headers: `Date`, `Time`, and
 artifacts aligned with the README's real-timestamp progress tracker instead of
 relying only on filesystem mtimes.
 
+## Fresh Context Blend
+
+Timestamp: `2026-05-20T18:52:50-07:00`
+
+I mined first-blunder context from the lower-pressure probability direct losses:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn reports/policyhead192_modelblunder_prob_bw1_epoch1_top2_mat4_stockfish_gate.pgn \
+  --out data/teacher/policyhead192_modelblunder_prob_bw1_firstblunders_context_t05_v1 \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --player-name AlphaChess \
+  --position-stride 1 \
+  --min-value-delta 0.08 \
+  --multipv 4 \
+  --policy-temperature-cp 180 \
+  --first-blunder-only \
+  --blunder-context-plies 2 \
+  --pv-plies 4 \
+  --game-line-plies 2 \
+  --chunk-size 256
+```
+
+Result: `18` positions from `2` failed games. The probability epoch was slightly
+worse than the parent on this fresh slice (`2.3485` vs `2.3304` policy loss;
+`0.0177` vs `0.0172` probability bad-action loss), confirming that the
+probability repair did not learn these adjacent failures.
+
+I then folded the fresh source into the broader opening/stability repair mix.
+The raw repair again missed the hard-label broad guard, but a `25%` blend back
+into the parent was broad-safe:
+
+| Checkpoint | Holdout top-1 | Holdout top-3 | Fresh top-1/top-3 | Fresh bad-action margin |
+| --- | ---: | ---: | ---: | ---: |
+| parent | `0.3456` | `0.5432` | `0.3889`/`0.6667` | `1.6529` |
+| raw epoch 2 | `0.3450` | `0.5416` | `0.3889`/`0.6667` | `1.5950` |
+| epoch-2 `25%` blend | `0.3453` | `0.5432` | `0.3889`/`0.6667` | `1.6389` |
+
+I spent one direct check on the guard-passing blend and added the fresh source
+to the exact top-2 good-action book:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability198_probcontext_epoch2_blend_0.25.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 4 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 data/teacher/policyhead192_mat4_latest_fullgame_context_t05_v1 data/teacher/policyhead192_modelblunder_prob_bw1_firstblunders_context_t05_v1 \
+  --good-action-book-top-k 2 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_stability198_probcontext_blend025_top2_mat4_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. Exact coverage did change both repeated motifs: the White game
+used `Bxe4` instead of the prior `Bc4`, and the Black game used `...c5` instead
+of `...Kh8`. Both games still lost in nearby tactical lines, so this remains a
+diagnostic source rather than a direct-strength improvement.
+
 ## Verification
 
 - `python3 -m compileall -q src/alpha_chess`: passed

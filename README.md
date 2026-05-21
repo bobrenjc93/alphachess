@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Latest progress timestamp: `2026-05-20T18:38:19-07:00`.
+Latest progress timestamp: `2026-05-20T18:52:50-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -195,6 +195,7 @@ next documentation commit.
 | `2026-05-20T18:16:52-07:00` report timestamp | Value-delta weighted bad-action objective (`reports/2026-05-20_opening_model_blunder_probe.md`). | N/A | not gated | Training can now weight bad-action margin loss by Stockfish value-drop deltas. The first delta-weighted model-blunder repair still missed the broad holdout guard from epoch 1, so no direct gate was spent. |
 | `2026-05-20T18:24:51-07:00` report timestamp | Bad-action probability objective (`reports/2026-05-20_opening_model_blunder_probe.md`). | N/A | not gated | Added `--bad-action-loss-type probability` to suppress listed bad-move probability directly instead of forcing a target-margin relation. The first probability-loss repair followed the same broad-holdout regression pattern, so no direct gate was spent. |
 | `2026-05-20T18:38:19-07:00` PGN header timestamp | Lower-pressure probability repair check (`reports/2026-05-20_opening_model_blunder_probe.md`, `reports/policyhead192_modelblunder_prob_bw1_epoch1_top2_mat4_stockfish_gate.pgn`). | N/A | top-2 book mat4 gate `0.0/2` | Dropping probability bad-action weight to `1.0` still missed the soft broad-holdout guard. Epoch 1 preserved hard-label broad top-1/top-3 at `0.3433`/`0.5388` and nudged opening-blunder top-1 to `0.0181`, but direct play repeated adjacent tactical failures and lost both games. |
+| `2026-05-20T18:52:50-07:00` PGN header timestamp | Fresh first-blunder context blend (`reports/2026-05-20_opening_model_blunder_probe.md`, `reports/policyhead192_stability198_probcontext_blend025_top2_mat4_stockfish_gate.pgn`). | N/A | top-2 book mat4 gate `0.0/2` | Mined an 18-position context slice from the lower-pressure probability losses. A 25% blend of the resulting repair kept hard-label broad holdout at `0.3453`/`0.5432` and slightly reduced fresh bad-action margin loss, but adding that source to the exact top-2 book only shifted the losses and the direct score stayed zero. |
 
 Current practical status:
 
@@ -295,6 +296,10 @@ Current practical status:
   and lower-pressure repairs on the same model-blunder source damaged soft broad
   holdout. The lower-pressure epoch preserved hard-label broad accuracy, but a
   direct two-game check still lost both games.
+- Fresh exact context coverage can remove the immediately repeated `Bc4` and
+  `...Kh8` failures, but the latest direct check still lost in nearby tactical
+  lines, so exact-book expansion remains diagnostic rather than a promotion
+  path.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.
