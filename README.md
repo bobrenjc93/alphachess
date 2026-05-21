@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Latest progress timestamp: `2026-05-20T17:38:43-07:00`.
+Latest progress timestamp: `2026-05-20T17:57:39-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -190,6 +190,7 @@ next documentation commit.
 | `2026-05-20T17:15:10-07:00` PGN file mtime | Latest full-game policy-head repair rejection (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_latestfull400_epoch2_blend025_top2_mat4_stockfish_gate.pgn`). | N/A | latest-source repair mat4 gate `0.0/2` | A guarded repair with the new 400-position source could be blended back to holdout `0.3453` top-1 and `0.5435` top-3, but it still lost both direct games. New first failures were `Bc4` vs `Bxe4` and `...Bd5` vs `...h6`. |
 | `2026-05-20T17:25:52-07:00` report timestamp | FEN-based Stockfish teacher input (`reports/2026-05-20_fen_teacher_probe.md`, `reports/2026-05-20_latest_failure_fens.txt`). | N/A | not gated | `stockfish-teacher --fen-file` can now label targeted failure FENs directly. The first six-FEN legal-value source produced 48 bad-action labels, but label instability means it should seed broader branch data rather than be used as an exact book. |
 | `2026-05-20T17:38:43-07:00` report timestamp | FEN branch teacher expansion (`reports/2026-05-20_fen_teacher_probe.md`). | N/A | not gated | `--fen-branch-plies 2 --fen-branch-width 2` expanded the six failure FENs into a 42-position branch source with 326 dense bad-action labels. A conservative policy-head/distill repair was rejected by the broad holdout guard and did not improve branch top-k, so no direct gate was spent. |
+| `2026-05-20T17:57:39-07:00` report timestamp | Opening model-blunder mining (`reports/2026-05-20_opening_model_blunder_probe.md`). | N/A | not gated | Mined `1,545` Stockfish-confirmed model-blunder positions and `3,548` bad-action labels from the opening16k source, and fixed mining CLIs to prefer action labels by default. First guarded repairs damaged broad holdout before target blunders improved enough, so no direct gate was spent. |
 
 Current practical status:
 
@@ -274,6 +275,11 @@ Current practical status:
   failures. The first 42-position branch source is useful diagnostic data, but
   a guarded repair on it missed the broad holdout floor and did not justify a
   direct Stockfish gate.
+- Broader model-blunder mining on the opening16k source found `1,545`
+  Stockfish-confirmed model-preferred blunder positions with `3,548`
+  bad-action labels. This is a stronger failure-surface diagnostic, but the
+  first two policy-head repairs still traded away broad holdout quality too
+  quickly.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.

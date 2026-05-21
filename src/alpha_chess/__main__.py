@@ -103,7 +103,11 @@ def main(argv: list[str] | None = None) -> None:
     hard_negative_parser.add_argument("--batch-size", type=int, default=256)
     hard_negative_parser.add_argument("--chunk-size", type=int, default=1024)
     hard_negative_parser.add_argument("--bad-actions-per-position", type=int, default=1)
-    hard_negative_parser.add_argument("--prefer-action-labels", action="store_true")
+    hard_negative_parser.add_argument(
+        "--prefer-action-labels",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
     hard_negative_parser.add_argument("--device", default="auto")
 
     model_blunder_parser = subparsers.add_parser(
@@ -121,7 +125,11 @@ def main(argv: list[str] | None = None) -> None:
     model_blunder_parser.add_argument("--bad-actions-per-position", type=int, default=1)
     model_blunder_parser.add_argument("--batch-size", type=int, default=256)
     model_blunder_parser.add_argument("--chunk-size", type=int, default=1024)
-    model_blunder_parser.add_argument("--prefer-action-labels", action="store_true")
+    model_blunder_parser.add_argument(
+        "--prefer-action-labels",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
     model_blunder_parser.add_argument("--device", default="auto")
 
     blend_parser = subparsers.add_parser(
