@@ -16,6 +16,7 @@ from alpha_chess.mcts import (
     SearchResult,
     _material_tactical_moves,
     _side_to_move_can_force_mate,
+    _static_safety_candidate_moves,
     advance_root,
 )
 
@@ -397,6 +398,18 @@ def test_material_tactical_moves_are_capped_by_priority() -> None:
     assert len(raw_tactical) > TACTICAL_MATERIAL_CANDIDATE_LIMIT
     assert len(moves) == TACTICAL_MATERIAL_CANDIDATE_LIMIT
     assert all(move.promotion for move in moves)
+
+
+def test_king_safety_candidates_include_quiet_pressure_with_captures() -> None:
+    board = chess.Board("2kr1b1r/p1p2ppp/2pnb3/4B3/8/2N5/PPP1RPPP/R5K1 b - - 4 14")
+    quiet_pressure = chess.Move.from_uci("e6c4")
+
+    assert quiet_pressure in board.legal_moves
+    assert any(
+        board.is_capture(move) or move.promotion or board.gives_check(move)
+        for move in board.legal_moves
+    )
+    assert quiet_pressure in _static_safety_candidate_moves(board)
 
 
 def test_mcts_root_prunes_queen_for_rook_trap_from_stockfish_game() -> None:

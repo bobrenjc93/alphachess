@@ -310,6 +310,54 @@ used `Bxe4` instead of the prior `Bc4`, and the Black game used `...c5` instead
 of `...Kh8`. Both games still lost in nearby tactical lines, so this remains a
 diagnostic source rather than a direct-strength improvement.
 
+## Quiet-Pressure King-Safety Guard
+
+Timestamp: `2026-05-20T19:11:03-07:00`
+
+The newest exact-book gate showed that root king-safety lookahead could still
+miss quiet attacking continuations. The search used tactical candidate moves
+only whenever a capture/check existed, so a position could have an available
+capture and never consider quiet pressure moves in the safety minimax. I changed
+king-safety lookahead to include the top quiet pressure moves alongside tactical
+candidates.
+
+Regression FEN from the latest White loss after `13...O-O-O`:
+
+```text
+2kr1b1r/p1p2ppp/2pnb3/4B3/8/8/PPP1RPPP/RN4K1 w - - 3 14
+```
+
+With the same material-depth-4 and king-safety-depth-2 settings, the local root
+guard now rejects the played `Nc3` continuation and leaves `Bd4`.
+
+I reran the comparable direct gate with the same checkpoint, books, and root
+guard settings:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability198_probcontext_epoch2_blend_0.25.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 4 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 data/teacher/policyhead192_mat4_latest_fullgame_context_t05_v1 data/teacher/policyhead192_modelblunder_prob_bw1_firstblunders_context_t05_v1 \
+  --good-action-book-top-k 2 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_stability198_probcontext_blend025_quietsafety_top2_mat4_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. The White game changed before the prior `Nc3` branch and the
+Black game shifted into a different `...Qh4` attacking line, but both games
+still lost. This is a real guard coverage improvement, not a direct-strength
+solution.
+
 ## Verification
 
 - `python3 -m compileall -q src/alpha_chess`: passed
@@ -319,4 +367,5 @@ diagnostic source rather than a direct-strength improvement.
 - `uv run pytest tests/test_model_and_data.py tests/test_cli.py -q`:
   `33 passed in 11.81s`
 - `uv run pytest tests/test_evaluate.py -q`: `3 passed in 3.82s`
-- `uv run pytest -q`: `129 passed in 94.46s`
+- `uv run pytest tests/test_mcts.py -q`: `36 passed in 155.56s`
+- `uv run pytest -q`: `130 passed in 171.95s`

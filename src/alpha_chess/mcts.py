@@ -19,6 +19,7 @@ from alpha_chess.evaluator import PIECE_VALUES, Evaluator
 MATE_SCORE_CP = 100_000
 TACTICAL_MATERIAL_CANDIDATE_LIMIT = 16
 QUIET_MATERIAL_CANDIDATE_LIMIT = 8
+KING_SAFETY_QUIET_CANDIDATE_LIMIT = 8
 ROOT_TACTICAL_FALLBACK_BAND_CP = 100
 SPECULATIVE_CHECKING_MOVE_PENALTY_CP = 300
 BOARD_SIZE = 8
@@ -652,7 +653,7 @@ def _static_safety_full_width_score(
         cache[key] = score
         return score
 
-    moves = _material_candidate_moves(board)
+    moves = _static_safety_candidate_moves(board)
 
     if board.turn == perspective:
         best = -MATE_SCORE_CP
@@ -752,6 +753,31 @@ def _material_candidate_moves(board: chess.Board) -> list[chess.Move]:
     return quiet_moves[:QUIET_MATERIAL_CANDIDATE_LIMIT]
 
 
+def _static_safety_candidate_moves(board: chess.Board) -> list[chess.Move]:
+    tactical_moves = _material_tactical_moves(board)
+    tactical_set = set(tactical_moves)
+    quiet_scored = [
+        (move, _quiet_safety_priority(board, move))
+        for move in board.legal_moves
+        if move not in tactical_set
+        and not board.is_capture(move)
+        and not move.promotion
+        and not board.gives_check(move)
+    ]
+    quiet_scored.sort(key=lambda item: item[1], reverse=True)
+    if tactical_moves:
+        quiet_moves = [
+            move
+            for move, priority in quiet_scored
+            if priority > 0
+        ][:KING_SAFETY_QUIET_CANDIDATE_LIMIT]
+    else:
+        quiet_moves = [
+            move for move, _priority in quiet_scored[:KING_SAFETY_QUIET_CANDIDATE_LIMIT]
+        ]
+    return tactical_moves + quiet_moves
+
+
 def _material_quiescence_score(
     board: chess.Board,
     plies: int,
@@ -835,6 +861,17 @@ def _quiet_threat_priority(board: chess.Board, move: chess.Move) -> int:
     moving_piece = board.piece_at(move.from_square)
     moving_value = PIECE_VALUES.get(moving_piece.piece_type, 0) if moving_piece else 0
     return threat_score - moving_value
+
+
+def _quiet_safety_priority(board: chess.Board, move: chess.Move) -> int:
+    child = board.copy(stack=False)
+    child.push(move)
+    opponent = child.turn
+    king_pressure_delta = _king_danger_cp(child, opponent) - _king_danger_cp(
+        board,
+        opponent,
+    )
+    return max(_quiet_threat_priority(board, move), king_pressure_delta)
 
 
 def _captured_piece_value(board: chess.Board, move: chess.Move) -> int:
