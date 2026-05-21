@@ -97,6 +97,28 @@ the model-blunder target becomes plausible. The next repair needs either a
 different objective/schedule or a much broader balanced source, not more weight
 on this slice.
 
+## Interpolation Follow-Up
+
+Timestamp: `2026-05-20T18:07:43-07:00`
+
+I checked whether the rejected repairs contain a useful low-weight direction by
+interpolating them back into the parent checkpoint and validating against the
+standard soft-label broad holdout plus both model-blunder slices.
+
+| Blend | Broad top-1 | Broad top-3 | Opening-blunder top-1 | Opening bad-action loss | Read |
+| --- | ---: | ---: | ---: | ---: | --- |
+| distill10 epoch 8, `5%` | `0.3392` | `0.5385` | `0.0013` | `2.0064` | missed broad top-1 floor |
+| distill10 epoch 8, `10%` | `0.3389` | `0.5380` | `0.0045` | `2.0052` | missed broad top-1 floor |
+| distill10 epoch 8, `20%` | `0.3387` | `0.5360` | `0.0065` | `2.0028` | missed both broad floors |
+| distill3 epoch 1, `2.5%` | `0.3396` | `0.5385` | `0.0006` | `2.0075` | broad-safe but target movement is negligible |
+| distill3 epoch 1, `5%` | `0.3395` | `0.5387` | `0.0013` | `2.0072` | just missed broad top-1 floor |
+| distill3 epoch 1, `10%` | `0.3394` | `0.5385` | `0.0013` | `2.0067` | missed broad top-1 floor |
+
+The only broad-safe blend moves the opening-blunder slice by less than one tenth
+of a percentage point and barely changes bad-action loss, so I did not spend a
+direct Stockfish gate on it. Interpolation confirms that the current
+model-blunder repair direction is too weak per unit of broad-holdout damage.
+
 ## Verification
 
 - `python3 -m compileall -q src/alpha_chess`: passed

@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Latest progress timestamp: `2026-05-20T17:57:39-07:00`.
+Latest progress timestamp: `2026-05-20T18:07:43-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -191,6 +191,7 @@ next documentation commit.
 | `2026-05-20T17:25:52-07:00` report timestamp | FEN-based Stockfish teacher input (`reports/2026-05-20_fen_teacher_probe.md`, `reports/2026-05-20_latest_failure_fens.txt`). | N/A | not gated | `stockfish-teacher --fen-file` can now label targeted failure FENs directly. The first six-FEN legal-value source produced 48 bad-action labels, but label instability means it should seed broader branch data rather than be used as an exact book. |
 | `2026-05-20T17:38:43-07:00` report timestamp | FEN branch teacher expansion (`reports/2026-05-20_fen_teacher_probe.md`). | N/A | not gated | `--fen-branch-plies 2 --fen-branch-width 2` expanded the six failure FENs into a 42-position branch source with 326 dense bad-action labels. A conservative policy-head/distill repair was rejected by the broad holdout guard and did not improve branch top-k, so no direct gate was spent. |
 | `2026-05-20T17:57:39-07:00` report timestamp | Opening model-blunder mining (`reports/2026-05-20_opening_model_blunder_probe.md`). | N/A | not gated | Mined `1,545` Stockfish-confirmed model-blunder positions and `3,548` bad-action labels from the opening16k source, and fixed mining CLIs to prefer action labels by default. First guarded repairs damaged broad holdout before target blunders improved enough, so no direct gate was spent. |
+| `2026-05-20T18:07:43-07:00` report timestamp | Model-blunder interpolation check (`reports/2026-05-20_opening_model_blunder_probe.md`). | N/A | not gated | Blending rejected model-blunder repairs back into the parent preserved the broad guard only at `2.5%`, where opening-blunder top-1 moved just to `0.0006` and bad-action loss barely changed. No direct gate was spent. |
 
 Current practical status:
 
@@ -280,6 +281,9 @@ Current practical status:
   bad-action labels. This is a stronger failure-surface diagnostic, but the
   first two policy-head repairs still traded away broad holdout quality too
   quickly.
+- Interpolating those rejected repairs back into the parent does not rescue
+  them: the only broad-safe blend is a `2.5%` mix with negligible target
+  movement, so this direction is not a direct-gate candidate.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.
