@@ -402,6 +402,47 @@ different queen-trade line, while the Black game shifted back toward a kingside
 mate pattern. The material-opportunity guard fixes the local missed-gain class
 but is not enough to pass the direct gate.
 
+## Material-Opportunity Latest-Book Diagnostic
+
+Timestamp: `2026-05-20T19:49:34-07:00`
+
+I mined the first blunders from the material-opportunity gate:
+
+| Game | Played | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `g3` | `f3` | `0.3850` | `r1k4r/p1p2pp1/2pbbn1p/1p6/4P2B/2N5/PPP2PPP/1K1R1B1R w - - 0 12` |
+| 2 | `...Bf5` | `...Ng4` | `0.1012` | `r1bq1rk1/2p2ppp/p2b1n2/1p6/3P4/1BP5/PP3PPP/RNBQR1K1 b - - 2 13` |
+
+The current root guards do not reject either played move locally. I generated
+`data/teacher/policyhead192_materialopportunity_firstblunders_context_t05_v1`
+from the new PGN and added it to the exact top-2 good-action book for another
+comparable diagnostic gate:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability198_probcontext_epoch2_blend_0.25.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 4 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 data/teacher/policyhead192_mat4_latest_fullgame_context_t05_v1 data/teacher/policyhead192_modelblunder_prob_bw1_firstblunders_context_t05_v1 data/teacher/policyhead192_materialopportunity_firstblunders_context_t05_v1 \
+  --good-action-book-top-k 2 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_stability198_probcontext_blend025_materialopportunity_latestbook_top2_mat4_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. The added exact context changed both games again, but the
+White game lost after a new `...f5`/`...Nxc3` line and the Black game returned
+to a longer version of the kingside-pawn collapse. Exact first-blunder coverage
+continues to move the failures without producing direct strength.
+
 ## Verification
 
 - `python3 -m compileall -q src/alpha_chess`: passed

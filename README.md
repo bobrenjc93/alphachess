@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Latest progress timestamp: `2026-05-20T19:28:36-07:00`.
+Latest progress timestamp: `2026-05-20T19:49:34-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -198,6 +198,7 @@ next documentation commit.
 | `2026-05-20T18:52:50-07:00` PGN header timestamp | Fresh first-blunder context blend (`reports/2026-05-20_opening_model_blunder_probe.md`, `reports/policyhead192_stability198_probcontext_blend025_top2_mat4_stockfish_gate.pgn`). | N/A | top-2 book mat4 gate `0.0/2` | Mined an 18-position context slice from the lower-pressure probability losses. A 25% blend of the resulting repair kept hard-label broad holdout at `0.3453`/`0.5432` and slightly reduced fresh bad-action margin loss, but adding that source to the exact top-2 book only shifted the losses and the direct score stayed zero. |
 | `2026-05-20T19:11:03-07:00` PGN header timestamp | Quiet-pressure king-safety guard (`reports/2026-05-20_opening_model_blunder_probe.md`, `reports/policyhead192_stability198_probcontext_blend025_quietsafety_top2_mat4_stockfish_gate.pgn`). | N/A | top-2 book mat4 gate `0.0/2` | King-safety lookahead now includes quiet pressure moves alongside captures, which prunes the latest `Nc3` local failure in favor of `Bd4`. The full direct gate changed both games substantially but still lost both, so the guard is useful but not sufficient. |
 | `2026-05-20T19:28:36-07:00` PGN header timestamp | Material-opportunity root guard (`reports/2026-05-20_opening_model_blunder_probe.md`, `reports/policyhead192_stability198_probcontext_blend025_materialopportunity_top2_mat4_stockfish_gate.pgn`). | N/A | top-2 book mat4 gate `0.0/2` | The root material guard now keeps moves within the same loss band of the best shallow material gain, pruning the latest missed-knight `O-O` local failure. The full direct gate again shifted to new lines and lost both games. |
+| `2026-05-20T19:49:34-07:00` PGN header timestamp | Material-opportunity latest-book diagnostic (`reports/2026-05-20_opening_model_blunder_probe.md`, `reports/policyhead192_stability198_probcontext_blend025_materialopportunity_latestbook_top2_mat4_stockfish_gate.pgn`). | N/A | top-2 book mat4 gate `0.0/2` | Mined the material-opportunity gate's first blunders (`g3`/`f3` and `...Bf5`/`...Ng4`) and added that context source to the exact top-2 book. The direct score stayed zero after both games shifted into new attacking lines. |
 
 Current practical status:
 
@@ -308,6 +309,9 @@ Current practical status:
 - The material guard now also treats large missed material gains as unsafe, but
   the comparable direct gate still lost both games after changing the opening
   trajectory.
+- Adding the newest first-blunder context source as exact top-2 coverage again
+  changed the games but not the score, reinforcing that exact-book expansion is
+  exposing a broad tactical generalization gap rather than closing it.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.
