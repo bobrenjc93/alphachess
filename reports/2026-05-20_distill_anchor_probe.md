@@ -843,3 +843,85 @@ First-blunder mining found:
 Depth 4 fixes that one repeated motif, but it is too slow and still does not
 produce a direct score. The failure surface moves to fresh early opening
 choices.
+
+## Latest Full-Game Exact-Book Diagnostic
+
+I checked the material-depth-4 gate's two latest first-blunder FENs against the
+current exact good-action books by loading the broad, t05, opening16k,
+stability, and top-3 confirmed-blunder sources with `policy_top_k=3`. Result:
+both positions were complete misses. The combined book had `63,363` positions,
+but neither the White `e5`/`exd5` FEN nor the Black `...Na5`/`...Nxe5` FEN had
+an exact entry.
+
+I then generated a full-game source from every AlphaChess turn in the latest
+failed PGN, including short Stockfish PV and game-line continuations:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn reports/policyhead192_opening16k_stability180_blend075_mat4_stockfish_gate.pgn \
+  --out data/teacher/policyhead192_mat4_latest_fullgame_context_t05_v1 \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --player-name AlphaChess \
+  --position-stride 1 \
+  --multipv 4 \
+  --policy-temperature-cp 180 \
+  --pv-plies 4 \
+  --game-line-plies 2 \
+  --max-positions 512 \
+  --chunk-size 256
+```
+
+Result: `400` positions from the 2-game PGN. Teacher summary mtime:
+`2026-05-20T16:48:37-07:00`.
+
+The new source covered both previous misses. With `policy_top_k=2`, it filtered
+the played `e5` and `...Na5`; using top-k `3` would still allow `...Na5`, so I
+tested a top-2 exact-book gate:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_hardlabels_cap20_lr2e6_blend_0.75.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 4 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 data/teacher/policyhead192_mat4_latest_fullgame_context_t05_v1 \
+  --good-action-book-top-k 2 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_opening16k_stability180_blend075_mat4_latestbook_top2_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. PGN file mtime: `2026-05-20T16:53:22-07:00`.
+
+First-blunder mining from that gate produced another `18`-position context
+source:
+
+| Game | First confirmed mistake with latest book | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `f3` | `b3` | `0.1145` | `r1bqk2r/p1p1bppp/2p5/2npP3/8/3B4/PPP1QPPP/RNB2RK1 w kq - 3 10` |
+| 2 | `...Kh8` | `...c5` | `0.1971` | `r2q1rk1/2p2ppp/p2b1n2/1p3bB1/3P4/1BP2P2/PP2R1PP/RN1Q2K1 b - - 2 15` |
+
+Both new first-blunder FENs were also outside the combined exact books, even
+with the new full-game source included at top-k `2`.
+
+I checked whether the root guards could catch these new mistakes. They do not:
+
+| FEN | Material guard read | King-safety guard read | Combined guard read |
+| --- | --- | --- | --- |
+| `f3`/`b3` | depth 4 and 5 keep `f3` and reject `b3` | depth 1 rejects `f3`, but depth 2 keeps both and deeper settings reject `b3` | current mat4/king2 leaves only `f3` |
+| `...Kh8`/`...c5` | depths 1-5 keep both | depths 1-2 keep `...Kh8` and reject `...c5`; depths 3-4 keep both | current mat4/king2 leaves only `...Kh8` |
+
+The read is clear: exact books can patch one failed line at a time, but this
+candidate is still moving into fresh book misses and the static root guards are
+actively misleading on the new positions. The next useful step is broader
+learned opening/tactical supervision, not deeper material search or more
+aggressive king-safety filtering.

@@ -16,8 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Latest committed refresh: `2026-05-20T16:42:37-07:00` (`33ec60a`).
-Latest result timestamp: `2026-05-20T16:41:04-07:00`.
+Latest result timestamp: `2026-05-20T16:53:22-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -187,6 +186,7 @@ next documentation commit.
 | `2026-05-20T16:00:05-07:00` PGN file mtime | Aggregated 180-position opening-stability mix (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening_stability180_stockfish_gate.pgn`). | N/A | opening-stability gate `0.0/2` | Aggregating 20 failed games into a 180-position context source selected a guarded checkpoint (`0.3445` top-1, `0.5421` top-3; stability top-3 `0.5200`), but direct play still lost with first failures at `Bd3` vs `Bd4` and very early `...e5` vs `...Nf6`. |
 | `2026-05-20T16:21:53-07:00` PGN file mtime | Higher-time 16k opening source plus stability mix (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening16k_stability180_blend075_stockfish_gate.pgn`). | N/A | opening16k+stability gate `0.0/2` | A new 16,384-position `0.05s` opening teacher improved validation and selected a guard-passing 75% blend, but direct play still lost both games. First failures were the persistent `Bd3` vs `Bd4` motif and `...Be7` vs `...Bc5`. |
 | `2026-05-20T16:41:04-07:00` PGN file mtime | Opening16k/stability blend with material depth 4 (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening16k_stability180_blend075_mat4_stockfish_gate.pgn`). | N/A | mat4 opening16k gate `0.0/2` | Raising root material search to depth 4 removed the repeated `Bd3` motif but still lost both games; first failures shifted to `e5` vs `exd5` and `...Na5` vs `...Nxe5`. |
+| `2026-05-20T16:53:22-07:00` PGN file mtime | Latest full-game exact-book top-2 diagnostic (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening16k_stability180_blend075_mat4_latestbook_top2_stockfish_gate.pgn`). | N/A | latest-book top-2 mat4 gate `0.0/2` | A 400-position exact source from the latest failed gate removed the immediate `e5` and `...Na5` misses, but direct play still lost. New first failures were `f3` vs `b3` and `...Kh8` vs `...c5`, both outside the books. |
 
 Current practical status:
 
@@ -254,6 +254,10 @@ Current practical status:
 - Raising root material search from depth 3 to 4 catches that one `Bd3` motif,
   but the direct gate remains scoreless and much slower. Deeper root material
   search is a diagnostic, not a practical solution yet.
+- Adding a full-game exact book from the latest material-depth-4 loss and
+  tightening the global book to top-2 removes the immediate `e5` and `...Na5`
+  misses, but the gate stays `0.0/2`. The new first failures are outside the
+  books, and the existing root guards prefer the bad moves there.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.
