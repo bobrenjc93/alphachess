@@ -16,7 +16,8 @@ from alpha_chess.pgn_import import PGNImportConfig, _open_pgn_text, _passes_filt
 
 @dataclass
 class StockfishTeacherConfig:
-    pgn: str | list[str]
+    pgn: str | list[str] | None = None
+    fen_file: str | list[str] | None = None
     out: str = "data/teacher/stockfish"
     engine_path: str = "stockfish"
     engine_time: float = 0.02
@@ -46,8 +47,12 @@ class StockfishTeacherConfig:
 
 
 def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
+    if not config.pgn and not config.fen_file:
+        raise ValueError("stockfish teacher generation requires pgn or fen_file")
     if config.blunder_context_plies > 0 and config.min_value_delta is None:
         raise ValueError("blunder_context_plies requires min_value_delta")
+    if config.fen_file and config.min_value_delta is not None:
+        raise ValueError("fen_file input does not support min_value_delta")
     if (
         config.legal_bad_actions_per_position > 0
         and config.legal_bad_action_min_delta is None
@@ -64,7 +69,8 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
 
     out_dir = Path(config.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    pgn_paths = _resolve_pgn_paths(config.pgn)
+    pgn_paths = _resolve_paths(config.pgn)
+    fen_paths = _resolve_paths(config.fen_file)
     limit = chess.engine.Limit(time=config.engine_time, depth=config.engine_depth)
 
     boards: list[np.ndarray] = []
@@ -80,6 +86,8 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     written: list[Path] = []
     games_seen = 0
     games_used = 0
+    fen_positions_seen = 0
+    fen_positions_used = 0
     positions = 0
     skipped_positions = 0
     legal_bad_action_rows = 0
@@ -270,6 +278,108 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
             added += 1
         return added
 
+    def append_analysed_sample(
+        source: str,
+        sample_board: chess.Board,
+        *,
+        played_move: chess.Move | None = None,
+        context_boards: list[chess.Board] | None = None,
+        continuation: list[chess.Move] | None = None,
+    ) -> tuple[bool, bool]:
+        nonlocal legal_bad_action_rows, legal_bad_action_labels
+        nonlocal legal_bad_action_candidates_evaluated
+        infos = _analyse_position(engine, sample_board, limit, config.multipv)
+        best_move = _best_move_from_infos(infos)
+        if best_move is None:
+            play = engine.play(sample_board, limit)
+            best_move = play.move
+        if best_move not in sample_board.legal_moves:
+            return False, False
+
+        score = infos[0].get("score") if infos else None
+        value = _score_to_value(score, sample_board.turn)
+        value_delta = 0.0
+        should_append = True
+        legal_bad_moves: list[tuple[chess.Move, float]] = []
+        policy_override: np.ndarray | None = None
+        if config.min_value_delta is not None:
+            if played_move is None:
+                raise ValueError("min_value_delta requires a played move")
+            after_board = sample_board.copy(stack=False)
+            after_board.push(played_move)
+            after_info = engine.analyse(after_board, limit)
+            value_delta = _value_drop_after_move(
+                best_value=value,
+                after_score=after_info.get("score"),
+                after_turn=after_board.turn,
+            )
+            if value_delta < config.min_value_delta:
+                should_append = False
+        bad_move = (
+            played_move
+            if config.min_value_delta is not None
+            and value_delta > 0.0
+            and played_move is not None
+            else None
+        )
+        if (
+            config.legal_bad_actions_per_position > 0
+            or config.legal_value_policy_temperature is not None
+        ):
+            (
+                legal_bad_moves,
+                policy_override,
+                candidates_evaluated,
+            ) = _legal_move_value_labels(
+                engine=engine,
+                board=sample_board,
+                best_move=best_move,
+                best_value=value,
+                limit=limit,
+                min_value_delta=(
+                    config.legal_bad_action_min_delta
+                    if config.legal_bad_action_min_delta is not None
+                    else (
+                        float(config.min_value_delta)
+                        if config.min_value_delta is not None
+                        else float("inf")
+                    )
+                ),
+                max_bad_actions=config.legal_bad_actions_per_position,
+                policy_temperature=config.legal_value_policy_temperature,
+            )
+            legal_bad_action_candidates_evaluated += candidates_evaluated
+            if legal_bad_moves:
+                should_append = True
+                legal_bad_action_rows += 1
+                legal_bad_action_labels += len(legal_bad_moves)
+            elif (
+                config.min_value_delta is None
+                and config.legal_value_policy_temperature is None
+            ):
+                should_append = False
+        if not should_append:
+            return False, False
+
+        append_teacher_sample(
+            source,
+            sample_board,
+            infos,
+            best_move,
+            value,
+            value_delta,
+            bad_move=bad_move,
+            legal_bad_moves=legal_bad_moves,
+            policy_override=policy_override,
+        )
+        if bad_move is not None and context_boards is not None and positions < config.max_positions:
+            append_blunder_context_samples(source, context_boards)
+        if positions < config.max_positions:
+            append_pv_line_samples(source, sample_board, infos)
+        if continuation is not None and positions < config.max_positions:
+            append_game_line_samples(source, sample_board, continuation)
+        return True, bad_move is not None
+
     with chess.engine.SimpleEngine.popen_uci(config.engine_path) as engine:
         for pgn_path in pgn_paths:
             source = str(pgn_path)
@@ -325,96 +435,17 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                 board.push(move)
                                 continue
                             context_board = board.copy(stack=False)
-                            infos = _analyse_position(engine, board, limit, config.multipv)
-                            best_move = _best_move_from_infos(infos)
-                            if best_move is None:
-                                play = engine.play(board, limit)
-                                best_move = play.move
-                            if best_move in board.legal_moves:
-                                score = infos[0].get("score") if infos else None
-                                value = _score_to_value(score, board.turn)
-                                value_delta = 0.0
-                                should_append = True
-                                legal_bad_moves: list[tuple[chess.Move, float]] = []
-                                policy_override: np.ndarray | None = None
-                                if config.min_value_delta is not None:
-                                    after_board = board.copy(stack=False)
-                                    after_board.push(move)
-                                    after_info = engine.analyse(after_board, limit)
-                                    value_delta = _value_drop_after_move(
-                                        best_value=value,
-                                        after_score=after_info.get("score"),
-                                        after_turn=after_board.turn,
-                                    )
-                                    if value_delta < config.min_value_delta:
-                                        should_append = False
-                                bad_move = (
-                                    move
-                                    if config.min_value_delta is not None
-                                    and value_delta > 0.0
-                                    else None
-                                )
-                                if (
-                                    config.legal_bad_actions_per_position > 0
-                                    or config.legal_value_policy_temperature is not None
-                                ):
-                                    (
-                                        legal_bad_moves,
-                                        policy_override,
-                                        candidates_evaluated,
-                                    ) = _legal_move_value_labels(
-                                        engine=engine,
-                                        board=board,
-                                        best_move=best_move,
-                                        best_value=value,
-                                        limit=limit,
-                                        min_value_delta=(
-                                            config.legal_bad_action_min_delta
-                                            if config.legal_bad_action_min_delta is not None
-                                            else (
-                                                float(config.min_value_delta)
-                                                if config.min_value_delta is not None
-                                                else float("inf")
-                                            )
-                                        ),
-                                        max_bad_actions=config.legal_bad_actions_per_position,
-                                        policy_temperature=config.legal_value_policy_temperature,
-                                    )
-                                    legal_bad_action_candidates_evaluated += candidates_evaluated
-                                    if legal_bad_moves:
-                                        should_append = True
-                                        legal_bad_action_rows += 1
-                                        legal_bad_action_labels += len(legal_bad_moves)
-                                    elif (
-                                        config.min_value_delta is None
-                                        and config.legal_value_policy_temperature is None
-                                    ):
-                                        should_append = False
-                                if should_append:
-                                    append_teacher_sample(
-                                        source,
-                                        board,
-                                        infos,
-                                        best_move,
-                                        value,
-                                        value_delta,
-                                        bad_move=bad_move,
-                                        legal_bad_moves=legal_bad_moves,
-                                        policy_override=policy_override,
-                                    )
-                                    if bad_move is not None and positions < config.max_positions:
-                                        append_blunder_context_samples(source, context_boards)
-                                    if positions < config.max_positions:
-                                        append_pv_line_samples(source, board, infos)
-                                    if positions < config.max_positions:
-                                        append_game_line_samples(
-                                            source,
-                                            board,
-                                            mainline_moves[ply:],
-                                        )
-                                    used_this_game = True
-                                    if bad_move is not None:
-                                        found_blunder_this_game = True
+                            used_sample, found_blunder = append_analysed_sample(
+                                source,
+                                board,
+                                played_move=move,
+                                context_boards=context_boards,
+                                continuation=mainline_moves[ply:],
+                            )
+                            if used_sample:
+                                used_this_game = True
+                            if found_blunder:
+                                found_blunder_this_game = True
                             context_boards.append(context_board)
                             context_plies = max(0, config.blunder_context_plies)
                             if context_plies > 0 and len(context_boards) > context_plies:
@@ -427,17 +458,41 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
             if positions >= config.max_positions:
                 break
 
+        for fen_path in fen_paths:
+            if positions >= config.max_positions:
+                break
+            source = str(fen_path)
+            for board in _read_fen_boards(fen_path):
+                if positions >= config.max_positions:
+                    break
+                fen_positions_seen += 1
+                if board.is_game_over(claim_draw=True):
+                    continue
+                if skipped_positions < max(0, config.skip_positions):
+                    skipped_positions += 1
+                    continue
+                used_sample, _found_blunder = append_analysed_sample(source, board)
+                if used_sample:
+                    fen_positions_used += 1
+
+            flush_chunk(source)
+
     if not written:
         raise ValueError("No Stockfish teacher positions generated")
 
+    input_paths = [*pgn_paths, *fen_paths]
     (out_dir / "teacher_summary.txt").write_text(
         "\n".join(
             [
-                f"source={pgn_paths[0] if len(pgn_paths) == 1 else 'multiple'}",
-                f"sources={[str(path) for path in pgn_paths]}",
+                f"source={input_paths[0] if len(input_paths) == 1 else 'multiple'}",
+                f"sources={[str(path) for path in input_paths]}",
+                f"pgn_sources={[str(path) for path in pgn_paths]}",
+                f"fen_sources={[str(path) for path in fen_paths]}",
                 f"engine_path={config.engine_path}",
                 f"games_seen={games_seen}",
                 f"games_used={games_used}",
+                f"fen_positions_seen={fen_positions_seen}",
+                f"fen_positions_used={fen_positions_used}",
                 f"skip_positions={config.skip_positions}",
                 f"skipped_positions={skipped_positions}",
                 f"positions={positions}",
@@ -468,10 +523,29 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
     return written
 
 
+def _resolve_paths(paths: str | list[str] | None) -> list[Path]:
+    if paths is None:
+        return []
+    if isinstance(paths, str):
+        return [Path(paths)]
+    return [Path(path) for path in paths]
+
+
 def _resolve_pgn_paths(pgn: str | list[str]) -> list[Path]:
-    if isinstance(pgn, str):
-        return [Path(pgn)]
-    return [Path(path) for path in pgn]
+    return _resolve_paths(pgn)
+
+
+def _read_fen_boards(path: Path) -> list[chess.Board]:
+    boards: list[chess.Board] = []
+    for line_number, raw_line in enumerate(path.read_text().splitlines(), start=1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            boards.append(chess.Board(line))
+        except ValueError as exc:
+            raise ValueError(f"{path}:{line_number}: invalid FEN {line!r}") from exc
+    return boards
 
 
 def _analyse_position(

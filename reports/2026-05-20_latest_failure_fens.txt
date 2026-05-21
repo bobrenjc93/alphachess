@@ -1,0 +1,11 @@
+# Recent AlphaChess first-blunder FENs for direct Stockfish teacher labeling.
+# Source PGNs:
+# - reports/policyhead192_opening16k_stability180_blend075_mat4_stockfish_gate.pgn
+# - reports/policyhead192_opening16k_stability180_blend075_mat4_latestbook_top2_stockfish_gate.pgn
+# - reports/policyhead192_latestfull400_epoch2_blend025_top2_mat4_stockfish_gate.pgn
+r1bqkb1r/p1p2ppp/2p2n2/3p4/4P3/3B4/PPP2PPP/RNBQK2R w KQkq - 0 7
+r1bq1rk1/2p1bppp/p1n5/1p1nN3/8/1BP5/PP1P1PPP/RNBQR1K1 b - - 0 10
+r1bqk2r/p1p1bppp/2p5/2npP3/8/3B4/PPP1QPPP/RNB2RK1 w kq - 3 10
+r2q1rk1/2p2ppp/p2b1n2/1p3bB1/3P4/1BP2P2/PP2R1PP/RN1Q2K1 b - - 2 15
+r1bqk2r/p1p2ppp/2p2n2/8/1b2p3/2NB4/PPP1QPPP/R1B1K2R w KQkq - 2 9
+r2q1rk1/1b3ppp/p2b1n2/1p6/2pP4/2P5/PPB2PPP/R1BQRNK1 b - - 1 16

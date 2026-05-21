@@ -672,3 +672,52 @@ def test_stockfish_teacher_respects_ply_window(monkeypatch, tmp_path) -> None:
     summary = (tmp_path / "teacher-window" / "teacher_summary.txt").read_text()
     assert "min_ply=2" in summary
     assert "max_ply=3" in summary
+
+
+def test_stockfish_teacher_can_generate_from_fen_file(monkeypatch, tmp_path) -> None:
+    fen_path = tmp_path / "positions.fen"
+    fen_rows = [
+        chess.STARTING_FEN,
+        "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+    ]
+    fen_path.write_text("\n".join(["# target positions", *fen_rows, ""]))
+
+    class FakeEngine:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def analyse(self, board, _limit, multipv=None):
+            move = next(iter(board.legal_moves))
+            info = {
+                "pv": [move],
+                "score": chess.engine.PovScore(chess.engine.Cp(0), board.turn),
+            }
+            return [info] if multipv and multipv > 1 else info
+
+        def play(self, board, _limit):
+            return SimpleNamespace(move=next(iter(board.legal_moves)))
+
+    monkeypatch.setattr(chess.engine.SimpleEngine, "popen_uci", lambda _path: FakeEngine())
+
+    paths = generate_stockfish_teacher(
+        StockfishTeacherConfig(
+            fen_file=str(fen_path),
+            out=str(tmp_path / "teacher-fens"),
+            engine_path="fake-stockfish",
+            max_positions=10,
+            multipv=2,
+        )
+    )
+
+    data = np.load(paths[0])
+
+    assert data["fens"].tolist() == fen_rows
+    assert data["actions"].shape[0] == 2
+    assert data["policies"].shape[0] == 2
+    summary = (tmp_path / "teacher-fens" / "teacher_summary.txt").read_text()
+    assert f"fen_sources={[str(fen_path)]}" in summary
+    assert "fen_positions_seen=2" in summary
+    assert "fen_positions_used=2" in summary

@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Latest result timestamp: `2026-05-20T17:15:10-07:00`.
+Latest progress timestamp: `2026-05-20T17:25:52-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -188,6 +188,7 @@ next documentation commit.
 | `2026-05-20T16:41:04-07:00` PGN file mtime | Opening16k/stability blend with material depth 4 (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening16k_stability180_blend075_mat4_stockfish_gate.pgn`). | N/A | mat4 opening16k gate `0.0/2` | Raising root material search to depth 4 removed the repeated `Bd3` motif but still lost both games; first failures shifted to `e5` vs `exd5` and `...Na5` vs `...Nxe5`. |
 | `2026-05-20T16:53:22-07:00` PGN file mtime | Latest full-game exact-book top-2 diagnostic (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening16k_stability180_blend075_mat4_latestbook_top2_stockfish_gate.pgn`). | N/A | latest-book top-2 mat4 gate `0.0/2` | A 400-position exact source from the latest failed gate removed the immediate `e5` and `...Na5` misses, but direct play still lost. New first failures were `f3` vs `b3` and `...Kh8` vs `...c5`, both outside the books. |
 | `2026-05-20T17:15:10-07:00` PGN file mtime | Latest full-game policy-head repair rejection (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_latestfull400_epoch2_blend025_top2_mat4_stockfish_gate.pgn`). | N/A | latest-source repair mat4 gate `0.0/2` | A guarded repair with the new 400-position source could be blended back to holdout `0.3453` top-1 and `0.5435` top-3, but it still lost both direct games. New first failures were `Bc4` vs `Bxe4` and `...Bd5` vs `...h6`. |
+| `2026-05-20T17:25:52-07:00` report timestamp | FEN-based Stockfish teacher input (`reports/2026-05-20_fen_teacher_probe.md`, `reports/2026-05-20_latest_failure_fens.txt`). | N/A | not gated | `stockfish-teacher --fen-file` can now label targeted failure FENs directly. The first six-FEN legal-value source produced 48 bad-action labels, but label instability means it should seed broader branch data rather than be used as an exact book. |
 
 Current practical status:
 
@@ -263,6 +264,11 @@ Current practical status:
   blended to preserve broad holdout quality, but it still scores `0.0/2`
   directly and does not materially improve the new source. This is another
   proxy-only improvement, not a promotion candidate.
+- `stockfish-teacher --fen-file` now supports one-FEN-per-line targeted
+  labeling, which removes the need to reconstruct known failure positions
+  through PGNs. The first six-FEN legal-value source exposed target instability
+  at low engine time, so it is infrastructure for broader branch data rather
+  than a direct strength gain.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.
@@ -561,6 +567,16 @@ uv run alpha-chess stockfish-teacher \
   --player-name AlphaChess \
   --position-stride 1 \
   --min-value-delta 0.20
+
+uv run alpha-chess stockfish-teacher \
+  --fen-file reports/latest_failure_fens.txt \
+  --out data/teacher/latest_failure_fens \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.2 \
+  --multipv 4 \
+  --legal-bad-actions-per-position 8 \
+  --legal-bad-action-min-delta 0.08 \
+  --legal-value-policy-temperature 0.2
 ```
 
 For loss-PGN repair data, include Stockfish PV continuations and the actual
@@ -589,7 +605,14 @@ positions from the same game whenever a confirmed blunder is found; this gives
 loss-PGN repair runs direct supervision on the lead-up decisions before a
 forcing tactic. Add `--first-blunder-only` when mining failed games to focus
 the replay on the first confirmed mistake instead of later forced-loss
-positions. Training can use those negative labels with a margin loss:
+positions.
+
+Use `--fen-file` for one-FEN-per-line targeted repair positions when the
+failure is already known and does not need to be reconstructed through a PGN.
+FEN input labels the position directly; it does not support `--min-value-delta`
+because there is no played move to compare, so use legal-value labels and
+`--legal-bad-actions-per-position` for dense bad-action supervision. Training
+can use those negative labels with a margin loss:
 
 ```bash
 uv run alpha-chess train \
