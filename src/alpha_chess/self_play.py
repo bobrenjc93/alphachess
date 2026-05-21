@@ -30,6 +30,8 @@ class SelfPlayConfig:
     root_material_max_loss_cp: int = 250
     root_king_safety_search_plies: int = 0
     root_king_safety_max_loss_cp: int = 250
+    root_tactical_prior_weight: float = 0.0
+    root_tactical_prior_temperature_cp: float = 200.0
     leaf_material_value_weight: float = 0.0
     leaf_material_search_plies: int = 0
     seed: int = 0
@@ -57,6 +59,8 @@ def play_game(evaluator: Evaluator, config: SelfPlayConfig, game_seed: int) -> d
             root_material_max_loss_cp=config.root_material_max_loss_cp,
             root_king_safety_search_plies=config.root_king_safety_search_plies,
             root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
+            root_tactical_prior_weight=config.root_tactical_prior_weight,
+            root_tactical_prior_temperature_cp=config.root_tactical_prior_temperature_cp,
             leaf_material_value_weight=config.leaf_material_value_weight,
             leaf_material_search_plies=config.leaf_material_search_plies,
         ),

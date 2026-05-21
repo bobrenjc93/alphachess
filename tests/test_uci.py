@@ -73,6 +73,14 @@ def test_parse_root_material_options() -> None:
         "setoption name RootKingSafetyMaxLossCp value 300",
         config,
     )
+    config = _parse_setoption(
+        "setoption name RootTacticalPriorWeight value 0.4",
+        config,
+    )
+    config = _parse_setoption(
+        "setoption name RootTacticalPriorTemperatureCp value 150",
+        config,
+    )
 
     assert config.material_value_search_plies == 2
     assert config.leaf_material_value_weight == 0.75
@@ -82,3 +90,5 @@ def test_parse_root_material_options() -> None:
     assert config.root_material_max_loss_cp == 250
     assert config.root_king_safety_search_plies == 1
     assert config.root_king_safety_max_loss_cp == 300
+    assert config.root_tactical_prior_weight == 0.4
+    assert config.root_tactical_prior_temperature_cp == 150

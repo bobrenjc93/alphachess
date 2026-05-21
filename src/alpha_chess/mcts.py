@@ -43,6 +43,8 @@ class MCTSConfig:
     root_material_max_loss_cp: int = 250
     root_king_safety_search_plies: int = 0
     root_king_safety_max_loss_cp: int = 250
+    root_tactical_prior_weight: float = 0.0
+    root_tactical_prior_temperature_cp: float = 200.0
     leaf_material_value_weight: float = 0.0
     leaf_material_search_plies: int = 0
     root_good_action_book: GoodActionBook | None = None
@@ -59,6 +61,16 @@ class MCTSConfig:
             or not 0.0 <= self.leaf_material_value_weight <= 1.0
         ):
             raise ValueError("leaf_material_value_weight must be between 0 and 1")
+        if (
+            not np.isfinite(self.root_tactical_prior_weight)
+            or not 0.0 <= self.root_tactical_prior_weight <= 1.0
+        ):
+            raise ValueError("root_tactical_prior_weight must be between 0 and 1")
+        if (
+            not np.isfinite(self.root_tactical_prior_temperature_cp)
+            or self.root_tactical_prior_temperature_cp <= 0
+        ):
+            raise ValueError("root_tactical_prior_temperature_cp must be positive")
         self.leaf_material_search_plies = max(0, int(self.leaf_material_search_plies))
 
 
@@ -86,6 +98,8 @@ class Node:
         material_max_loss_cp: int = 250,
         king_safety_filter_plies: int = 0,
         king_safety_max_loss_cp: int = 250,
+        root_tactical_prior_weight: float = 0.0,
+        root_tactical_prior_temperature_cp: float = 200.0,
         good_action_book: GoodActionBook | None = None,
         bad_action_book: BadActionBook | None = None,
     ) -> None:
@@ -115,11 +129,17 @@ class Node:
         priors = np.maximum(priors, 0.0)
         if policy_prior_temperature != 1.0:
             priors = np.power(priors, 1.0 / policy_prior_temperature)
-        total = float(priors.sum())
-        if total <= 0 or not np.isfinite(total):
-            priors = np.full(len(actions), 1.0 / len(actions), dtype=np.float64)
-        else:
-            priors = priors / total
+        priors = _normalize_priors(priors)
+        if root_tactical_prior_weight > 0:
+            tactical_priors = _root_tactical_prior_policy(
+                board,
+                actions,
+                material_filter_plies,
+                king_safety_filter_plies,
+                root_tactical_prior_temperature_cp,
+            )
+            weight = float(root_tactical_prior_weight)
+            priors = _normalize_priors((1.0 - weight) * priors + weight * tactical_priors)
 
         self.children = {
             int(action): Node(prior=float(prior)) for action, prior in zip(actions, priors)
@@ -225,6 +245,10 @@ class AlphaZeroMCTS:
                     material_max_loss_cp=self.config.root_material_max_loss_cp,
                     king_safety_filter_plies=self.config.root_king_safety_search_plies,
                     king_safety_max_loss_cp=self.config.root_king_safety_max_loss_cp,
+                    root_tactical_prior_weight=self.config.root_tactical_prior_weight,
+                    root_tactical_prior_temperature_cp=(
+                        self.config.root_tactical_prior_temperature_cp
+                    ),
                     good_action_book=self.config.root_good_action_book,
                     bad_action_book=self.config.root_bad_action_book,
                 )
@@ -297,6 +321,26 @@ class AlphaZeroMCTS:
         root.children = {
             action: root.children[action] for action in actions if action in root.children
         }
+        self._reweight_root_children(board, root)
+
+    def _reweight_root_children(self, board: chess.Board, root: Node) -> None:
+        if self.config.root_tactical_prior_weight <= 0 or not root.children:
+            return
+        actions = list(root.children)
+        priors = _normalize_priors(
+            np.asarray([root.children[action].prior for action in actions], dtype=np.float64)
+        )
+        tactical_priors = _root_tactical_prior_policy(
+            board,
+            actions,
+            self.config.root_material_search_plies,
+            self.config.root_king_safety_search_plies,
+            self.config.root_tactical_prior_temperature_cp,
+        )
+        weight = float(self.config.root_tactical_prior_weight)
+        blended = _normalize_priors((1.0 - weight) * priors + weight * tactical_priors)
+        for action, prior in zip(actions, blended):
+            root.children[action].prior = float(prior)
 
     def _select_child(self, node: Node) -> tuple[int, Node]:
         _, action, child = max(
@@ -332,6 +376,60 @@ class AlphaZeroMCTS:
             node.value_sum += value
             node.visit_count += 1
             value = -value
+
+
+def _normalize_priors(values: np.ndarray) -> np.ndarray:
+    values = np.asarray(values, dtype=np.float64)
+    values = np.maximum(values, 0.0)
+    total = float(values.sum())
+    if total <= 0 or not np.isfinite(total):
+        return np.full(len(values), 1.0 / max(1, len(values)), dtype=np.float64)
+    return values / total
+
+
+def _root_tactical_prior_policy(
+    board: chess.Board,
+    actions: list[int],
+    _material_search_plies: int,
+    king_safety_search_plies: int,
+    temperature_cp: float,
+) -> np.ndarray:
+    if not actions:
+        return np.asarray([], dtype=np.float64)
+
+    # This is a soft root prior, not the hard tactical guard. Keep it cheap so
+    # direct gates do not become dominated by pre-search scoring.
+    king_safety_search_plies = max(0, king_safety_search_plies)
+    temperature_cp = max(1e-6, float(temperature_cp))
+    perspective = board.turn
+    material_quiescence_cache: dict[tuple[str, int, bool], int] = {}
+    scores: list[int] = []
+
+    for action in actions:
+        move = action_to_move(action, board)
+        if move is None:
+            scores.append(-MATE_SCORE_CP)
+            continue
+
+        child = board.copy(stack=False)
+        child.push(move)
+        score = _material_quiescence_score(
+            child,
+            1,
+            perspective,
+            material_quiescence_cache,
+        )
+        if _is_speculative_checking_move(board, move):
+            score -= SPECULATIVE_CHECKING_MOVE_PENALTY_CP
+        if king_safety_search_plies > 0:
+            score = min(score, _static_safety_score_cp(child, perspective))
+        scores.append(score)
+
+    scores_array = np.asarray(scores, dtype=np.float64)
+    if not np.all(np.isfinite(scores_array)):
+        return np.full(len(actions), 1.0 / len(actions), dtype=np.float64)
+    shifted = np.clip((scores_array - float(scores_array.max())) / temperature_cp, -60.0, 0.0)
+    return _normalize_priors(np.exp(shifted))
 
 
 def _filter_root_tactics(

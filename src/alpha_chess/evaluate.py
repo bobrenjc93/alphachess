@@ -47,6 +47,8 @@ class EvalConfig:
     root_material_max_loss_cp: int = 250
     root_king_safety_search_plies: int = 0
     root_king_safety_max_loss_cp: int = 250
+    root_tactical_prior_weight: float = 0.0
+    root_tactical_prior_temperature_cp: float = 200.0
     seed: int = 0
     max_plies: int = 512
     pgn_out: str | None = None
@@ -110,6 +112,8 @@ def evaluate_checkpoint(config: EvalConfig) -> dict[str, float]:
         root_material_max_loss_cp=config.root_material_max_loss_cp,
         root_king_safety_search_plies=config.root_king_safety_search_plies,
         root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
+        root_tactical_prior_weight=config.root_tactical_prior_weight,
+        root_tactical_prior_temperature_cp=config.root_tactical_prior_temperature_cp,
         leaf_material_value_weight=config.leaf_material_value_weight,
         leaf_material_search_plies=config.leaf_material_search_plies,
         good_action_book=good_action_book,
@@ -170,6 +174,8 @@ def evaluate_against_engine(
                 root_material_max_loss_cp=config.root_material_max_loss_cp,
                 root_king_safety_search_plies=config.root_king_safety_search_plies,
                 root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
+                root_tactical_prior_weight=config.root_tactical_prior_weight,
+                root_tactical_prior_temperature_cp=config.root_tactical_prior_temperature_cp,
                 leaf_material_value_weight=config.leaf_material_value_weight,
                 leaf_material_search_plies=config.leaf_material_search_plies,
                 good_action_book=good_action_book,
@@ -211,6 +217,8 @@ def evaluate_match(
     leaf_material_search_plies: int = 0,
     root_king_safety_search_plies: int = 0,
     root_king_safety_max_loss_cp: int = 250,
+    root_tactical_prior_weight: float = 0.0,
+    root_tactical_prior_temperature_cp: float = 200.0,
     good_action_book: GoodActionBook | None = None,
     bad_action_book: BadActionBook | None = None,
 ) -> dict[str, float]:
@@ -233,6 +241,8 @@ def evaluate_match(
             root_material_max_loss_cp=root_material_max_loss_cp,
             root_king_safety_search_plies=root_king_safety_search_plies,
             root_king_safety_max_loss_cp=root_king_safety_max_loss_cp,
+            root_tactical_prior_weight=root_tactical_prior_weight,
+            root_tactical_prior_temperature_cp=root_tactical_prior_temperature_cp,
             leaf_material_value_weight=leaf_material_value_weight,
             leaf_material_search_plies=leaf_material_search_plies,
             good_action_book=good_action_book,
@@ -294,6 +304,8 @@ def _evaluate_match_game_task(
         root_material_max_loss_cp=config.root_material_max_loss_cp,
         root_king_safety_search_plies=config.root_king_safety_search_plies,
         root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
+        root_tactical_prior_weight=config.root_tactical_prior_weight,
+        root_tactical_prior_temperature_cp=config.root_tactical_prior_temperature_cp,
         leaf_material_value_weight=config.leaf_material_value_weight,
         leaf_material_search_plies=config.leaf_material_search_plies,
         good_action_book=good_action_book,
@@ -344,6 +356,8 @@ def _evaluate_engine_game_task(
             root_material_max_loss_cp=config.root_material_max_loss_cp,
             root_king_safety_search_plies=config.root_king_safety_search_plies,
             root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
+            root_tactical_prior_weight=config.root_tactical_prior_weight,
+            root_tactical_prior_temperature_cp=config.root_tactical_prior_temperature_cp,
             leaf_material_value_weight=config.leaf_material_value_weight,
             leaf_material_search_plies=config.leaf_material_search_plies,
             good_action_book=good_action_book,
@@ -386,6 +400,8 @@ def play_eval_game(
     leaf_material_search_plies: int = 0,
     root_king_safety_search_plies: int = 0,
     root_king_safety_max_loss_cp: int = 250,
+    root_tactical_prior_weight: float = 0.0,
+    root_tactical_prior_temperature_cp: float = 200.0,
     good_action_book: GoodActionBook | None = None,
     bad_action_book: BadActionBook | None = None,
 ) -> tuple[float, chess.Board]:
@@ -399,6 +415,8 @@ def play_eval_game(
         root_material_max_loss_cp=root_material_max_loss_cp,
         root_king_safety_search_plies=root_king_safety_search_plies,
         root_king_safety_max_loss_cp=root_king_safety_max_loss_cp,
+        root_tactical_prior_weight=root_tactical_prior_weight,
+        root_tactical_prior_temperature_cp=root_tactical_prior_temperature_cp,
         leaf_material_value_weight=leaf_material_value_weight,
         leaf_material_search_plies=leaf_material_search_plies,
         root_good_action_book=good_action_book,
@@ -413,6 +431,8 @@ def play_eval_game(
         root_material_max_loss_cp=root_material_max_loss_cp,
         root_king_safety_search_plies=root_king_safety_search_plies,
         root_king_safety_max_loss_cp=root_king_safety_max_loss_cp,
+        root_tactical_prior_weight=root_tactical_prior_weight,
+        root_tactical_prior_temperature_cp=root_tactical_prior_temperature_cp,
         leaf_material_value_weight=leaf_material_value_weight,
         leaf_material_search_plies=leaf_material_search_plies,
     )
@@ -467,6 +487,8 @@ def play_eval_game_against_engine(
     leaf_material_search_plies: int = 0,
     root_king_safety_search_plies: int = 0,
     root_king_safety_max_loss_cp: int = 250,
+    root_tactical_prior_weight: float = 0.0,
+    root_tactical_prior_temperature_cp: float = 200.0,
     good_action_book: GoodActionBook | None = None,
     bad_action_book: BadActionBook | None = None,
 ) -> tuple[float, chess.Board]:
@@ -482,6 +504,8 @@ def play_eval_game_against_engine(
             root_material_max_loss_cp=root_material_max_loss_cp,
             root_king_safety_search_plies=root_king_safety_search_plies,
             root_king_safety_max_loss_cp=root_king_safety_max_loss_cp,
+            root_tactical_prior_weight=root_tactical_prior_weight,
+            root_tactical_prior_temperature_cp=root_tactical_prior_temperature_cp,
             leaf_material_value_weight=leaf_material_value_weight,
             leaf_material_search_plies=leaf_material_search_plies,
             root_good_action_book=good_action_book,

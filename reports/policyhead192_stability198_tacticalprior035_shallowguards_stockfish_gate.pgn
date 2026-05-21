@@ -1,0 +1,25 @@
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "2026.05.20"]
+[Round "1"]
+[White "AlphaChess"]
+[Black "tools/stockfish/bin/stockfish"]
+[Result "0-1"]
+[Time "20:27:33"]
+[AlphaChessScore "0.0"]
+[AlphaChessTimestamp "2026-05-20T20:27:33-07:00"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. Nxc6 bxc6 6. Bd3 d5 7. Qe2 dxe4 8. Bxe4 Nxe4 9. Nc3 Qe7 10. Nxe4 Bf5 11. Ng3 Qxe2+ 12. Kxe2 Bxc2 13. Bg5 h6 14. Be3 O-O-O 15. Kf1 Bd3+ 16. Ne2 Be7 17. Rc1 Rhe8 18. Rxc6 Bg5 19. g3 Be4 20. Rc1 Bxh1 21. Kg1 Be4 22. f4 Bf6 23. b3 Bd3 24. Rc6 Rxe3 25. Rxf6 Rxe2 26. Rxf7 Bb5 27. Rf8 Rxf8 28. a4 Rd8 29. axb5 Rd1# 0-1
+
+[Event "AlphaChess evaluation"]
+[Site "?"]
+[Date "2026.05.20"]
+[Round "2"]
+[White "tools/stockfish/bin/stockfish"]
+[Black "AlphaChess"]
+[Result "1-0"]
+[Time "20:27:33"]
+[AlphaChessScore "0.0"]
+[AlphaChessTimestamp "2026-05-20T20:27:33-07:00"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5 9. exd5 Nxd5 10. Nxe5 Nxe5 11. Rxe5 Nf6 12. d4 Bd6 13. Re1 Bb7 14. Be3 Kh8 15. Nd2 Rc8 16. Bg5 c6 17. Ne4 Bc7 18. Bxf6 gxf6 19. Nc5 Rb8 20. Nxb7 Rxb7 21. Qh5 b4 22. Bc2 f5 23. Bxf5 Qh4 24. Qxh4 Kg7 25. Qg5+ Kh8 26. Qh6 bxc3 27. Qxf8# 1-0

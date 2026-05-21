@@ -223,6 +223,31 @@ def test_mcts_policy_prior_temperature_flattens_priors() -> None:
     assert flat_result.root.children[e4_action].prior > flat_result.root.children[d4_action].prior
 
 
+def test_mcts_root_tactical_prior_can_override_policy_prior() -> None:
+    board = chess.Board("q3k3/8/8/8/8/8/8/R3K3 w - - 0 1")
+    quiet_action = move_to_action(chess.Move.from_uci("e1d1"), board)
+    capture_action = move_to_action(chess.Move.from_uci("a1a8"), board)
+    evaluator = SparsePolicyEvaluator({"e1d1": 0.99, "a1a8": 0.01})
+
+    policy_only = AlphaZeroMCTS(
+        evaluator,
+        MCTSConfig(simulations=0, root_mate_search_plies=0),
+    ).run(board)
+    tactical = AlphaZeroMCTS(
+        evaluator,
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_tactical_prior_weight=1.0,
+            root_tactical_prior_temperature_cp=100.0,
+        ),
+    ).run(board)
+
+    assert policy_only.select_action(temperature=0.0, rng=np.random.default_rng(0)) == quiet_action
+    assert tactical.select_action(temperature=0.0, rng=np.random.default_rng(0)) == capture_action
+    assert tactical.root.children[capture_action].prior > tactical.root.children[quiet_action].prior
+
+
 def test_search_result_breaks_visit_ties_by_prior() -> None:
     board = chess.Board()
     e4_action = move_to_action(chess.Move.from_uci("e2e4"), board)
@@ -269,6 +294,24 @@ def test_mcts_rejects_invalid_leaf_material_weight() -> None:
             pass
         else:
             raise AssertionError("invalid leaf material weight was accepted")
+
+
+def test_mcts_rejects_invalid_root_tactical_prior_settings() -> None:
+    for weight in (-0.1, 1.1, float("nan")):
+        try:
+            MCTSConfig(root_tactical_prior_weight=weight)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid root tactical prior weight was accepted")
+
+    for temperature in (0.0, -1.0, float("nan")):
+        try:
+            MCTSConfig(root_tactical_prior_temperature_cp=temperature)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid root tactical prior temperature was accepted")
 
 
 def test_mcts_leaf_material_value_blend_scores_leaf_from_side_to_move() -> None:

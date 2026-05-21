@@ -53,6 +53,8 @@ class IterationConfig:
     root_material_max_loss_cp: int = 250
     root_king_safety_search_plies: int = 0
     root_king_safety_max_loss_cp: int = 250
+    root_tactical_prior_weight: float = 0.0
+    root_tactical_prior_temperature_cp: float = 200.0
     replay_data: list[str] | None = None
     holdout_data: list[str] | None = None
     self_play_weight: float = 1.0
@@ -101,6 +103,8 @@ def run_iterations(config: IterationConfig) -> Path:
             root_material_max_loss_cp=config.root_material_max_loss_cp,
             root_king_safety_search_plies=config.root_king_safety_search_plies,
             root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
+            root_tactical_prior_weight=config.root_tactical_prior_weight,
+            root_tactical_prior_temperature_cp=config.root_tactical_prior_temperature_cp,
             leaf_material_value_weight=config.leaf_material_value_weight,
             leaf_material_search_plies=config.leaf_material_search_plies,
             seed=iter_seed,
@@ -183,6 +187,8 @@ def run_iterations(config: IterationConfig) -> Path:
             "root_material_max_loss_cp": config.root_material_max_loss_cp,
             "root_king_safety_search_plies": config.root_king_safety_search_plies,
             "root_king_safety_max_loss_cp": config.root_king_safety_max_loss_cp,
+            "root_tactical_prior_weight": config.root_tactical_prior_weight,
+            "root_tactical_prior_temperature_cp": config.root_tactical_prior_temperature_cp,
             "workers": config.eval_workers,
             "seed": iter_seed,
             "max_plies": config.max_plies,
@@ -213,6 +219,8 @@ def run_iterations(config: IterationConfig) -> Path:
                 "root_material_max_loss_cp": config.root_material_max_loss_cp,
                 "root_king_safety_search_plies": config.root_king_safety_search_plies,
                 "root_king_safety_max_loss_cp": config.root_king_safety_max_loss_cp,
+                "root_tactical_prior_weight": config.root_tactical_prior_weight,
+                "root_tactical_prior_temperature_cp": config.root_tactical_prior_temperature_cp,
                 "workers": config.eval_workers,
                 "seed": iter_seed + 100_000,
                 "max_plies": config.max_plies,

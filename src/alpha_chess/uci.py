@@ -28,6 +28,8 @@ class UCIConfig:
     root_material_max_loss_cp: int = 250
     root_king_safety_search_plies: int = 0
     root_king_safety_max_loss_cp: int = 250
+    root_tactical_prior_weight: float = 0.0
+    root_tactical_prior_temperature_cp: float = 200.0
 
 
 def run_uci(config: UCIConfig) -> None:
@@ -55,6 +57,8 @@ def run_uci(config: UCIConfig) -> None:
     send("option name RootMaterialMaxLossCp type spin default 250 min 0 max 5000")
     send("option name RootKingSafetySearchPlies type spin default 0 min 0 max 8")
     send("option name RootKingSafetyMaxLossCp type spin default 250 min 0 max 5000")
+    send("option name RootTacticalPriorWeight type string default 0.0")
+    send("option name RootTacticalPriorTemperatureCp type spin default 200 min 1 max 5000")
 
     for raw_line in sys.stdin:
         line = raw_line.strip()
@@ -74,6 +78,8 @@ def run_uci(config: UCIConfig) -> None:
             send("option name RootMaterialMaxLossCp type spin default 250 min 0 max 5000")
             send("option name RootKingSafetySearchPlies type spin default 0 min 0 max 8")
             send("option name RootKingSafetyMaxLossCp type spin default 250 min 0 max 5000")
+            send("option name RootTacticalPriorWeight type string default 0.0")
+            send("option name RootTacticalPriorTemperatureCp type spin default 200 min 1 max 5000")
             send("uciok")
         elif line == "isready":
             send("readyok")
@@ -104,6 +110,8 @@ def _choose_move(board: chess.Board, evaluator, config: UCIConfig) -> chess.Move
             root_material_max_loss_cp=config.root_material_max_loss_cp,
             root_king_safety_search_plies=config.root_king_safety_search_plies,
             root_king_safety_max_loss_cp=config.root_king_safety_max_loss_cp,
+            root_tactical_prior_weight=config.root_tactical_prior_weight,
+            root_tactical_prior_temperature_cp=config.root_tactical_prior_temperature_cp,
             leaf_material_value_weight=config.leaf_material_value_weight,
             leaf_material_search_plies=config.leaf_material_search_plies,
         ),
@@ -199,6 +207,17 @@ def _parse_setoption(line: str, config: UCIConfig) -> UCIConfig:
     if name == "rootkingsafetymaxlosscp":
         try:
             return replace(config, root_king_safety_max_loss_cp=max(0, int(value)))
+        except ValueError:
+            return config
+    if name == "roottacticalpriorweight":
+        try:
+            weight = min(1.0, max(0.0, float(value)))
+            return replace(config, root_tactical_prior_weight=weight)
+        except ValueError:
+            return config
+    if name == "roottacticalpriortemperaturecp":
+        try:
+            return replace(config, root_tactical_prior_temperature_cp=max(1.0, float(value)))
         except ValueError:
             return config
     return config
