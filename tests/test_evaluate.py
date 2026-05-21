@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import chess
 import numpy as np
 import torch
@@ -26,12 +28,16 @@ def test_write_eval_pgns(tmp_path) -> None:
                 opponent_name="test-opponent",
             )
         ],
+        timestamp=datetime(2026, 5, 20, 18, 38, 19, tzinfo=timezone.utc),
     )
 
     text = path.read_text()
+    assert '[Date "2026.05.20"]' in text
+    assert '[Time "18:38:19"]' in text
     assert '[White "AlphaChess"]' in text
     assert '[Black "test-opponent"]' in text
     assert '[AlphaChessScore "0.5"]' in text
+    assert '[AlphaChessTimestamp "2026-05-20T18:38:19+00:00"]' in text
     assert "1. e4" in text
 
 

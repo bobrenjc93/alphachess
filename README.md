@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Latest progress timestamp: `2026-05-20T18:24:51-07:00`.
+Latest progress timestamp: `2026-05-20T18:38:19-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -194,6 +194,7 @@ next documentation commit.
 | `2026-05-20T18:07:43-07:00` report timestamp | Model-blunder interpolation check (`reports/2026-05-20_opening_model_blunder_probe.md`). | N/A | not gated | Blending rejected model-blunder repairs back into the parent preserved the broad guard only at `2.5%`, where opening-blunder top-1 moved just to `0.0006` and bad-action loss barely changed. No direct gate was spent. |
 | `2026-05-20T18:16:52-07:00` report timestamp | Value-delta weighted bad-action objective (`reports/2026-05-20_opening_model_blunder_probe.md`). | N/A | not gated | Training can now weight bad-action margin loss by Stockfish value-drop deltas. The first delta-weighted model-blunder repair still missed the broad holdout guard from epoch 1, so no direct gate was spent. |
 | `2026-05-20T18:24:51-07:00` report timestamp | Bad-action probability objective (`reports/2026-05-20_opening_model_blunder_probe.md`). | N/A | not gated | Added `--bad-action-loss-type probability` to suppress listed bad-move probability directly instead of forcing a target-margin relation. The first probability-loss repair followed the same broad-holdout regression pattern, so no direct gate was spent. |
+| `2026-05-20T18:38:19-07:00` PGN header timestamp | Lower-pressure probability repair check (`reports/2026-05-20_opening_model_blunder_probe.md`, `reports/policyhead192_modelblunder_prob_bw1_epoch1_top2_mat4_stockfish_gate.pgn`). | N/A | top-2 book mat4 gate `0.0/2` | Dropping probability bad-action weight to `1.0` still missed the soft broad-holdout guard. Epoch 1 preserved hard-label broad top-1/top-3 at `0.3433`/`0.5388` and nudged opening-blunder top-1 to `0.0181`, but direct play repeated adjacent tactical failures and lost both games. |
 
 Current practical status:
 
@@ -290,9 +291,10 @@ Current practical status:
   value-drop deltas. The first delta-weighted model-blunder repair still failed
   the broad guard, so the capability blocker is not solved by severity weighting
   alone.
-- A probability-suppression bad-action loss is now available, but its first
-  guarded repair on the same model-blunder source also damaged broad holdout
-  before making the target slice plausible.
+- A probability-suppression bad-action loss is now available, but both high-
+  and lower-pressure repairs on the same model-blunder source damaged soft broad
+  holdout. The lower-pressure epoch preserved hard-label broad accuracy, but a
+  direct two-game check still lost both games.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.

@@ -5,6 +5,7 @@ from __future__ import annotations
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import chess
@@ -513,9 +514,17 @@ def play_eval_game_against_engine(
     return score, board
 
 
-def write_eval_pgns(path: str | Path, records: list[EvalGameRecord]) -> Path:
+def write_eval_pgns(
+    path: str | Path,
+    records: list[EvalGameRecord],
+    timestamp: datetime | None = None,
+) -> Path:
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
+    if timestamp is None:
+        timestamp = datetime.now().astimezone()
+    timestamp = timestamp.replace(microsecond=0)
+    iso_timestamp = timestamp.isoformat()
     with output.open("w", encoding="utf-8") as handle:
         for index, record in enumerate(records, start=1):
             game = chess.pgn.Game.from_board(record.board)
@@ -523,6 +532,8 @@ def write_eval_pgns(path: str | Path, records: list[EvalGameRecord]) -> Path:
             if result == "*" and record.score == 0.5:
                 result = "1/2-1/2"
             game.headers["Event"] = "AlphaChess evaluation"
+            game.headers["Date"] = timestamp.strftime("%Y.%m.%d")
+            game.headers["Time"] = timestamp.strftime("%H:%M:%S")
             game.headers["Round"] = str(index)
             game.headers["White"] = (
                 "AlphaChess" if record.model_color == chess.WHITE else record.opponent_name
@@ -532,6 +543,7 @@ def write_eval_pgns(path: str | Path, records: list[EvalGameRecord]) -> Path:
             )
             game.headers["Result"] = result
             game.headers["AlphaChessScore"] = str(record.score)
+            game.headers["AlphaChessTimestamp"] = iso_timestamp
             print(game, file=handle, end="\n\n")
     return output
 

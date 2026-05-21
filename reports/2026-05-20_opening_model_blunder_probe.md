@@ -182,6 +182,67 @@ ranking pattern as the margin probes: epoch 1 fell to holdout top-1/top-3
 `0.0321`/`0.5321`. The probability objective changes the bad-action loss scale
 but does not solve the broad-transfer problem on this source.
 
+## Lower-Pressure Probability Follow-Up
+
+Timestamp: `2026-05-20T18:38:19-07:00`
+
+I repeated the probability objective with `--bad-action-weight 1.0` instead of
+`10.0`, keeping the same model-blunder sources, `--bad-action-delta-weight 3.0`,
+and the same soft broad-holdout guard:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_hardlabels_cap20_lr2e6_blend_0.75.pt \
+  --distill-checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_hardlabels_cap20_lr2e6_blend_0.75.pt \
+  --distill-data data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 \
+  --policy-distill-weight 10.0 \
+  --data data/teacher/policyhead192_opening16k_modelblunders_actiontargets_top4_t05_v1 data/teacher/policyhead192_latest_failure_fenbranch_modelblunders_actiontargets_top4_t10_v1 \
+  --bad-action-weight 1.0 \
+  --bad-action-loss-type probability \
+  --bad-action-delta-weight 3.0 \
+  --select-best-require 'holdout_policy_acc>=0.3395' 'holdout_policy_top3_acc>=0.5380'
+```
+
+No epoch satisfied the soft broad-holdout guard. Epoch 1 reproduced the same
+soft holdout top-1/top-3 as the higher-pressure run, `0.3380`/`0.5338`.
+Validation with hard action labels gave a less pessimistic broad read,
+`0.3433`/`0.5388`, and opening-blunder top-1 moved from `0.0000` to `0.0181`,
+so I spent one comparable two-game direct check on epoch 1:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/opening16k_modelblunder_top4_prob_delta3_bw1_distill10_lr1e6/epoch_0001.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 4 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 data/teacher/policyhead192_mat4_latest_fullgame_context_t05_v1 \
+  --good-action-book-top-k 2 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_modelblunder_prob_bw1_epoch1_top2_mat4_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. The White game repeated the `Bc4` tactical failure family,
+and the Black game repeated an adjacent `...Kh8` kingside-collapse family. The
+lower-pressure probability objective is therefore rejected as a direct-strength
+repair, not just as a soft-holdout miss.
+
+## Evaluation PGN Timestamps
+
+Timestamp: `2026-05-20T18:38:19-07:00`
+
+Evaluation PGNs now write real provenance headers: `Date`, `Time`, and
+`AlphaChessTimestamp` with an ISO timestamp. This keeps future direct-check
+artifacts aligned with the README's real-timestamp progress tracker instead of
+relying only on filesystem mtimes.
+
 ## Verification
 
 - `python3 -m compileall -q src/alpha_chess`: passed
@@ -190,4 +251,5 @@ but does not solve the broad-transfer problem on this source.
   `8 passed in 1.63s`
 - `uv run pytest tests/test_model_and_data.py tests/test_cli.py -q`:
   `33 passed in 11.81s`
-- `uv run pytest -q`: `129 passed in 94.66s`
+- `uv run pytest tests/test_evaluate.py -q`: `3 passed in 3.82s`
+- `uv run pytest -q`: `129 passed in 94.46s`
