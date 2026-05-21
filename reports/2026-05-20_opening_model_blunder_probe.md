@@ -358,6 +358,50 @@ Black game shifted into a different `...Qh4` attacking line, but both games
 still lost. This is a real guard coverage improvement, not a direct-strength
 solution.
 
+## Material-Opportunity Root Guard
+
+Timestamp: `2026-05-20T19:28:36-07:00`
+
+First-blunder mining from the quiet-safety gate found that the next White
+failure was not a material loss but a missed material gain:
+
+| Game | Played | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `O-O` | `Qxe4+` | `0.3598` | `r1bqkb1r/p1p2ppp/2p5/8/4n3/8/PPP1QPPP/RNB1K2R w KQkq - 0 9` |
+| 2 | `...Ne4` | `...Qd7` | `0.0918` | `r2q1rk1/1bp2ppp/p2b1n2/1p6/3P4/1BP1B3/PP3PPP/RN1QR1K1 b - - 4 14` |
+
+The existing material guard only rejected moves that fell below the current
+material baseline. I tightened it so that when shallow material search finds a
+clear gain, root moves must also stay within `root_material_max_loss_cp` of the
+best gain. On the first FEN above, this prunes the played castling move.
+
+Comparable direct gate:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability198_probcontext_epoch2_blend_0.25.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 4 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 data/teacher/policyhead192_mat4_latest_fullgame_context_t05_v1 data/teacher/policyhead192_modelblunder_prob_bw1_firstblunders_context_t05_v1 \
+  --good-action-book-top-k 2 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_stability198_probcontext_blend025_materialopportunity_top2_mat4_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. The White game avoided the exact castling miss and entered a
+different queen-trade line, while the Black game shifted back toward a kingside
+mate pattern. The material-opportunity guard fixes the local missed-gain class
+but is not enough to pass the direct gate.
+
 ## Verification
 
 - `python3 -m compileall -q src/alpha_chess`: passed
@@ -367,5 +411,5 @@ solution.
 - `uv run pytest tests/test_model_and_data.py tests/test_cli.py -q`:
   `33 passed in 11.81s`
 - `uv run pytest tests/test_evaluate.py -q`: `3 passed in 3.82s`
-- `uv run pytest tests/test_mcts.py -q`: `36 passed in 155.56s`
-- `uv run pytest -q`: `130 passed in 171.95s`
+- `uv run pytest tests/test_mcts.py -q`: `37 passed in 154.92s`
+- `uv run pytest -q`: `131 passed in 168.96s`

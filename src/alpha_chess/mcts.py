@@ -382,7 +382,6 @@ def _filter_root_material(
     min_allowed = baseline - max_loss_cp
     full_width_cache: dict[tuple[str, int, bool], int] = {}
     quiescence_cache: dict[tuple[str, int, bool], int] = {}
-    safe_actions: list[int] = []
     scored_actions: list[tuple[int, int]] = []
 
     for action in actions:
@@ -401,9 +400,14 @@ def _filter_root_material(
         if _is_speculative_checking_move(board, move):
             score -= SPECULATIVE_CHECKING_MOVE_PENALTY_CP
         scored_actions.append((action, score))
-        if score >= min_allowed:
-            safe_actions.append(action)
 
+    if scored_actions:
+        best_score = max(score for _, score in scored_actions)
+        if best_score > baseline:
+            min_allowed = max(min_allowed, best_score - max_loss_cp)
+    safe_actions = [
+        action for action, score in scored_actions if score >= min_allowed
+    ]
     if safe_actions:
         return safe_actions
     if not scored_actions:

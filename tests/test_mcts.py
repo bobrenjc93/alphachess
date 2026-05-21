@@ -385,6 +385,26 @@ def test_mcts_root_material_filter_can_be_disabled() -> None:
     assert blunder_action in result.root.children
 
 
+def test_mcts_root_material_prunes_missed_material_gain_from_gate_loss() -> None:
+    board = chess.Board("r1bqkb1r/p1p2ppp/2p5/8/4n3/8/PPP1QPPP/RNB1K2R w KQkq - 0 9")
+    castle_action = move_to_action(chess.Move.from_uci("e1g1"), board)
+
+    search = AlphaZeroMCTS(
+        SparsePolicyEvaluator({"e1g1": 0.99, "b1c3": 0.01}),
+        MCTSConfig(
+            simulations=0,
+            root_mate_search_plies=0,
+            root_material_search_plies=1,
+            root_material_max_loss_cp=100,
+        ),
+    )
+    result = search.run(board)
+
+    assert castle_action not in result.root.children
+    assert result.root.children
+    assert result.select_action(temperature=0.0, rng=search.rng) != castle_action
+
+
 def test_material_tactical_moves_are_capped_by_priority() -> None:
     board = chess.Board("8/PPPPPPPP/8/8/4k3/8/8/4K3 w - - 0 1")
     raw_tactical = [
