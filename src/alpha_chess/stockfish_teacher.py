@@ -43,6 +43,8 @@ class StockfishTeacherConfig:
     legal_bad_actions_per_position: int = 0
     legal_bad_action_min_delta: float | None = None
     legal_value_policy_temperature: float | None = None
+    fen_branch_plies: int = 0
+    fen_branch_width: int = 1
     chunk_size: int = 1024
 
 
@@ -53,6 +55,10 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
         raise ValueError("blunder_context_plies requires min_value_delta")
     if config.fen_file and config.min_value_delta is not None:
         raise ValueError("fen_file input does not support min_value_delta")
+    if config.fen_branch_plies < 0:
+        raise ValueError("fen_branch_plies must be non-negative")
+    if config.fen_branch_width <= 0:
+        raise ValueError("fen_branch_width must be positive")
     if (
         config.legal_bad_actions_per_position > 0
         and config.legal_bad_action_min_delta is None
@@ -285,7 +291,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
         played_move: chess.Move | None = None,
         context_boards: list[chess.Board] | None = None,
         continuation: list[chess.Move] | None = None,
-    ) -> tuple[bool, bool]:
+    ) -> tuple[bool, bool, list[dict], chess.Move | None]:
         nonlocal legal_bad_action_rows, legal_bad_action_labels
         nonlocal legal_bad_action_candidates_evaluated
         infos = _analyse_position(engine, sample_board, limit, config.multipv)
@@ -294,7 +300,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
             play = engine.play(sample_board, limit)
             best_move = play.move
         if best_move not in sample_board.legal_moves:
-            return False, False
+            return False, False, infos, best_move
 
         score = infos[0].get("score") if infos else None
         value = _score_to_value(score, sample_board.turn)
@@ -359,7 +365,7 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
             ):
                 should_append = False
         if not should_append:
-            return False, False
+            return False, False, infos, best_move
 
         append_teacher_sample(
             source,
@@ -372,13 +378,54 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
             legal_bad_moves=legal_bad_moves,
             policy_override=policy_override,
         )
-        if bad_move is not None and context_boards is not None and positions < config.max_positions:
+        if (
+            bad_move is not None
+            and context_boards is not None
+            and positions < config.max_positions
+        ):
             append_blunder_context_samples(source, context_boards)
         if positions < config.max_positions:
             append_pv_line_samples(source, sample_board, infos)
         if continuation is not None and positions < config.max_positions:
             append_game_line_samples(source, sample_board, continuation)
-        return True, bad_move is not None
+        return True, bad_move is not None, infos, best_move
+
+    def append_fen_branch(
+        source: str,
+        board: chess.Board,
+        remaining_plies: int,
+        seen_keys: set[str],
+    ) -> None:
+        nonlocal fen_positions_seen, fen_positions_used, skipped_positions
+        if positions >= config.max_positions or board.is_game_over(claim_draw=True):
+            return
+        key = " ".join(board.fen().split()[:4])
+        if key in seen_keys:
+            return
+        seen_keys.add(key)
+        fen_positions_seen += 1
+        if skipped_positions < max(0, config.skip_positions):
+            skipped_positions += 1
+            return
+
+        used_sample, _found_blunder, infos, best_move = append_analysed_sample(
+            source,
+            board,
+        )
+        if used_sample:
+            fen_positions_used += 1
+        if remaining_plies <= 0 or positions >= config.max_positions:
+            return
+
+        for move in _branch_moves_from_infos(
+            board,
+            infos,
+            best_move,
+            config.fen_branch_width,
+        ):
+            child = board.copy(stack=False)
+            child.push(move)
+            append_fen_branch(source, child, remaining_plies - 1, seen_keys)
 
     with chess.engine.SimpleEngine.popen_uci(config.engine_path) as engine:
         for pgn_path in pgn_paths:
@@ -435,7 +482,12 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                                 board.push(move)
                                 continue
                             context_board = board.copy(stack=False)
-                            used_sample, found_blunder = append_analysed_sample(
+                            (
+                                used_sample,
+                                found_blunder,
+                                _infos,
+                                _best_move,
+                            ) = append_analysed_sample(
                                 source,
                                 board,
                                 played_move=move,
@@ -462,18 +514,16 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
             if positions >= config.max_positions:
                 break
             source = str(fen_path)
+            seen_fen_keys: set[str] = set()
             for board in _read_fen_boards(fen_path):
                 if positions >= config.max_positions:
                     break
-                fen_positions_seen += 1
-                if board.is_game_over(claim_draw=True):
-                    continue
-                if skipped_positions < max(0, config.skip_positions):
-                    skipped_positions += 1
-                    continue
-                used_sample, _found_blunder = append_analysed_sample(source, board)
-                if used_sample:
-                    fen_positions_used += 1
+                append_fen_branch(
+                    source,
+                    board,
+                    max(0, config.fen_branch_plies),
+                    seen_fen_keys,
+                )
 
             flush_chunk(source)
 
@@ -512,6 +562,8 @@ def generate_stockfish_teacher(config: StockfishTeacherConfig) -> list[Path]:
                 f"legal_bad_actions_per_position={config.legal_bad_actions_per_position}",
                 f"legal_bad_action_min_delta={config.legal_bad_action_min_delta}",
                 f"legal_value_policy_temperature={config.legal_value_policy_temperature}",
+                f"fen_branch_plies={config.fen_branch_plies}",
+                f"fen_branch_width={config.fen_branch_width}",
                 f"legal_bad_action_rows={legal_bad_action_rows}",
                 f"legal_bad_action_labels={legal_bad_action_labels}",
                 f"legal_bad_action_candidates_evaluated={legal_bad_action_candidates_evaluated}",
@@ -575,6 +627,29 @@ def _best_pv_from_infos(infos: list[dict]) -> list[chess.Move]:
         if pv:
             return list(pv)
     return []
+
+
+def _branch_moves_from_infos(
+    board: chess.Board,
+    infos: list[dict],
+    fallback_move: chess.Move | None,
+    width: int,
+) -> list[chess.Move]:
+    moves: list[chess.Move] = []
+    for info in infos:
+        pv = info.get("pv")
+        if not pv:
+            continue
+        move = pv[0]
+        if move in board.legal_moves and move not in moves:
+            moves.append(move)
+    if (
+        fallback_move is not None
+        and fallback_move in board.legal_moves
+        and fallback_move not in moves
+    ):
+        moves.append(fallback_move)
+    return moves[: max(0, int(width))]
 
 
 def _score_to_value(score: chess.engine.PovScore | None, turn: chess.Color) -> float:

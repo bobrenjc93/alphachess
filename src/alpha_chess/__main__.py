@@ -204,6 +204,8 @@ def main(argv: list[str] | None = None) -> None:
     teacher_parser.add_argument("--legal-bad-actions-per-position", type=int, default=0)
     teacher_parser.add_argument("--legal-bad-action-min-delta", type=float)
     teacher_parser.add_argument("--legal-value-policy-temperature", type=float)
+    teacher_parser.add_argument("--fen-branch-plies", type=int, default=0)
+    teacher_parser.add_argument("--fen-branch-width", type=int, default=1)
     teacher_parser.add_argument("--chunk-size", type=int, default=1024)
 
     engine_self_play_parser = subparsers.add_parser(

@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Latest progress timestamp: `2026-05-20T17:25:52-07:00`.
+Latest progress timestamp: `2026-05-20T17:38:43-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -189,6 +189,7 @@ next documentation commit.
 | `2026-05-20T16:53:22-07:00` PGN file mtime | Latest full-game exact-book top-2 diagnostic (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening16k_stability180_blend075_mat4_latestbook_top2_stockfish_gate.pgn`). | N/A | latest-book top-2 mat4 gate `0.0/2` | A 400-position exact source from the latest failed gate removed the immediate `e5` and `...Na5` misses, but direct play still lost. New first failures were `f3` vs `b3` and `...Kh8` vs `...c5`, both outside the books. |
 | `2026-05-20T17:15:10-07:00` PGN file mtime | Latest full-game policy-head repair rejection (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_latestfull400_epoch2_blend025_top2_mat4_stockfish_gate.pgn`). | N/A | latest-source repair mat4 gate `0.0/2` | A guarded repair with the new 400-position source could be blended back to holdout `0.3453` top-1 and `0.5435` top-3, but it still lost both direct games. New first failures were `Bc4` vs `Bxe4` and `...Bd5` vs `...h6`. |
 | `2026-05-20T17:25:52-07:00` report timestamp | FEN-based Stockfish teacher input (`reports/2026-05-20_fen_teacher_probe.md`, `reports/2026-05-20_latest_failure_fens.txt`). | N/A | not gated | `stockfish-teacher --fen-file` can now label targeted failure FENs directly. The first six-FEN legal-value source produced 48 bad-action labels, but label instability means it should seed broader branch data rather than be used as an exact book. |
+| `2026-05-20T17:38:43-07:00` report timestamp | FEN branch teacher expansion (`reports/2026-05-20_fen_teacher_probe.md`). | N/A | not gated | `--fen-branch-plies 2 --fen-branch-width 2` expanded the six failure FENs into a 42-position branch source with 326 dense bad-action labels. A conservative policy-head/distill repair was rejected by the broad holdout guard and did not improve branch top-k, so no direct gate was spent. |
 
 Current practical status:
 
@@ -269,6 +270,10 @@ Current practical status:
   through PGNs. The first six-FEN legal-value source exposed target instability
   at low engine time, so it is infrastructure for broader branch data rather
   than a direct strength gain.
+- FEN branch expansion now labels short engine branches from those targeted
+  failures. The first 42-position branch source is useful diagnostic data, but
+  a guarded repair on it missed the broad holdout floor and did not justify a
+  direct Stockfish gate.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.

@@ -74,8 +74,65 @@ This source is not enough by itself to justify a direct gate. The next useful
 step is to expand from these FENs into a larger branch set rather than replaying
 the same six positions.
 
+## Branch Expansion Follow-Up
+
+Timestamp: `2026-05-20T17:38:43-07:00`
+
+I added branch expansion for FEN input so each targeted failure can seed short
+engine-guided continuations instead of only labeling the root FEN. The first
+branch run used the six latest failure FENs with `--fen-branch-plies 2` and
+`--fen-branch-width 2`:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --fen-file reports/2026-05-20_latest_failure_fens.txt \
+  --out data/teacher/policyhead192_latest_failure_fens_branch_w2_p2_legalvalue_t10_v1 \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.1 \
+  --multipv 4 \
+  --policy-temperature-cp 180 \
+  --legal-bad-actions-per-position 8 \
+  --legal-bad-action-min-delta 0.08 \
+  --legal-value-policy-temperature 0.2 \
+  --fen-branch-plies 2 \
+  --fen-branch-width 2 \
+  --max-positions 64 \
+  --chunk-size 64
+```
+
+Result:
+
+- `42` positions seen and used
+- `326` dense bad-action labels
+- `1,519` legal candidates evaluated
+- output: `data/teacher/policyhead192_latest_failure_fens_branch_w2_p2_legalvalue_t10_v1`
+
+Baseline validation of the current opening16k/stability `75%` blend on the
+broad holdout plus this branch source:
+
+| Slice | Top-1 | Top-3 | Top-5 | Policy loss | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| broad holdout, soft labels | `0.3398` | `0.5383` | `0.6395` | `3.6053` | `0.0000` |
+| latest failure FEN branch source | `0.3095` | `0.6190` | `0.7857` | `4.5100` | `0.2365` |
+
+A conservative policy-head repair from the same checkpoint, anchored by policy
+distillation and guarded by broad holdout floors, was rejected before a direct
+Stockfish gate:
+
+- selector: `holdout_policy_acc+holdout_policy_top3_acc`
+- required floors: `holdout_policy_acc>=0.3395`, `holdout_policy_top3_acc>=0.5380`
+- outcome: no epoch satisfied both floors
+- sampled epoch reads: epoch 1 branch top-1/top-3 `0.3095`/`0.6190`; epoch 4
+  `0.3095`/`0.5952`; epoch 8 `0.2857`/`0.5714`
+
+The branch source is useful for diagnostics and future broader data generation,
+but this first repair did not improve the target branch enough to justify
+spending another direct gate.
+
 ## Verification
 
 - `uv run pytest tests/test_stockfish_teacher.py -q`: `17 passed`
+- `uv run pytest tests/test_stockfish_teacher.py -q` after branch expansion:
+  `18 passed`
 - `python3 -m compileall -q src/alpha_chess`: passed
-- `uv run pytest -q`: `123 passed in 94.11s`
+- `uv run pytest -q`: `124 passed in 93.83s`
