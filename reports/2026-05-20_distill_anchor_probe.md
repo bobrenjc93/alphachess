@@ -925,3 +925,90 @@ candidate is still moving into fresh book misses and the static root guards are
 actively misleading on the new positions. The next useful step is broader
 learned opening/tactical supervision, not deeper material search or more
 aggressive king-safety filtering.
+
+## Latest Full-Game Repair Rejection
+
+I tried to turn the new 400-position full-game source into learned policy
+behavior instead of only exact-book coverage. Baseline validation for the
+opening16k/stability `75%` blend:
+
+| Slice | Top-1 | Top-3 | Top-5 | Bad-action loss |
+| --- | ---: | ---: | ---: | ---: |
+| broad holdout | `0.3456` | `0.5432` | `0.6439` | `0.0000` |
+| latest full-game 400 | `0.3200` | `0.5150` | `0.6025` | `0.0000` |
+| latest top-2 first-blunder 18 | `0.3333` | `0.5556` | `0.6667` | `0.3969` |
+
+The guarded policy-head repair used the current blend as the checkpoint and
+mixed broad, t05, opening16k, stability, latest full-game, and latest
+first-blunder sources:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_hardlabels_cap20_lr2e6_blend_0.75.pt \
+  --data data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1 data/teacher/policyhead192_mat4_latest_fullgame_context_t05_v1 data/teacher/policyhead192_mat4_latestbook_top2_firstblunders_context_t05_v1 \
+  --holdout-data data/teacher/stockfish_multipv_elo1800_holdout8192_t005_skip65536 \
+  --out experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_latestfull400_hardlabels_cap20_lr1e6 \
+  --epochs 2 \
+  --batch-size 512 \
+  --lr 1e-6 \
+  --weight-decay 1e-4 \
+  --value-weight 0.05 \
+  --bad-action-weight 0.5 \
+  --bad-action-margin 1.0 \
+  --data-weights 0.45 0.16 0.26 0.05 0.06 0.02 \
+  --max-source-repeat 20 \
+  --legal-policy-loss \
+  --prefer-action-labels \
+  --policy-head-only \
+  --select-best-by 'holdout_policy_acc+holdout_policy_top3_acc' \
+  --select-best-require 'holdout_policy_acc>=0.3450' 'holdout_policy_top3_acc>=0.5420' \
+  --device cuda
+```
+
+No raw epoch satisfied the guard:
+
+| Checkpoint | Holdout top-1 | Holdout top-3 | Holdout top-5 | Latest full-game top-1/top-3 | First-blunder bad-action loss |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| epoch 1 | `0.3448` | `0.5420` | `0.6442` | `0.3225`/`0.5125` | `0.3986` |
+| epoch 2 | `0.3440` | `0.5426` | `0.6432` | `0.3200`/`0.5125` | `0.3860` |
+
+I checked conservative blends back into the parent. The best tradeoff was the
+epoch-2 `25%` blend: it kept broad holdout at `0.3453`/`0.5435`/`0.6442` and
+slightly improved the first-blunder bad-action loss to `0.3943`, but it did not
+improve the latest full-game top-1/top-3 (`0.3200`/`0.5150`).
+
+Direct gate for that guard-passing blend:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 uv run alpha-chess eval \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_latestfull400_hardlabels_cap20_lr1e6_epoch2_blend_0.25.pt \
+  --opponent stockfish \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --games 2 \
+  --simulations 16 \
+  --device cuda \
+  --material-value-weight 0.15 \
+  --root-mate-search-plies 5 \
+  --root-material-search-plies 4 \
+  --root-material-max-loss-cp 100 \
+  --root-king-safety-search-plies 2 \
+  --root-king-safety-max-loss-cp 100 \
+  --good-action-book data/teacher/stockfish_multipv_elo1800_65536_t005 data/teacher/stockfish_multipv_elo1800_8192_t05 data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 data/teacher/policyhead192_opening_stability_firstblunders_context_t05_v1 data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 data/teacher/policyhead192_mat4_latest_fullgame_context_t05_v1 \
+  --good-action-book-top-k 2 \
+  --bad-action-book data/teacher/policyhead192_stockfish_confirmed_blunders_broad73k_top3_v1 \
+  --pgn-out reports/policyhead192_latestfull400_epoch2_blend025_top2_mat4_stockfish_gate.pgn
+```
+
+Result: `0.0/2`. PGN file mtime: `2026-05-20T17:15:10-07:00`.
+
+First-blunder mining found:
+
+| Game | First confirmed mistake after repair | Stockfish target | Value delta | FEN |
+| --- | --- | --- | ---: | --- |
+| 1 | `Bc4` | `Bxe4` | `0.1235` | `r1bqk2r/p1p2ppp/2p2n2/8/1b2p3/2NB4/PPP1QPPP/R1B1K2R w KQkq - 2 9` |
+| 2 | `...Bd5` | `...h6` | `0.2006` | `r2q1rk1/1b3ppp/p2b1n2/1p6/2pP4/2P5/PPB2PPP/R1BQRNK1 b - - 1 16` |
+
+This rejects the latest-source policy-head repair. It can be blended to satisfy
+the broad guard, but it does not materially improve the new source and still
+fails the direct gate with fresh out-of-book tactical mistakes.

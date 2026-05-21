@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Latest result timestamp: `2026-05-20T16:53:22-07:00`.
+Latest result timestamp: `2026-05-20T17:15:10-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -187,6 +187,7 @@ next documentation commit.
 | `2026-05-20T16:21:53-07:00` PGN file mtime | Higher-time 16k opening source plus stability mix (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening16k_stability180_blend075_stockfish_gate.pgn`). | N/A | opening16k+stability gate `0.0/2` | A new 16,384-position `0.05s` opening teacher improved validation and selected a guard-passing 75% blend, but direct play still lost both games. First failures were the persistent `Bd3` vs `Bd4` motif and `...Be7` vs `...Bc5`. |
 | `2026-05-20T16:41:04-07:00` PGN file mtime | Opening16k/stability blend with material depth 4 (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening16k_stability180_blend075_mat4_stockfish_gate.pgn`). | N/A | mat4 opening16k gate `0.0/2` | Raising root material search to depth 4 removed the repeated `Bd3` motif but still lost both games; first failures shifted to `e5` vs `exd5` and `...Na5` vs `...Nxe5`. |
 | `2026-05-20T16:53:22-07:00` PGN file mtime | Latest full-game exact-book top-2 diagnostic (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_opening16k_stability180_blend075_mat4_latestbook_top2_stockfish_gate.pgn`). | N/A | latest-book top-2 mat4 gate `0.0/2` | A 400-position exact source from the latest failed gate removed the immediate `e5` and `...Na5` misses, but direct play still lost. New first failures were `f3` vs `b3` and `...Kh8` vs `...c5`, both outside the books. |
+| `2026-05-20T17:15:10-07:00` PGN file mtime | Latest full-game policy-head repair rejection (`reports/2026-05-20_distill_anchor_probe.md`, `reports/policyhead192_latestfull400_epoch2_blend025_top2_mat4_stockfish_gate.pgn`). | N/A | latest-source repair mat4 gate `0.0/2` | A guarded repair with the new 400-position source could be blended back to holdout `0.3453` top-1 and `0.5435` top-3, but it still lost both direct games. New first failures were `Bc4` vs `Bxe4` and `...Bd5` vs `...h6`. |
 
 Current practical status:
 
@@ -258,6 +259,10 @@ Current practical status:
   tightening the global book to top-2 removes the immediate `e5` and `...Na5`
   misses, but the gate stays `0.0/2`. The new first failures are outside the
   books, and the existing root guards prefer the bad moves there.
+- A policy-head repair using that new 400-position source can be conservatively
+  blended to preserve broad holdout quality, but it still scores `0.0/2`
+  directly and does not materially improve the new source. This is another
+  proxy-only improvement, not a promotion candidate.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.
