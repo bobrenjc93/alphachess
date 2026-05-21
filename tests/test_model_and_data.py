@@ -378,6 +378,50 @@ def test_bad_action_margin_loss_can_weight_value_deltas() -> None:
     )
 
 
+def test_bad_action_probability_loss_can_weight_value_deltas() -> None:
+    target = 10
+    bad_actions = [11, 12]
+
+    class FixedPolicy(torch.nn.Module):
+        def forward(self, boards):
+            logits = torch.full((boards.shape[0], ACTION_SIZE), -10.0)
+            logits[:, target] = 0.0
+            logits[:, bad_actions[0]] = 0.0
+            logits[:, bad_actions[1]] = 2.0
+            return logits, torch.zeros(boards.shape[0])
+
+    batch = {
+        "board": torch.zeros(1, NUM_INPUT_PLANES, 8, 8),
+        "action": torch.tensor([target], dtype=torch.long),
+        "bad_action": torch.tensor([bad_actions], dtype=torch.long),
+        "bad_action_delta": torch.tensor([[0.0, 2.0]], dtype=torch.float32),
+        "value": torch.zeros(1),
+    }
+
+    _plain_loss, plain_parts = _compute_batch_loss(
+        FixedPolicy(),
+        batch,
+        torch.device("cpu"),
+        value_weight=0.0,
+        bad_action_weight=1.0,
+        bad_action_delta_weight=1.0,
+        bad_action_loss_type="probability",
+    )
+    _weighted_loss, weighted_parts = _compute_batch_loss(
+        FixedPolicy(),
+        batch,
+        torch.device("cpu"),
+        value_weight=0.0,
+        bad_action_weight=1.0,
+        bad_action_delta_weight=3.0,
+        bad_action_loss_type="probability",
+    )
+
+    assert float(weighted_parts["bad_action_loss"]) > float(
+        plain_parts["bad_action_loss"]
+    )
+
+
 def test_policy_distillation_loss_anchors_to_reference_model() -> None:
     board = chess.Board()
     move = chess.Move.from_uci("e2e4")

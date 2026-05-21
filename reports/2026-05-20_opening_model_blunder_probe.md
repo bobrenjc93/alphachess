@@ -150,6 +150,38 @@ soft-label holdout top-1/top-3 `0.3380`/`0.5339`; by epoch 8 the training
 validation split reached only top-1/top-3 `0.0321`/`0.5256`. No direct gate was
 spent.
 
+## Bad-Action Probability Objective
+
+Timestamp: `2026-05-20T18:24:51-07:00`
+
+The margin objective still forces the teacher target above each bad move. I
+added `--bad-action-loss-type probability` as a gentler alternative that
+directly suppresses the probability of listed bad moves and lets policy
+distillation decide where the probability mass should go. The default remains
+`margin`.
+
+First probe:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_hardlabels_cap20_lr2e6_blend_0.75.pt \
+  --distill-checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_hardlabels_cap20_lr2e6_blend_0.75.pt \
+  --distill-data data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 \
+  --policy-distill-weight 10.0 \
+  --data data/teacher/policyhead192_opening16k_modelblunders_actiontargets_top4_t05_v1 data/teacher/policyhead192_latest_failure_fenbranch_modelblunders_actiontargets_top4_t10_v1 \
+  --source-policy-weights 0.0 0.0 \
+  --bad-action-weight 10.0 \
+  --bad-action-loss-type probability \
+  --bad-action-delta-weight 3.0 \
+  --select-best-require 'holdout_policy_acc>=0.3395' 'holdout_policy_top3_acc>=0.5380'
+```
+
+Result: no epoch satisfied the broad holdout guard. The run followed the same
+ranking pattern as the margin probes: epoch 1 fell to holdout top-1/top-3
+`0.3380`/`0.5338`, and epoch 8 reached only training validation top-1/top-3
+`0.0321`/`0.5321`. The probability objective changes the bad-action loss scale
+but does not solve the broad-transfer problem on this source.
+
 ## Verification
 
 - `python3 -m compileall -q src/alpha_chess`: passed
@@ -157,5 +189,5 @@ spent.
 - `uv run pytest tests/test_cli.py tests/test_model_blunders.py tests/test_hard_negatives.py -q`:
   `8 passed in 1.63s`
 - `uv run pytest tests/test_model_and_data.py tests/test_cli.py -q`:
-  `32 passed in 11.12s`
-- `uv run pytest -q`: `128 passed in 93.66s`
+  `33 passed in 11.81s`
+- `uv run pytest -q`: `129 passed in 94.66s`

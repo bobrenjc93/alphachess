@@ -30,6 +30,7 @@ class TrainConfig:
     bad_action_weight: float = 0.0
     bad_action_margin: float = 1.0
     bad_action_delta_weight: float = 0.0
+    bad_action_loss_type: str = "margin"
     data_weights: list[float] | None = None
     max_source_repeat: float | None = None
     source_policy_weights: list[float] | None = None
@@ -60,6 +61,7 @@ class ValidateConfig:
     bad_action_weight: float = 0.0
     bad_action_margin: float = 1.0
     bad_action_delta_weight: float = 0.0
+    bad_action_loss_type: str = "margin"
     legal_policy_loss: bool = False
     prefer_action_labels: bool = False
     device: str = "auto"
@@ -171,6 +173,7 @@ def train(config: TrainConfig) -> Path:
         raise ValueError("select_best_require requires select_best_by")
     if config.policy_distill_weight < 0:
         raise ValueError("policy_distill_weight must be non-negative")
+    _validate_bad_action_loss_type(config.bad_action_loss_type)
     if config.distill_temperature <= 0 or not math.isfinite(config.distill_temperature):
         raise ValueError("distill_temperature must be a finite positive value")
     if config.policy_distill_weight > 0 and config.distill_checkpoint is None:
@@ -226,6 +229,7 @@ def train(config: TrainConfig) -> Path:
                 bad_action_weight=config.bad_action_weight,
                 bad_action_margin=config.bad_action_margin,
                 bad_action_delta_weight=config.bad_action_delta_weight,
+                bad_action_loss_type=config.bad_action_loss_type,
                 source_policy_weights=config.source_policy_weights,
                 distill_model=distill_model,
                 policy_distill_weight=train_batch_distill_weight,
@@ -279,6 +283,7 @@ def train(config: TrainConfig) -> Path:
                     bad_action_weight=config.bad_action_weight,
                     bad_action_margin=config.bad_action_margin,
                     bad_action_delta_weight=config.bad_action_delta_weight,
+                    bad_action_loss_type=config.bad_action_loss_type,
                     source_names=dataset.source_names if len(dataset.source_names) > 1 else None,
                 )
             )
@@ -293,6 +298,7 @@ def train(config: TrainConfig) -> Path:
                     bad_action_weight=config.bad_action_weight,
                     bad_action_margin=config.bad_action_margin,
                     bad_action_delta_weight=config.bad_action_delta_weight,
+                    bad_action_loss_type=config.bad_action_loss_type,
                     source_names=(
                         holdout_dataset.source_names
                         if len(holdout_dataset.source_names) > 1
@@ -506,6 +512,7 @@ def _set_train_mode(
 
 @torch.no_grad()
 def validate(config: ValidateConfig) -> dict[str, float]:
+    _validate_bad_action_loss_type(config.bad_action_loss_type)
     device = resolve_device(config.device)
     dataset = SelfPlayDataset(
         config.data,
@@ -530,6 +537,7 @@ def validate(config: ValidateConfig) -> dict[str, float]:
         bad_action_weight=config.bad_action_weight,
         bad_action_margin=config.bad_action_margin,
         bad_action_delta_weight=config.bad_action_delta_weight,
+        bad_action_loss_type=config.bad_action_loss_type,
         source_names=dataset.source_names if len(dataset.source_names) > 1 else None,
     )
 
@@ -575,6 +583,7 @@ def _evaluate_loss(
     bad_action_weight: float = 0.0,
     bad_action_margin: float = 1.0,
     bad_action_delta_weight: float = 0.0,
+    bad_action_loss_type: str = "margin",
     source_names: list[str] | None = None,
     prefix: str = "val",
 ) -> dict[str, float]:
@@ -595,6 +604,7 @@ def _evaluate_loss(
             bad_action_weight=bad_action_weight,
             bad_action_margin=bad_action_margin,
             bad_action_delta_weight=bad_action_delta_weight,
+            bad_action_loss_type=bad_action_loss_type,
         )
         _add_eval_totals(totals, _batch_size(batch), loss, parts)
 
@@ -615,6 +625,7 @@ def _evaluate_loss(
                     bad_action_weight=bad_action_weight,
                     bad_action_margin=bad_action_margin,
                     bad_action_delta_weight=bad_action_delta_weight,
+                    bad_action_loss_type=bad_action_loss_type,
                 )
                 _add_eval_totals(
                     source_totals[source_id],
@@ -686,6 +697,7 @@ def _compute_batch_loss(
     bad_action_weight: float = 0.0,
     bad_action_margin: float = 1.0,
     bad_action_delta_weight: float = 0.0,
+    bad_action_loss_type: str = "margin",
     source_policy_weights: list[float] | None = None,
     distill_model: ChessNet | None = None,
     policy_distill_weight: float = 0.0,
@@ -712,6 +724,7 @@ def _compute_batch_loss(
             bad_action_weight,
             bad_action_margin,
             bad_action_delta_weight,
+            bad_action_loss_type,
             source_policy_weights=source_policy_weights,
             distill_model=distill_model,
             policy_distill_weight=policy_distill_weight,
@@ -727,6 +740,7 @@ def _compute_batch_loss(
         bad_action_weight,
         bad_action_margin,
         bad_action_delta_weight,
+        bad_action_loss_type,
         source_policy_weights=source_policy_weights,
         distill_model=distill_model,
         policy_distill_weight=policy_distill_weight,
@@ -776,6 +790,7 @@ def _compute_legal_masked_loss(
     bad_action_weight: float = 0.0,
     bad_action_margin: float = 1.0,
     bad_action_delta_weight: float = 0.0,
+    bad_action_loss_type: str = "margin",
     source_policy_weights: list[float] | None = None,
     distill_model: ChessNet | None = None,
     policy_distill_weight: float = 0.0,
@@ -813,11 +828,12 @@ def _compute_legal_masked_loss(
     policy_loss = _weighted_mean(per_example_policy_loss, policy_weight)
     policy_acc = (masked_logits.argmax(dim=-1) == target_action).float().mean()
     value_loss = F.mse_loss(value, values)
-    bad_action_loss = _bad_action_margin_loss(
+    bad_action_loss = _bad_action_loss(
         masked_logits,
         target_action,
         batch,
         device,
+        loss_type=bad_action_loss_type,
         margin=bad_action_margin,
         delta_weight=bad_action_delta_weight,
     )
@@ -859,6 +875,7 @@ def _compute_unmasked_loss(
     bad_action_weight: float,
     bad_action_margin: float,
     bad_action_delta_weight: float,
+    bad_action_loss_type: str,
     source_policy_weights: list[float] | None = None,
     distill_model: ChessNet | None = None,
     policy_distill_weight: float = 0.0,
@@ -883,11 +900,12 @@ def _compute_unmasked_loss(
     policy_loss = _weighted_mean(per_example_policy_loss, policy_weight)
     policy_acc = (policy_logits.argmax(dim=-1) == target_action).float().mean()
     value_loss = F.mse_loss(value, values)
-    bad_action_loss = _bad_action_margin_loss(
+    bad_action_loss = _bad_action_loss(
         policy_logits,
         target_action,
         batch,
         device,
+        loss_type=bad_action_loss_type,
         margin=bad_action_margin,
         delta_weight=bad_action_delta_weight,
     )
@@ -956,6 +974,40 @@ def _policy_topk_metrics(
     return metrics
 
 
+def _validate_bad_action_loss_type(loss_type: str) -> None:
+    if loss_type not in {"margin", "probability"}:
+        raise ValueError("bad_action_loss_type must be 'margin' or 'probability'")
+
+
+def _bad_action_loss(
+    policy_logits: torch.Tensor,
+    target_action: torch.Tensor,
+    batch: dict[str, torch.Tensor | list[str]],
+    device: torch.device,
+    *,
+    loss_type: str,
+    margin: float,
+    delta_weight: float = 0.0,
+) -> torch.Tensor:
+    _validate_bad_action_loss_type(loss_type)
+    if loss_type == "margin":
+        return _bad_action_margin_loss(
+            policy_logits,
+            target_action,
+            batch,
+            device,
+            margin=margin,
+            delta_weight=delta_weight,
+        )
+    return _bad_action_probability_loss(
+        policy_logits,
+        target_action,
+        batch,
+        device,
+        delta_weight=delta_weight,
+    )
+
+
 def _bad_action_margin_loss(
     policy_logits: torch.Tensor,
     target_action: torch.Tensor,
@@ -991,6 +1043,46 @@ def _bad_action_margin_loss(
     if bad_action_delta.shape != bad_action.shape:
         raise ValueError("bad_action_delta must have the same shape as bad_action")
 
+    weights = 1.0 + float(delta_weight) * bad_action_delta.clamp_min(0.0)
+    valid_weights = weights[valid]
+    weight_sum = valid_weights.sum()
+    if float(weight_sum.item()) <= 0.0:
+        return losses.mean()
+    return (losses * valid_weights).sum() / weight_sum
+
+
+def _bad_action_probability_loss(
+    policy_logits: torch.Tensor,
+    target_action: torch.Tensor,
+    batch: dict[str, torch.Tensor | list[str]],
+    device: torch.device,
+    delta_weight: float = 0.0,
+) -> torch.Tensor:
+    if "bad_action" not in batch:
+        return policy_logits.new_zeros(())
+
+    bad_action = _batch_tensor(batch, "bad_action").to(device).long()
+    if bad_action.ndim == 1:
+        bad_action = bad_action.unsqueeze(1)
+    if bad_action.ndim != 2:
+        raise ValueError("bad_action must be a 1D or 2D tensor")
+
+    target_action = target_action.long()
+    valid = (bad_action >= 0) & (bad_action != target_action.unsqueeze(1))
+    if not bool(valid.any().item()):
+        return policy_logits.new_zeros(())
+
+    probabilities = F.softmax(policy_logits, dim=-1)
+    bad_probabilities = probabilities.gather(1, bad_action.clamp_min(0))
+    losses = -torch.log1p(-bad_probabilities[valid].clamp(max=1.0 - 1e-6))
+    if delta_weight <= 0 or "bad_action_delta" not in batch:
+        return losses.mean()
+
+    bad_action_delta = _batch_tensor(batch, "bad_action_delta").to(device).float()
+    if bad_action_delta.ndim == 1:
+        bad_action_delta = bad_action_delta.unsqueeze(1)
+    if bad_action_delta.shape != bad_action.shape:
+        raise ValueError("bad_action_delta must have the same shape as bad_action")
     weights = 1.0 + float(delta_weight) * bad_action_delta.clamp_min(0.0)
     valid_weights = weights[valid]
     weight_sum = valid_weights.sum()
