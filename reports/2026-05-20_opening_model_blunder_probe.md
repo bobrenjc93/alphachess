@@ -443,6 +443,48 @@ White game lost after a new `...f5`/`...Nxc3` line and the Black game returned
 to a longer version of the kingside-pawn collapse. Exact first-blunder coverage
 continues to move the failures without producing direct strength.
 
+## Recent Tactical Bundle Repair
+
+Timestamp: `2026-05-20T19:55:48-07:00`
+
+I aggregated the five newest failed direct gates into one 90-position
+first-blunder context source:
+
+```bash
+uv run alpha-chess stockfish-teacher \
+  --pgn reports/policyhead192_modelblunder_prob_bw1_epoch1_top2_mat4_stockfish_gate.pgn reports/policyhead192_stability198_probcontext_blend025_top2_mat4_stockfish_gate.pgn reports/policyhead192_stability198_probcontext_blend025_quietsafety_top2_mat4_stockfish_gate.pgn reports/policyhead192_stability198_probcontext_blend025_materialopportunity_top2_mat4_stockfish_gate.pgn reports/policyhead192_stability198_probcontext_blend025_materialopportunity_latestbook_top2_mat4_stockfish_gate.pgn \
+  --out data/teacher/policyhead192_recent_tactical_firstblunders_context_t05_v1 \
+  --engine-path tools/stockfish/bin/stockfish \
+  --engine-time 0.05 \
+  --player-name AlphaChess \
+  --position-stride 1 \
+  --min-value-delta 0.08 \
+  --multipv 4 \
+  --policy-temperature-cp 180 \
+  --first-blunder-only \
+  --blunder-context-plies 2 \
+  --pv-plies 4 \
+  --game-line-plies 2 \
+  --chunk-size 256
+```
+
+The current guard-passing blend validates at recent tactical top-1/top-3
+`0.2222`/`0.4667`, with bad-action margin `1.9752`. A low-LR policy-head repair
+with `--max-source-repeat 80` moved the recent tactical slice, but every raw
+epoch missed the broad guard:
+
+| Checkpoint | Holdout top-1 | Holdout top-3 | Recent tactical top-1/top-3 | Recent bad-action margin |
+| --- | ---: | ---: | ---: | ---: |
+| parent | `0.3453` | `0.5432` | `0.2222`/`0.4667` | `1.9752` |
+| raw epoch 1 | `0.3446` | `0.5424` | `0.2222`/`0.4778` | `1.9392` |
+| raw epoch 3 | `0.3446` | `0.5424` | `0.2333`/`0.4778` | `1.8886` |
+| epoch-3 `25%` blend | `0.3448` | `0.5433` | `0.2222`/`0.4778` | `1.9536` |
+| epoch-3 `50%` blend | `0.3448` | `0.5427` | `0.2222`/`0.4778` | `1.9319` |
+
+The repair direction improves the targeted loss, but the broad top-1 damage is
+still too high and conservative blends do not recover the guard. No direct gate
+was spent on this branch.
+
 ## Verification
 
 - `python3 -m compileall -q src/alpha_chess`: passed
