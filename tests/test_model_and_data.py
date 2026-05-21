@@ -147,6 +147,7 @@ def test_dataset_collates_multiple_bad_actions(tmp_path) -> None:
         boards=np.asarray([encode_board(board)], dtype=np.float32),
         actions=np.asarray([move_to_action(move, board)], dtype=np.int64),
         bad_actions=np.asarray([bad_actions], dtype=np.int64),
+        bad_action_deltas=np.asarray([[0.25, 0.75]], dtype=np.float32),
         values=np.asarray([0.0], dtype=np.float32),
         fens=np.asarray([board.fen()]),
     )
@@ -155,8 +156,11 @@ def test_dataset_collates_multiple_bad_actions(tmp_path) -> None:
     batch = collate_samples([sample])
 
     assert sample["bad_action"].tolist() == bad_actions
+    assert sample["bad_action_delta"].tolist() == pytest.approx([0.25, 0.75])
     assert batch["bad_action"].shape == (1, 2)
     assert batch["bad_action"][0].tolist() == bad_actions
+    assert batch["bad_action_delta"].shape == (1, 2)
+    assert batch["bad_action_delta"][0].tolist() == pytest.approx([0.25, 0.75])
 
 
 def test_dataset_color_mirror_augmentation_maps_labels(tmp_path) -> None:
@@ -329,6 +333,49 @@ def test_bad_action_margin_loss_accepts_multiple_bad_actions() -> None:
     assert loss.ndim == 0
     assert "bad_action_loss" in parts
     assert float(parts["bad_action_loss"]) >= 0.0
+
+
+def test_bad_action_margin_loss_can_weight_value_deltas() -> None:
+    target = 10
+    bad_actions = [11, 12]
+
+    class FixedPolicy(torch.nn.Module):
+        def forward(self, boards):
+            logits = torch.full((boards.shape[0], ACTION_SIZE), -10.0)
+            logits[:, target] = 0.0
+            logits[:, bad_actions[0]] = 0.0
+            logits[:, bad_actions[1]] = 2.0
+            return logits, torch.zeros(boards.shape[0])
+
+    batch = {
+        "board": torch.zeros(1, NUM_INPUT_PLANES, 8, 8),
+        "action": torch.tensor([target], dtype=torch.long),
+        "bad_action": torch.tensor([bad_actions], dtype=torch.long),
+        "bad_action_delta": torch.tensor([[0.0, 2.0]], dtype=torch.float32),
+        "value": torch.zeros(1),
+    }
+
+    _plain_loss, plain_parts = _compute_batch_loss(
+        FixedPolicy(),
+        batch,
+        torch.device("cpu"),
+        value_weight=0.0,
+        bad_action_weight=1.0,
+        bad_action_margin=1.0,
+    )
+    _weighted_loss, weighted_parts = _compute_batch_loss(
+        FixedPolicy(),
+        batch,
+        torch.device("cpu"),
+        value_weight=0.0,
+        bad_action_weight=1.0,
+        bad_action_margin=1.0,
+        bad_action_delta_weight=1.0,
+    )
+
+    assert float(weighted_parts["bad_action_loss"]) > float(
+        plain_parts["bad_action_loss"]
+    )
 
 
 def test_policy_distillation_loss_anchors_to_reference_model() -> None:

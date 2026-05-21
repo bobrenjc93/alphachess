@@ -74,6 +74,8 @@ class SelfPlayDataset(Dataset):
                         "actions",
                         "fens",
                         "bad_actions",
+                        "bad_action_deltas",
+                        "value_deltas",
                     }
                 }
 
@@ -216,6 +218,11 @@ class SelfPlayDataset(Dataset):
                 bad_actions[0] if scalar_bad_action else bad_actions,
                 dtype=torch.long,
             )
+            bad_action_delta_values = _bad_action_delta_values(data, local_index)
+            if bad_action_delta_values is not None:
+                sample["bad_action_delta"] = torch.from_numpy(
+                    bad_action_delta_values.astype(np.float32, copy=False)
+                )
         return sample
 
     def write_index(self, path: str | Path | None = None) -> Path:
@@ -305,6 +312,7 @@ def collate_samples(samples: list[Sample]) -> dict[str, torch.Tensor | list[str]
 
     if any("bad_action" in sample for sample in samples):
         bad_actions: list[torch.Tensor] = []
+        bad_action_deltas: list[torch.Tensor] = []
         max_bad_actions = 1
         for sample in samples:
             if "bad_action" in sample:
@@ -314,7 +322,27 @@ def collate_samples(samples: list[Sample]) -> dict[str, torch.Tensor | list[str]
                 bad_action = bad_action.long().reshape(-1)
             else:
                 bad_action = torch.tensor([-1], dtype=torch.long)
+            if "bad_action_delta" in sample:
+                bad_action_delta = sample["bad_action_delta"]
+                if not isinstance(bad_action_delta, torch.Tensor):
+                    raise TypeError("bad_action_delta sample field must be a tensor")
+                bad_action_delta = bad_action_delta.float().reshape(-1)
+                if bad_action_delta.numel() < bad_action.numel():
+                    bad_action_delta = torch.cat(
+                        [
+                            bad_action_delta,
+                            torch.zeros(
+                                bad_action.numel() - bad_action_delta.numel(),
+                                dtype=torch.float32,
+                            ),
+                        ]
+                    )
+                elif bad_action_delta.numel() > bad_action.numel():
+                    bad_action_delta = bad_action_delta[: bad_action.numel()]
+            else:
+                bad_action_delta = torch.zeros(bad_action.numel(), dtype=torch.float32)
             bad_actions.append(bad_action)
+            bad_action_deltas.append(bad_action_delta)
             max_bad_actions = max(max_bad_actions, int(bad_action.numel()))
 
         padded_bad_actions = torch.full(
@@ -322,12 +350,38 @@ def collate_samples(samples: list[Sample]) -> dict[str, torch.Tensor | list[str]
             -1,
             dtype=torch.long,
         )
-        for row, bad_action in enumerate(bad_actions):
+        padded_bad_action_deltas = torch.zeros(
+            (len(samples), max_bad_actions),
+            dtype=torch.float32,
+        )
+        for row, (bad_action, bad_action_delta) in enumerate(
+            zip(bad_actions, bad_action_deltas)
+        ):
             padded_bad_actions[row, : bad_action.numel()] = bad_action
+            padded_bad_action_deltas[row, : bad_action_delta.numel()] = bad_action_delta
         batch["bad_action"] = (
             padded_bad_actions.squeeze(1)
             if max_bad_actions == 1
             else padded_bad_actions
         )
+        batch["bad_action_delta"] = (
+            padded_bad_action_deltas.squeeze(1)
+            if max_bad_actions == 1
+            else padded_bad_action_deltas
+        )
 
     return batch
+
+
+def _bad_action_delta_values(
+    data: dict[str, np.ndarray],
+    local_index: int,
+) -> np.ndarray | None:
+    if "bad_action_deltas" in data:
+        return np.asarray(data["bad_action_deltas"][local_index], dtype=np.float32)
+    if "value_deltas" not in data:
+        return None
+    value_delta = np.asarray(data["value_deltas"][local_index], dtype=np.float32)
+    if value_delta.ndim == 0:
+        return None
+    return value_delta

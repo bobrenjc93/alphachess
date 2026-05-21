@@ -29,6 +29,7 @@ class TrainConfig:
     value_weight: float = 1.0
     bad_action_weight: float = 0.0
     bad_action_margin: float = 1.0
+    bad_action_delta_weight: float = 0.0
     data_weights: list[float] | None = None
     max_source_repeat: float | None = None
     source_policy_weights: list[float] | None = None
@@ -58,6 +59,7 @@ class ValidateConfig:
     value_weight: float = 1.0
     bad_action_weight: float = 0.0
     bad_action_margin: float = 1.0
+    bad_action_delta_weight: float = 0.0
     legal_policy_loss: bool = False
     prefer_action_labels: bool = False
     device: str = "auto"
@@ -223,6 +225,7 @@ def train(config: TrainConfig) -> Path:
                 legal_policy_loss=config.legal_policy_loss,
                 bad_action_weight=config.bad_action_weight,
                 bad_action_margin=config.bad_action_margin,
+                bad_action_delta_weight=config.bad_action_delta_weight,
                 source_policy_weights=config.source_policy_weights,
                 distill_model=distill_model,
                 policy_distill_weight=train_batch_distill_weight,
@@ -275,6 +278,7 @@ def train(config: TrainConfig) -> Path:
                     legal_policy_loss=config.legal_policy_loss,
                     bad_action_weight=config.bad_action_weight,
                     bad_action_margin=config.bad_action_margin,
+                    bad_action_delta_weight=config.bad_action_delta_weight,
                     source_names=dataset.source_names if len(dataset.source_names) > 1 else None,
                 )
             )
@@ -288,6 +292,7 @@ def train(config: TrainConfig) -> Path:
                     legal_policy_loss=config.legal_policy_loss,
                     bad_action_weight=config.bad_action_weight,
                     bad_action_margin=config.bad_action_margin,
+                    bad_action_delta_weight=config.bad_action_delta_weight,
                     source_names=(
                         holdout_dataset.source_names
                         if len(holdout_dataset.source_names) > 1
@@ -524,6 +529,7 @@ def validate(config: ValidateConfig) -> dict[str, float]:
         legal_policy_loss=config.legal_policy_loss,
         bad_action_weight=config.bad_action_weight,
         bad_action_margin=config.bad_action_margin,
+        bad_action_delta_weight=config.bad_action_delta_weight,
         source_names=dataset.source_names if len(dataset.source_names) > 1 else None,
     )
 
@@ -568,6 +574,7 @@ def _evaluate_loss(
     legal_policy_loss: bool = False,
     bad_action_weight: float = 0.0,
     bad_action_margin: float = 1.0,
+    bad_action_delta_weight: float = 0.0,
     source_names: list[str] | None = None,
     prefix: str = "val",
 ) -> dict[str, float]:
@@ -587,6 +594,7 @@ def _evaluate_loss(
             legal_policy_loss=legal_policy_loss,
             bad_action_weight=bad_action_weight,
             bad_action_margin=bad_action_margin,
+            bad_action_delta_weight=bad_action_delta_weight,
         )
         _add_eval_totals(totals, _batch_size(batch), loss, parts)
 
@@ -606,6 +614,7 @@ def _evaluate_loss(
                     legal_policy_loss=legal_policy_loss,
                     bad_action_weight=bad_action_weight,
                     bad_action_margin=bad_action_margin,
+                    bad_action_delta_weight=bad_action_delta_weight,
                 )
                 _add_eval_totals(
                     source_totals[source_id],
@@ -676,6 +685,7 @@ def _compute_batch_loss(
     legal_policy_loss: bool = False,
     bad_action_weight: float = 0.0,
     bad_action_margin: float = 1.0,
+    bad_action_delta_weight: float = 0.0,
     source_policy_weights: list[float] | None = None,
     distill_model: ChessNet | None = None,
     policy_distill_weight: float = 0.0,
@@ -701,6 +711,7 @@ def _compute_batch_loss(
             value_weight,
             bad_action_weight,
             bad_action_margin,
+            bad_action_delta_weight,
             source_policy_weights=source_policy_weights,
             distill_model=distill_model,
             policy_distill_weight=policy_distill_weight,
@@ -715,6 +726,7 @@ def _compute_batch_loss(
         value_weight,
         bad_action_weight,
         bad_action_margin,
+        bad_action_delta_weight,
         source_policy_weights=source_policy_weights,
         distill_model=distill_model,
         policy_distill_weight=policy_distill_weight,
@@ -763,6 +775,7 @@ def _compute_legal_masked_loss(
     value_weight: float,
     bad_action_weight: float = 0.0,
     bad_action_margin: float = 1.0,
+    bad_action_delta_weight: float = 0.0,
     source_policy_weights: list[float] | None = None,
     distill_model: ChessNet | None = None,
     policy_distill_weight: float = 0.0,
@@ -806,6 +819,7 @@ def _compute_legal_masked_loss(
         batch,
         device,
         margin=bad_action_margin,
+        delta_weight=bad_action_delta_weight,
     )
     policy_distill_loss = policy_loss.new_tensor(0.0)
     if policy_distill_weight > 0:
@@ -844,6 +858,7 @@ def _compute_unmasked_loss(
     value_weight: float,
     bad_action_weight: float,
     bad_action_margin: float,
+    bad_action_delta_weight: float,
     source_policy_weights: list[float] | None = None,
     distill_model: ChessNet | None = None,
     policy_distill_weight: float = 0.0,
@@ -874,6 +889,7 @@ def _compute_unmasked_loss(
         batch,
         device,
         margin=bad_action_margin,
+        delta_weight=bad_action_delta_weight,
     )
     policy_distill_loss = policy_loss.new_tensor(0.0)
     if policy_distill_weight > 0:
@@ -946,6 +962,7 @@ def _bad_action_margin_loss(
     batch: dict[str, torch.Tensor | list[str]],
     device: torch.device,
     margin: float,
+    delta_weight: float = 0.0,
 ) -> torch.Tensor:
     if "bad_action" not in batch:
         return policy_logits.new_zeros(())
@@ -964,7 +981,22 @@ def _bad_action_margin_loss(
     target_logits = policy_logits.gather(1, target_action.unsqueeze(1))
     bad_logits = policy_logits.gather(1, bad_action.clamp_min(0))
     margin_violations = bad_logits[valid] - target_logits.expand_as(bad_logits)[valid] + margin
-    return F.softplus(margin_violations).mean()
+    losses = F.softplus(margin_violations)
+    if delta_weight <= 0 or "bad_action_delta" not in batch:
+        return losses.mean()
+
+    bad_action_delta = _batch_tensor(batch, "bad_action_delta").to(device).float()
+    if bad_action_delta.ndim == 1:
+        bad_action_delta = bad_action_delta.unsqueeze(1)
+    if bad_action_delta.shape != bad_action.shape:
+        raise ValueError("bad_action_delta must have the same shape as bad_action")
+
+    weights = 1.0 + float(delta_weight) * bad_action_delta.clamp_min(0.0)
+    valid_weights = weights[valid]
+    weight_sum = valid_weights.sum()
+    if float(weight_sum.item()) <= 0.0:
+        return losses.mean()
+    return (losses * valid_weights).sum() / weight_sum
 
 
 def _source_weight_vector(

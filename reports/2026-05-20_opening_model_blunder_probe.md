@@ -119,10 +119,43 @@ of a percentage point and barely changes bad-action loss, so I did not spend a
 direct Stockfish gate on it. Interpolation confirms that the current
 model-blunder repair direction is too weak per unit of broad-holdout damage.
 
+## Value-Delta Weighted Objective
+
+Timestamp: `2026-05-20T18:16:52-07:00`
+
+I added optional value-delta weighting for bad-action margin loss:
+
+- datasets now load aligned `bad_action_deltas` from Stockfish teacher files
+  and aligned `value_deltas` from model-blunder files;
+- `train` and `validate` now accept `--bad-action-delta-weight`;
+- the default is unchanged at `0.0`.
+
+The first guarded policy-head probe used the same opening16k and FEN-branch
+model-blunder sources as above, with `--bad-action-delta-weight 3.0`:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 uv run alpha-chess train \
+  --checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_hardlabels_cap20_lr2e6_blend_0.75.pt \
+  --distill-checkpoint experiments/policyhead192-distill-anchor-v1/checkpoints/broad_opening16k_stability180_hardlabels_cap20_lr2e6_blend_0.75.pt \
+  --distill-data data/teacher/stockfish_opening_elo1800_16384_t05_ply24_v1 \
+  --policy-distill-weight 10.0 \
+  --data data/teacher/policyhead192_opening16k_modelblunders_actiontargets_top4_t05_v1 data/teacher/policyhead192_latest_failure_fenbranch_modelblunders_actiontargets_top4_t10_v1 \
+  --bad-action-weight 0.5 \
+  --bad-action-delta-weight 3.0 \
+  --select-best-require 'holdout_policy_acc>=0.3395' 'holdout_policy_top3_acc>=0.5380'
+```
+
+Result: no epoch satisfied the broad holdout guard. Epoch 1 already fell to
+soft-label holdout top-1/top-3 `0.3380`/`0.5339`; by epoch 8 the training
+validation split reached only top-1/top-3 `0.0321`/`0.5256`. No direct gate was
+spent.
+
 ## Verification
 
 - `python3 -m compileall -q src/alpha_chess`: passed
 - `git diff --check`: passed
 - `uv run pytest tests/test_cli.py tests/test_model_blunders.py tests/test_hard_negatives.py -q`:
   `8 passed in 1.63s`
-- `uv run pytest -q`: `127 passed in 95.42s`
+- `uv run pytest tests/test_model_and_data.py tests/test_cli.py -q`:
+  `32 passed in 11.12s`
+- `uv run pytest -q`: `128 passed in 93.66s`
