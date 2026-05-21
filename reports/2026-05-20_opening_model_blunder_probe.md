@@ -485,6 +485,25 @@ The repair direction improves the targeted loss, but the broad top-1 damage is
 still too high and conservative blends do not recover the guard. No direct gate
 was spent on this branch.
 
+## Bad-Action-Only Tactical Repair Rejection
+
+Timestamp: `2026-05-20T20:01:02-07:00`
+
+I retried the same 90-position recent tactical bundle with the policy loss
+disabled on that source (`--source-policy-weights ... 0.0`) so the newest slice
+only contributed bad-action pressure. The selector rejected every epoch because
+none met the broad holdout floor `top-1 >= 0.3450` and `top-3 >= 0.5420`.
+
+| Checkpoint | Holdout top-1 | Holdout top-3 | Recent tactical top-1/top-3 | Recent bad-action margin |
+| --- | ---: | ---: | ---: | ---: |
+| parent | `0.3453` | `0.5432` | `0.2222`/`0.4667` | `1.9752` |
+| bad-only epoch 1 | `0.3444` | `0.5424` | `0.2222`/`0.4778` | `1.9390` |
+| bad-only epoch 3 | `0.3445` | `0.5422` | `0.2222`/`0.4778` | `1.8888` |
+
+Bad-action-only pressure reaches essentially the same targeted margin
+improvement as the earlier capped repair, but it still buys that improvement
+with too much broad top-1 damage. No direct Stockfish gate was spent.
+
 ## Verification
 
 - `python3 -m compileall -q src/alpha_chess`: passed

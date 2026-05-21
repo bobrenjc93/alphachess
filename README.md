@@ -16,7 +16,7 @@ This is not yet a superhuman model. It is the training and evaluation scaffold n
 
 ## Progress Tracker
 
-Latest progress timestamp: `2026-05-20T19:55:48-07:00`.
+Latest progress timestamp: `2026-05-20T20:01:02-07:00`.
 
 This repo does not yet have a calibrated Elo. The direct Stockfish gates are
 small, usually 2-4 games, so a formal Elo would be misleading. The table below
@@ -200,6 +200,7 @@ next documentation commit.
 | `2026-05-20T19:28:36-07:00` PGN header timestamp | Material-opportunity root guard (`reports/2026-05-20_opening_model_blunder_probe.md`, `reports/policyhead192_stability198_probcontext_blend025_materialopportunity_top2_mat4_stockfish_gate.pgn`). | N/A | top-2 book mat4 gate `0.0/2` | The root material guard now keeps moves within the same loss band of the best shallow material gain, pruning the latest missed-knight `O-O` local failure. The full direct gate again shifted to new lines and lost both games. |
 | `2026-05-20T19:49:34-07:00` PGN header timestamp | Material-opportunity latest-book diagnostic (`reports/2026-05-20_opening_model_blunder_probe.md`, `reports/policyhead192_stability198_probcontext_blend025_materialopportunity_latestbook_top2_mat4_stockfish_gate.pgn`). | N/A | top-2 book mat4 gate `0.0/2` | Mined the material-opportunity gate's first blunders (`g3`/`f3` and `...Bf5`/`...Ng4`) and added that context source to the exact top-2 book. The direct score stayed zero after both games shifted into new attacking lines. |
 | `2026-05-20T19:55:48-07:00` report timestamp | Recent tactical first-blunder bundle (`reports/2026-05-20_opening_model_blunder_probe.md`). | N/A | not gated | Aggregated the five newest failed direct gates into a 90-position first-blunder context source. A capped low-LR policy-head repair improved recent tactical bad-action margin from `1.9752` to `1.8886`, but broad holdout fell below the guard and conservative blends still missed the top-1 floor, so no direct gate was spent. |
+| `2026-05-20T20:01:02-07:00` report timestamp | Bad-action-only recent tactical repair (`reports/2026-05-20_opening_model_blunder_probe.md`). | N/A | not gated | Disabling policy loss on the 90-position recent tactical slice preserved the same broad-top-1 problem: recent bad-action margin improved to `1.8888`, but holdout top-1/top-3 stayed below the selector floor at `0.3445`/`0.5422`, so no direct gate was spent. |
 
 Current practical status:
 
@@ -314,8 +315,9 @@ Current practical status:
   changed the games but not the score, reinforcing that exact-book expansion is
   exposing a broad tactical generalization gap rather than closing it.
 - A 90-position bundle of recent first-blunder contexts can reduce targeted
-  bad-action margin, but the current policy-head repair direction still costs
-  too much broad holdout per unit of tactical improvement.
+  bad-action margin, including with policy loss disabled on that source, but
+  the current repair direction still costs too much broad holdout per unit of
+  tactical improvement.
 - The material guard no longer forces one speculative checking-capture
   sacrifice when all root moves look bad, but the replacement line still loses
   tactically.
